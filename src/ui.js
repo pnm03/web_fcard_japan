@@ -1748,6 +1748,21 @@ function setupQuizActiveEvents() {
     }
   });
 
+  // Tự động focus vào ô nhập liệu khi gõ phím bất kỳ trong trang kiểm tra
+  window.addEventListener("keydown", (e) => {
+    const quizActiveView = document.getElementById("quiz-active-view");
+    if (!quizActiveView || !quizActiveView.classList.contains("active")) {
+      return;
+    }
+
+    if (inputEl && !inputEl.disabled && document.activeElement !== inputEl) {
+      const isCharacterKey = e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey;
+      if (isCharacterKey) {
+        inputEl.focus({ preventScroll: true });
+      }
+    }
+  });
+
   document.getElementById("quiz-abort-btn").onclick = () => {
     if (confirm("Bạn có chắc chắn muốn hủy bài kiểm tra hiện tại? Mọi tiến trình chưa hoàn thành sẽ không được lưu.")) {
       if (quizTimerInterval) clearInterval(quizTimerInterval);
