@@ -1403,6 +1403,11 @@ function renderCurrentQuestion() {
   const hintText = document.getElementById("quiz-hint-text");
   const revealBtn = document.getElementById("quiz-reveal-correct-btn");
 
+  const bottomSheet = document.getElementById("quiz-bottom-sheet");
+  if (bottomSheet) {
+    bottomSheet.classList.remove("active");
+  }
+
   if (hintLabel) hintLabel.textContent = "Gợi ý: ";
   if (hintText) {
     hintText.textContent = "";
@@ -1562,25 +1567,24 @@ function handleQuizAnswerSubmit() {
         speakJapanese(cleanToKanaOnly(question.vocab.japanese));
         speakBtn.style.display = "inline-flex";
 
-        // Hiển thị đáp án đầy đủ trên dòng gợi ý
-        if (hintLabel) hintLabel.textContent = "👁️ Đã xem đáp án: ";
-        if (hintText) {
-          hintText.textContent = correctAnswer;
-          hintText.style.fontWeight = "800";
-          hintText.style.fontFamily = "var(--font-mono)";
-          hintText.style.color = "var(--accent)";
-        }
+        // Ẩn dòng gợi ý thông thường
+        hintContainer.style.display = "none";
         revealBtn.style.display = "none";
-        hintContainer.style.background = "var(--error-soft)";
-        hintContainer.style.borderColor = "var(--error)";
-        hintContainer.style.color = "var(--error)";
 
-        // Hiện nút Tiếp theo
+        // Trượt bottom sheet lên hiển thị đáp án đúng
+        const bottomSheet = document.getElementById("quiz-bottom-sheet");
+        const bottomSheetText = document.getElementById("quiz-bottom-sheet-correct-text");
+        if (bottomSheetText) bottomSheetText.textContent = correctAnswer;
+        if (bottomSheet) bottomSheet.classList.add("active");
+
+        // Ẩn các nút hành động cũ để bắt buộc tương tác qua bottom sheet
         document.getElementById("quiz-submit-btn").style.display = "none";
-        const nextBtn = document.getElementById("quiz-next-btn");
-        nextBtn.style.display = "inline-flex";
-        nextBtn.textContent = "Xem đáp án & Tiếp tục (Enter)";
-        nextBtn.focus();
+        document.getElementById("quiz-next-btn").style.display = "none";
+
+        const sheetNextBtn = document.getElementById("quiz-bottom-sheet-next-btn");
+        if (sheetNextBtn) {
+          setTimeout(() => sheetNextBtn.focus(), 100);
+        }
       };
     }
 
@@ -1606,30 +1610,22 @@ function handleQuizAnswerSubmit() {
     speakBtn.style.display = "inline-flex";
 
     const hintContainer = document.getElementById("quiz-hint-container");
-    const hintLabel = document.getElementById("quiz-hint-label-text");
-    const hintText = document.getElementById("quiz-hint-text");
-    const revealBtn = document.getElementById("quiz-reveal-correct-btn");
+    if (hintContainer) hintContainer.style.display = "none";
 
-    if (hintLabel) hintLabel.textContent = "❌ Sai rồi! Đáp án đúng: ";
-    if (hintText) {
-      hintText.textContent = result.correctAnswer;
-      hintText.style.fontWeight = "800";
-      hintText.style.fontFamily = "var(--font-mono)";
-      hintText.style.color = "var(--accent)";
-    }
-    if (revealBtn) revealBtn.style.display = "none";
+    // Trượt bottom sheet lên hiển thị đáp án đúng
+    const bottomSheet = document.getElementById("quiz-bottom-sheet");
+    const bottomSheetText = document.getElementById("quiz-bottom-sheet-correct-text");
+    if (bottomSheetText) bottomSheetText.textContent = result.correctAnswer;
+    if (bottomSheet) bottomSheet.classList.add("active");
 
-    hintContainer.style.background = "var(--error-soft)";
-    hintContainer.style.borderColor = "var(--error)";
-    hintContainer.style.color = "var(--error)";
-    hintContainer.style.display = "flex";
-
+    // Ẩn các nút hành động cũ
     document.getElementById("quiz-submit-btn").style.display = "none";
+    document.getElementById("quiz-next-btn").style.display = "none";
     
-    const nextBtn = document.getElementById("quiz-next-btn");
-    nextBtn.style.display = "inline-flex";
-    nextBtn.textContent = "Xem đáp án & Tiếp tục (Enter)";
-    nextBtn.focus();
+    const sheetNextBtn = document.getElementById("quiz-bottom-sheet-next-btn");
+    if (sheetNextBtn) {
+      setTimeout(() => sheetNextBtn.focus(), 100);
+    }
   }
 }
 
@@ -1660,9 +1656,13 @@ function setupQuizActiveEvents() {
   const submitBtn = document.getElementById("quiz-submit-btn");
   const nextBtn = document.getElementById("quiz-next-btn");
   const inputEl = document.getElementById("quiz-answer-input");
+  const sheetNextBtn = document.getElementById("quiz-bottom-sheet-next-btn");
 
   submitBtn.onclick = handleQuizAnswerSubmit;
   nextBtn.onclick = goToNextQuestion;
+  if (sheetNextBtn) {
+    sheetNextBtn.onclick = goToNextQuestion;
+  }
 
   inputEl.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
@@ -1675,6 +1675,13 @@ function setupQuizActiveEvents() {
 
   window.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && document.getElementById("quiz-active-view").classList.contains("active")) {
+      const bottomSheet = document.getElementById("quiz-bottom-sheet");
+      if (bottomSheet && bottomSheet.classList.contains("active")) {
+        e.preventDefault();
+        goToNextQuestion();
+        return;
+      }
+
       const nextBtnVisible = nextBtn.style.display !== "none";
       if (nextBtnVisible && document.activeElement !== inputEl) {
         e.preventDefault();
