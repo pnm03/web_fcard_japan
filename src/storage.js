@@ -604,13 +604,33 @@ const DICTIONARY_DB = [
   { japanese: "ありがとう", romaji: "arigatou", meaning: "cảm ơn" },
   { japanese: "さようなら", romaji: "sayounara", meaning: "tạm biệt" },
   { japanese: "親切 (しんせつ)", romaji: "shinsetsu", meaning: "tốt bụng, thân thiện" },
-  { japanese: "面白い (おもしろい)", romaji: "omoshiroi", meaning: "thú vị, buồn cười, hài hước" }
+  { japanese: "面白い (おもしろい)", romaji: "omoshiroi", meaning: "thú vị, buồn cười, hài hước" },
+  { japanese: "青い (あおい)", romaji: "aoi", meaning: "màu xanh dương" },
+  { japanese: "蚊 (か)", romaji: "ka", meaning: "con muỗi" },
+  { japanese: "木 (き)", romaji: "ki", meaning: "cây" },
+  { japanese: "柿 (かき)", romaji: "kaki", meaning: "quả hồng" },
+  { japanese: "赤い (あかい)", romaji: "akai", meaning: "màu đỏ" },
+  { japanese: "行く (いく)", romaji: "iku", meaning: "đi" },
+  { japanese: "書く (かく)", romaji: "kaku", meaning: "viết" },
+  { japanese: "池 (いけ)", romaji: "ike", meaning: "cái ao" },
+  { japanese: "ここ", romaji: "koko", meaning: "cái môi" },
+  { japanese: "声 (こえ)", romaji: "koe", meaning: "giọng" },
+  { japanese: "傘 (かさ)", romaji: "kasa", meaning: "cái ô" },
+  { japanese: "坂 (さか)", romaji: "saka", meaning: "con dốc" },
+  { japanese: "塩 (しお)", romaji: "sio", meaning: "muối ăn" },
+  { japanese: "酢 (す)", romaji: "su", meaning: "giấm" },
+  { japanese: "寿司 (すし)", romaji: "susi", meaning: "cơm cuộn" },
+  { japanese: "世界 (せかい)", romaji: "sekai", meaning: "thế giới" },
+  { japanese: "そこ", romaji: "soko", meaning: "ở đó" },
+  { japanese: "嘘 (うそ)", romaji: "uso", meaning: "nói dối" }
 ];
 
 export function searchDictionary(query) {
   if (!query || !query.trim()) return [];
   const normalizedQuery = query.trim().toLowerCase();
   const queryNoTone = removeVietnameseTones(normalizedQuery);
+  const queryNoSpace = normalizedQuery.replace(/\s+/g, "");
+  const queryNoToneNoSpace = queryNoTone.replace(/\s+/g, "");
 
   const cachedDict = getCachedDictionary();
   const mergedDb = [...DICTIONARY_DB, ...cachedDict];
@@ -626,12 +646,22 @@ export function searchDictionary(query) {
   }
 
   return uniqueDb.filter(item => {
-    const jpMatch = item.japanese.toLowerCase().includes(normalizedQuery);
-    const rmMatch = item.romaji.toLowerCase().includes(normalizedQuery);
+    const jpClean = item.japanese.toLowerCase().replace(/\s+/g, "");
+    const jpMatch = jpClean.includes(normalizedQuery) || jpClean.includes(queryNoSpace);
+    
+    const rmClean = item.romaji.toLowerCase().replace(/\s+/g, "");
+    const rmMatch = rmClean.includes(normalizedQuery) || rmClean.includes(queryNoSpace);
     
     const meaningLower = item.meaning.toLowerCase();
     const meaningNoTone = removeVietnameseTones(meaningLower);
-    const mnMatch = meaningLower.includes(normalizedQuery) || meaningNoTone.includes(queryNoTone);
+    
+    const mnClean = meaningLower.replace(/\s+/g, "");
+    const mnCleanNoTone = meaningNoTone.replace(/\s+/g, "");
+    
+    const mnMatch = meaningLower.includes(normalizedQuery) || 
+                    meaningNoTone.includes(queryNoTone) ||
+                    mnClean.includes(queryNoSpace) ||
+                    mnCleanNoTone.includes(queryNoToneNoSpace);
     
     return jpMatch || rmMatch || mnMatch;
   });

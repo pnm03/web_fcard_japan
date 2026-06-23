@@ -1568,8 +1568,8 @@ async function searchOnlineDictionary(query) {
 
   if (hasJapanese) {
     searchKeywords.push(trimmed);
-  } else if (hasVietnamese || hasSpaces) {
-    // Kích hoạt dịch song song Việt -> Nhật và Việt -> Anh để giảm nửa thời gian
+  } else if (hasVietnamese) {
+    // Chỉ kích hoạt dịch khi có chữ tiếng Việt thực sự
     const [jaResult, enResult] = await Promise.all([
       translateTextAndRomaji(trimmed, "vi", "ja"),
       translateTextAndRomaji(trimmed, "vi", "en")
@@ -1595,8 +1595,13 @@ async function searchOnlineDictionary(query) {
       searchKeywords.push(translatedEn);
     }
   } else {
-    // Tiếng Anh / Romaji
+    // Tiếng Anh / Romaji (không có kí tự tiếng Việt)
     searchKeywords.push(trimmed);
+    if (hasSpaces) {
+      // Nếu có khoảng trắng (ví dụ: se kai), thêm phiên bản bỏ khoảng trắng (sekai) để tìm trên Jisho
+      const stripped = trimmed.replace(/\s+/g, "");
+      searchKeywords.push(stripped);
+    }
   }
 
   searchKeywords = [...new Set(searchKeywords)];
