@@ -31,6 +31,7 @@ let currentQuestionTime = 0;
 let quizConfigBackup = null; // Dùng để làm lại bài kiểm tra
 let quizSelectedVocabIds = [];
 let tempSelectedVocabIds = [];
+let isQuizTransitioning = false;
 let quizActiveSettings = {
   hideTimer: false,
   muteSounds: false,
@@ -1428,7 +1429,11 @@ function renderCurrentQuestion() {
   inputEl.disabled = false;
   inputEl.placeholder = question.mode === "jp_to_meaning" ? "Nhập nghĩa tiếng Việt (không dấu)..." : "Nhập cách đọc bằng Romaji...";
   
-  setTimeout(() => inputEl.focus(), 150);
+  setTimeout(() => {
+    inputEl.focus({ preventScroll: true });
+    const quizBox = document.getElementById("quiz-box");
+    if (quizBox) quizBox.scrollTop = 0;
+  }, 150);
 
   const wordDisplay = document.getElementById("quiz-question-word-display");
   const promptEl = document.getElementById("quiz-question-prompt");
@@ -1583,7 +1588,11 @@ function handleQuizAnswerSubmit() {
 
         const sheetNextBtn = document.getElementById("quiz-bottom-sheet-next-btn");
         if (sheetNextBtn) {
-          setTimeout(() => sheetNextBtn.focus(), 100);
+          setTimeout(() => {
+            sheetNextBtn.focus({ preventScroll: true });
+            const quizBox = document.getElementById("quiz-box");
+            if (quizBox) quizBox.scrollTop = 0;
+          }, 100);
         }
       };
     }
@@ -1594,7 +1603,7 @@ function handleQuizAnswerSubmit() {
     hintContainer.style.display = "flex";
 
     inputEl.value = "";
-    inputEl.focus();
+    inputEl.focus({ preventScroll: true });
     inputEl.placeholder = "Gợi ý đã hiển thị, hãy gõ lại...";
 
   } else if (result.status === "wrong") {
@@ -1624,12 +1633,20 @@ function handleQuizAnswerSubmit() {
     
     const sheetNextBtn = document.getElementById("quiz-bottom-sheet-next-btn");
     if (sheetNextBtn) {
-      setTimeout(() => sheetNextBtn.focus(), 100);
+      setTimeout(() => {
+        sheetNextBtn.focus({ preventScroll: true });
+        const quizBox = document.getElementById("quiz-box");
+        if (quizBox) quizBox.scrollTop = 0;
+      }, 100);
     }
   }
 }
 
 function goToNextQuestion() {
+  if (isQuizTransitioning) return;
+  isQuizTransitioning = true;
+  setTimeout(() => { isQuizTransitioning = false; }, 300);
+
   const hasNext = activeQuizSession.nextQuestion();
   if (hasNext) {
     renderCurrentQuestion();
