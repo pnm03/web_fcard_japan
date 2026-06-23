@@ -7,6 +7,65 @@ export function normalizeString(str) {
     .replace(/\s+/g, " "); // thay thế nhiều dấu cách bằng 1 dấu cách
 }
 
+export function isSmartVietnameseMatch(userAnswer, correctAnswer) {
+  const normUser = normalizeString(userAnswer);
+  const normCorrect = normalizeString(correctAnswer);
+  
+  if (normUser === normCorrect) return true;
+
+  const normUserNoTone = removeVietnameseTones(normUser);
+  const normCorrectNoTone = removeVietnameseTones(normCorrect);
+  if (normUserNoTone === normCorrectNoTone) return true;
+
+  // Danh sách các lượng từ / từ chỉ loại có thể được lược bỏ trong tiếng Việt
+  const classifiers = [
+    "cai", "con", "qua", "trai", "chiec", "doa", "ngoi", "buc", "tam",
+    "cay", "la", "soi", "hat", "quyen", "cuon", "bai", "su", "cuoc",
+    "viec", "niem", "noi", "ve", "nguoi", "dua", "mau", "sac"
+  ];
+
+  // Danh sách các hậu tố bổ nghĩa không bắt buộc có thể lược bỏ
+  const optionalSuffixes = [
+    "an", "mac", "uong", "choi"
+  ];
+
+  // Hàm loại bỏ lượng từ đứng đầu và hậu tố bổ nghĩa đứng cuối
+  const cleanTokens = (tokens) => {
+    let result = [...tokens];
+    while (result.length > 1) {
+      if (classifiers.includes(result[0])) {
+        result.shift();
+      } else {
+        break;
+      }
+    }
+    while (result.length > 1) {
+      const last = result[result.length - 1];
+      if (optionalSuffixes.includes(last)) {
+        result.pop();
+      } else {
+        break;
+      }
+    }
+    return result;
+  };
+
+  const userTokens = normUserNoTone.split(/\s+/).filter(Boolean);
+  const correctTokens = normCorrectNoTone.split(/\s+/).filter(Boolean);
+
+  if (userTokens.length === 0 || correctTokens.length === 0) return false;
+
+  const cleanedUser = cleanTokens(userTokens).join(" ");
+  const cleanedCorrect = cleanTokens(correctTokens).join(" ");
+
+  // Nếu sau khi tinh lọc, hai chuỗi khớp nhau và không rỗng
+  if (cleanedUser === cleanedCorrect && cleanedUser.length > 0) {
+    return true;
+  }
+
+  return false;
+}
+
 // Tạo gợi ý (Hint) cho một chuỗi đáp án
 export function generateHint(answer, mode) {
   if (!answer) return "";
@@ -206,14 +265,7 @@ export class QuizSession {
 
     if (question.mode === "jp_to_meaning") {
       correctAnswer = question.vocab.meaning;
-      // So sánh Nghĩa tiếng Việt: chuẩn hóa và so sánh cả không dấu
-      const normUser = normalizeString(userAnswer);
-      const normCorrect = normalizeString(correctAnswer);
-      
-      const normUserNoTone = removeVietnameseTones(normUser);
-      const normCorrectNoTone = removeVietnameseTones(normCorrect);
-
-      isCorrect = (normUser === normCorrect) || (normUserNoTone === normCorrectNoTone);
+      isCorrect = isSmartVietnameseMatch(userAnswer, correctAnswer);
     } else {
       // Nhập Romaji
       correctAnswer = question.vocab.romaji;
