@@ -1052,6 +1052,55 @@ function deselectAllInCurrentPickerProject() {
   updateTempSelectedCount();
 }
 
+function selectWeakInCurrentPickerProject() {
+  const projects = getProjects();
+  let allWords = [];
+  if (currentPickerProjectId === "all") {
+    projects.forEach(p => {
+      if (p.vocab) {
+        p.vocab.forEach(v => allWords.push(v));
+      }
+    });
+  } else {
+    const p = projects.find(proj => proj.id === currentPickerProjectId);
+    if (p && p.vocab) {
+      p.vocab.forEach(v => allWords.push(v));
+    }
+  }
+
+  // Lọc ra các từ yếu trong danh sách từ đang hiển thị
+  const weakWords = allWords.filter(v => {
+    const totalTests = v.correctCount + v.wrongCount;
+    const errorRate = totalTests > 0 ? (v.wrongCount / totalTests) : 0;
+    const avgTime = v.historyTimes && v.historyTimes.length > 0
+      ? (v.historyTimes.reduce((a, b) => a + b, 0) / v.historyTimes.length)
+      : 0;
+
+    return v.difficultyScore > 40 || errorRate > 0.25 || avgTime > 7.0;
+  });
+
+  if (weakWords.length === 0) {
+    alert("Không tìm thấy từ vựng yếu nào cần ôn luyện trong dự án này!");
+    return;
+  }
+
+  const allWordIds = allWords.map(v => v.id);
+  const weakWordIds = weakWords.map(v => v.id);
+
+  // Bỏ tick các từ không phải từ yếu trong nhóm từ đang hiển thị
+  tempSelectedVocabIds = tempSelectedVocabIds.filter(id => !allWordIds.includes(id) || weakWordIds.includes(id));
+
+  // Tick chọn các từ yếu
+  weakWordIds.forEach(id => {
+    if (!tempSelectedVocabIds.includes(id)) {
+      tempSelectedVocabIds.push(id);
+    }
+  });
+
+  renderPickerWords();
+  updateTempSelectedCount();
+}
+
 function setupQuizConfig(preselectedProjectId = null) {
   const projects = getProjects();
   const allVocabs = [];
@@ -1355,6 +1404,14 @@ function setupQuizConfigEvents() {
   if (selectNoneBtn) {
     selectNoneBtn.addEventListener("click", () => {
       deselectAllInCurrentPickerProject();
+    });
+  }
+
+  // Nút Chọn từ yếu trong picker modal
+  const selectWeakBtn = document.getElementById("picker-select-weak-btn");
+  if (selectWeakBtn) {
+    selectWeakBtn.addEventListener("click", () => {
+      selectWeakInCurrentPickerProject();
     });
   }
 
