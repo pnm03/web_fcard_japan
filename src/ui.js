@@ -869,7 +869,7 @@ function renderPickerWords() {
     itemDiv.style.display = "flex";
     itemDiv.style.alignItems = "center";
     itemDiv.style.justifyContent = "space-between";
-    itemDiv.style.padding = "6px 8px";
+    itemDiv.style.padding = "3px 6px";
     itemDiv.style.borderBottom = "1px solid var(--line-light)";
     itemDiv.style.borderRadius = "4px";
     itemDiv.style.background = isChecked ? "var(--bg-light)" : "transparent";

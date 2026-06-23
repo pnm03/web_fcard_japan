@@ -1301,6 +1301,10 @@ select.form-control {
   .vocab-picker-right {
     flex: 1;
   }
+  #picker-words-list {
+    grid-template-columns: 1fr !important;
+    gap: 4px 0 !important;
+  }
 }
 
 @keyframes spin {
