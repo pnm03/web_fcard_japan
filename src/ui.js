@@ -1126,6 +1126,25 @@ function setupQuizConfig(preselectedProjectId = null) {
   document.getElementById("quiz-setup-retry").checked = restoredAllowRetry;
 }
 
+function saveCurrentQuizConfig() {
+  const selectedModeEl = document.querySelector('input[name="quiz-mode"]:checked');
+  const selectedOrderEl = document.querySelector('input[name="quiz-order"]:checked');
+  const selectedMode = selectedModeEl ? selectedModeEl.value : "meaning_to_romaji";
+  const selectedOrder = selectedOrderEl ? selectedOrderEl.value : "random";
+  const count = parseInt(document.getElementById("quiz-setup-count").value) || 10;
+  const allowRetry = document.getElementById("quiz-setup-retry").checked;
+
+  const config = {
+    vocabIds: quizSelectedVocabIds,
+    questionCount: count,
+    quizMode: selectedMode,
+    order: selectedOrder,
+    allowRetry: allowRetry
+  };
+
+  localStorage.setItem("nihongo_quiz_config", JSON.stringify(config));
+}
+
 function setupQuizConfigEvents() {
   const radioCards = document.querySelectorAll(".radio-card");
   radioCards.forEach(card => {
@@ -1139,8 +1158,24 @@ function setupQuizConfigEvents() {
 
       card.classList.add("selected");
       radioInput.checked = true;
+      saveCurrentQuizConfig();
     });
   });
+
+  // Sự kiện thay đổi số câu hỏi hoặc tick retry
+  const countInput = document.getElementById("quiz-setup-count");
+  if (countInput) {
+    countInput.addEventListener("input", () => {
+      saveCurrentQuizConfig();
+    });
+  }
+
+  const retryCb = document.getElementById("quiz-setup-retry");
+  if (retryCb) {
+    retryCb.addEventListener("change", () => {
+      saveCurrentQuizConfig();
+    });
+  }
 
   // Sự kiện mở modal chọn từ vựng
   const selectVocabBtn = document.getElementById("quiz-setup-select-vocab-btn");
@@ -1172,6 +1207,8 @@ function setupQuizConfigEvents() {
       
       // Chọn bao nhiêu thì số lượng câu hỏi phải phản ánh lại bấy nhiêu
       document.getElementById("quiz-setup-count").value = quizSelectedVocabIds.length;
+      
+      saveCurrentQuizConfig();
       
       document.getElementById("quiz-vocab-picker-modal").classList.remove("active");
     });
