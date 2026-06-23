@@ -469,6 +469,7 @@ function renderProjectDetail() {
         <table class="vocab-table">
           <thead>
             <tr>
+              <th style="width: 60px; text-align: center;">STT</th>
               <th>Tiếng Nhật</th>
               <th>Romaji</th>
               <th>Nghĩa Tiếng Việt</th>
@@ -480,7 +481,7 @@ function renderProjectDetail() {
           <tbody>
     `;
 
-    proj.vocab.forEach(v => {
+    proj.vocab.forEach((v, index) => {
       let difficultyBadge = `<span class="vocab-badge badge-easy">${v.difficultyScore} (Dễ)</span>`;
       if (v.difficultyScore > 70) {
         difficultyBadge = `<span class="vocab-badge badge-hard">${v.difficultyScore} (Khó)</span>`;
@@ -490,6 +491,7 @@ function renderProjectDetail() {
 
       tableHtml += `
         <tr>
+          <td data-label="STT" style="text-align: center; font-family: var(--font-mono); font-size: 0.95rem; color: var(--ink-soft);">${index + 1}</td>
           <td data-label="Tiếng Nhật" class="vocab-jp-cell">
             ${cleanToKanaOnly(v.japanese)}
             <button class="btn btn-secondary speak-row-btn" data-text="${cleanToKanaOnly(v.japanese)}" style="width:24px; height:24px; font-size:0.7rem; vertical-align:middle; padding:0; border:none; background:transparent; box-shadow:none; cursor:pointer;" title="Nghe phát âm">🔊</button>
