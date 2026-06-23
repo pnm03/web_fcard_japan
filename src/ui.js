@@ -843,7 +843,7 @@ function createWordCard(v, displayIndex, projectName) {
   itemDiv.style.alignItems = "center";
   itemDiv.style.justifyContent = "space-between";
   itemDiv.style.padding = "4px 8px";
-  itemDiv.style.border = isChecked ? "1px solid var(--accent)" : "1px solid var(--line-light)";
+  itemDiv.style.border = isChecked ? "1px solid var(--accent)" : "1px solid var(--line-strong)";
   itemDiv.style.borderRadius = "var(--radius-sm, 4px)";
   itemDiv.style.background = isChecked ? "var(--accent-soft)" : "var(--paper)";
   itemDiv.style.cursor = "pointer";

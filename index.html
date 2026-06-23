@@ -641,7 +641,7 @@
         <div class="modal-container glass-panel" style="max-width: 800px; width: 90%;">
           <h2 style="margin-bottom: 1rem; color: var(--accent); font-family: var(--font-display);">🔍 Chọn Từ Vựng Kiểm Tra</h2>
           
-          <div class="vocab-picker-layout" style="display: flex; gap: 20px; height: 450px; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--bg);">
+          <div class="vocab-picker-layout" style="display: flex; gap: 8px; height: 450px; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--bg);">
             <!-- Cột trái: Danh sách các dự án (nhỏ hơn) -->
             <div class="vocab-picker-left" style="width: 250px; border-right: 1px solid var(--line); overflow-y: auto; background: var(--field); padding: 8px;">
               <h3 style="font-size: 11px; text-transform: uppercase; color: var(--ink-faint); margin: 8px 12px; font-family: var(--font-mono); letter-spacing: 0.05em;">Dự án</h3>
@@ -651,7 +651,7 @@
             </div>
             
             <!-- Cột phải: Toàn bộ từ vựng trong dự án đang chọn -->
-            <div class="vocab-picker-right" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 12px;">
+            <div class="vocab-picker-right" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 12px 12px 12px 6px;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
                 <h3 id="picker-current-project-title" style="margin: 0; font-family: var(--font-display); font-size: 15px; color: var(--accent);">Tên dự án đang chọn</h3>
                 <div style="display: flex; gap: 6px;">
@@ -661,7 +661,7 @@
               </div>
               
               <!-- Danh sách từ với checkbox -->
-              <div id="picker-words-list" style="flex: 1; overflow-y: auto; border: 1px solid var(--line-light); border-radius: 4px; padding: 8px; background: var(--paper); display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 12px; align-content: start;">
+              <div id="picker-words-list" style="flex: 1; overflow-y: auto; border: none; border-radius: 4px; padding: 4px; background: transparent; display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 12px; align-content: start;">
                 <!-- Render danh sách từ vựng với checkbox động ở đây -->
               </div>
             </div>
