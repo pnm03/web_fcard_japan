@@ -91,8 +91,8 @@ export function initUI() {
   // Khởi tạo hiển thị trạng thái đồng bộ đám mây và chạy đồng bộ ngầm lần đầu
   setupCloudSyncUI();
   
-  // Render trang chủ (Dashboard) đầu tiên
-  renderDashboard();
+  // Khôi phục view trước đó
+  restoreActiveView();
 }
 
 function setupCloudSyncUI() {
@@ -122,12 +122,15 @@ function setupCloudSyncUI() {
   
   // Kích hoạt đồng bộ ngầm từ Supabase về LocalStorage khi khởi động app
   fetchAndSyncFromSupabase().then(() => {
-    renderDashboard();
-    
-    // Nếu đang mở trang dự án thì render lại để cập nhật
-    const projectsView = document.getElementById("projects-view");
-    if (projectsView && projectsView.classList.contains("active")) {
+    const activeView = localStorage.getItem("web_fcard_active_view") || "dashboard-view";
+    if (activeView === "dashboard-view") {
+      renderDashboard();
+    } else if (activeView === "projects-view") {
       renderProjectList();
+    } else if (activeView === "project-detail-view") {
+      renderProjectDetail();
+    } else if (activeView === "weak-vocab-view") {
+      renderWeakVocabView();
     }
   });
 }
@@ -148,10 +151,36 @@ function setupNavigation() {
   });
 }
 
+export function restoreActiveView() {
+  let activeView = localStorage.getItem("web_fcard_active_view") || "dashboard-view";
+  const activeProjectId = localStorage.getItem("web_fcard_active_project_id");
+
+  // Đưa các màn hình thực hành động về màn hình cài đặt tương ứng để tránh rỗng dữ liệu
+  if (activeView === "quiz-active-view" || activeView === "quiz-report-view") {
+    activeView = "quiz-setup-view";
+  } else if (activeView === "kana-practice-view") {
+    activeView = "kana-setup-view";
+  }
+
+  if (activeView === "project-detail-view" && activeProjectId) {
+    showProjectDetail(activeProjectId);
+  } else {
+    switchView(activeView);
+  }
+}
+
 export function switchView(viewId) {
   // Dừng timer của quiz nếu đang chạy mà người dùng thoát ra ngoài
   if (viewId !== "quiz-active-view" && quizTimerInterval) {
     clearInterval(quizTimerInterval);
+  }
+
+  // Lưu trạng thái view hiện tại vào localStorage
+  localStorage.setItem("web_fcard_active_view", viewId);
+  if (viewId === "project-detail-view" && currentProjectId) {
+    localStorage.setItem("web_fcard_active_project_id", currentProjectId);
+  } else if (viewId !== "project-detail-view" && viewId !== "quiz-active-view" && viewId !== "quiz-report-view" && viewId !== "kana-practice-view") {
+    localStorage.removeItem("web_fcard_active_project_id");
   }
 
   // Cập nhật trạng thái active trên thanh nav
@@ -259,14 +288,14 @@ function renderDashboard() {
 
       tableHtml += `
         <tr>
-          <td class="vocab-jp-cell">
+          <td data-label="Tiếng Nhật" class="vocab-jp-cell">
             ${cleanToKanaOnly(v.japanese)}
             <button class="btn btn-secondary speak-row-btn" data-text="${cleanToKanaOnly(v.japanese)}" style="width:24px; height:24px; font-size:0.7rem; vertical-align:middle; padding:0; border:none; background:transparent; box-shadow:none; cursor:pointer;" title="Nghe phát âm">🔊</button>
           </td>
-          <td style="font-family: var(--font-mono); font-size: 0.95rem; color: var(--ink-soft);">${v.romaji}</td>
-          <td>${v.meaning}</td>
-          <td style="color: var(--ink-faint); font-family: var(--font-mono); font-size: 11px;">${v.projectName}</td>
-          <td style="text-align: center;">${difficultyBadge}</td>
+          <td data-label="Romaji" style="font-family: var(--font-mono); font-size: 0.95rem; color: var(--ink-soft);">${v.romaji}</td>
+          <td data-label="Ý nghĩa">${v.meaning}</td>
+          <td data-label="Dự án" style="color: var(--ink-faint); font-family: var(--font-mono); font-size: 11px;">${v.projectName}</td>
+          <td data-label="Độ khó" style="text-align: center;">${difficultyBadge}</td>
         </tr>
       `;
     });
@@ -461,18 +490,18 @@ function renderProjectDetail() {
 
       tableHtml += `
         <tr>
-          <td class="vocab-jp-cell">
+          <td data-label="Tiếng Nhật" class="vocab-jp-cell">
             ${cleanToKanaOnly(v.japanese)}
             <button class="btn btn-secondary speak-row-btn" data-text="${cleanToKanaOnly(v.japanese)}" style="width:24px; height:24px; font-size:0.7rem; vertical-align:middle; padding:0; border:none; background:transparent; box-shadow:none; cursor:pointer;" title="Nghe phát âm">🔊</button>
           </td>
-          <td style="font-family: var(--font-mono); font-size: 0.95rem; color: var(--ink-soft);">${v.romaji}</td>
-          <td>${v.meaning}</td>
-          <td style="text-align: center; font-size: 0.85rem; font-family: var(--font-mono);">
+          <td data-label="Romaji" style="font-family: var(--font-mono); font-size: 0.95rem; color: var(--ink-soft);">${v.romaji}</td>
+          <td data-label="Ý nghĩa">${v.meaning}</td>
+          <td data-label="Đúng / Sai" style="text-align: center; font-size: 0.85rem; font-family: var(--font-mono);">
             <span style="color: var(--good); font-weight: bold;">✔️ ${v.correctCount}</span> / 
             <span style="color: var(--error); font-weight: bold;">❌ ${v.wrongCount}</span>
           </td>
-          <td style="text-align: center;">${difficultyBadge}</td>
-          <td style="text-align: right;">
+          <td data-label="Độ khó" style="text-align: center;">${difficultyBadge}</td>
+          <td data-label="Hành động" style="text-align: right;">
             <div style="display: flex; gap: 0.3rem; justify-content: flex-end;">
               <button class="btn btn-secondary btn-icon edit-vocab-btn" data-id="${v.id}" style="width:30px; height:30px;">✏️</button>
               <button class="btn btn-danger btn-icon delete-vocab-btn" data-id="${v.id}" style="width:30px; height:30px;">🗑️</button>
@@ -682,18 +711,18 @@ function renderWeakVocabView() {
 
     tableHtml += `
       <tr>
-        <td class="vocab-jp-cell">
+        <td data-label="Tiếng Nhật" class="vocab-jp-cell">
           ${cleanToKanaOnly(v.japanese)}
           <button class="btn btn-secondary speak-row-btn" data-text="${cleanToKanaOnly(v.japanese)}" style="width:24px; height:24px; font-size:0.7rem; vertical-align:middle; padding:0; border:none; background:transparent; box-shadow:none; cursor:pointer;" title="Nghe phát âm">🔊</button>
         </td>
-        <td style="font-family: var(--font-mono); font-size: 0.95rem; color: var(--ink-soft);">${v.romaji}</td>
-        <td>${v.meaning}</td>
-        <td style="color: var(--ink-faint); font-size: 13px;">${v.projectName}</td>
-        <td style="text-align: center; font-size: 0.85rem; font-family: var(--font-mono);">
+        <td data-label="Romaji" style="font-family: var(--font-mono); font-size: 0.95rem; color: var(--ink-soft);">${v.romaji}</td>
+        <td data-label="Ý nghĩa">${v.meaning}</td>
+        <td data-label="Dự án" style="color: var(--ink-faint); font-size: 13px;">${v.projectName}</td>
+        <td data-label="Đúng / Sai" style="text-align: center; font-size: 0.85rem; font-family: var(--font-mono);">
           <span style="color: var(--good); font-weight: bold;">✔️ ${v.correctCount}</span> / 
           <span style="color: var(--error); font-weight: bold;">❌ ${v.wrongCount}</span>
         </td>
-        <td style="text-align: center;">${difficultyBadge}</td>
+        <td data-label="Độ khó" style="text-align: center;">${difficultyBadge}</td>
       </tr>
     `;
   });
@@ -1890,14 +1919,14 @@ function renderDictionaryResultsCombined(offlineResults, onlineResults, isOnline
 
     html += `
       <tr style="background: rgba(79, 122, 74, 0.04);">
-        <td class="vocab-jp-cell">
+        <td data-label="Tiếng Nhật" class="vocab-jp-cell">
           ${displayJp}
           <button class="btn btn-secondary speak-row-btn" data-text="${displayJp}" style="width:24px; height:24px; font-size:0.7rem; vertical-align:middle; padding:0; border:none; background:transparent; box-shadow:none; cursor:pointer;" title="Nghe phát âm">🔊</button>
         </td>
-        <td style="font-family: var(--font-mono); font-size: 0.95rem; color: var(--ink-soft);">${item.romaji}</td>
-        <td>${item.meaning}</td>
-        <td><span class="vocab-badge" style="background: var(--good-soft); color: var(--good); font-weight: bold;">Offline</span></td>
-        <td style="text-align: center;">
+        <td data-label="Romaji" style="font-family: var(--font-mono); font-size: 0.95rem; color: var(--ink-soft);">${item.romaji}</td>
+        <td data-label="Ý nghĩa">${item.meaning}</td>
+        <td data-label="Nguồn"><span class="vocab-badge" style="background: var(--good-soft); color: var(--good); font-weight: bold;">Offline</span></td>
+        <td data-label="Thao tác" style="text-align: center;">
           <div style="display: flex; gap: 0.4rem; justify-content: center; align-items: center;">
             <select class="form-control select-dict-project" data-index="${itemIndex}" style="padding: 4px 8px; font-size: 0.85rem; height: 30px; width: 140px; margin-bottom: 0;">
               ${optionsHtml}
@@ -1928,14 +1957,14 @@ function renderDictionaryResultsCombined(offlineResults, onlineResults, isOnline
 
     html += `
       <tr>
-        <td class="vocab-jp-cell">
+        <td data-label="Tiếng Nhật" class="vocab-jp-cell">
           ${displayJp}
           <button class="btn btn-secondary speak-row-btn" data-text="${displayJp}" style="width:24px; height:24px; font-size:0.7rem; vertical-align:middle; padding:0; border:none; background:transparent; box-shadow:none; cursor:pointer;" title="Nghe phát âm">🔊</button>
         </td>
-        <td style="font-family: var(--font-mono); font-size: 0.95rem; color: var(--ink-soft);">${item.romaji}</td>
-        <td>${item.meaning}</td>
-        <td><span class="vocab-badge" style="background: var(--accent-soft); color: var(--accent); font-weight: bold;">Online</span></td>
-        <td style="text-align: center;">
+        <td data-label="Romaji" style="font-family: var(--font-mono); font-size: 0.95rem; color: var(--ink-soft);">${item.romaji}</td>
+        <td data-label="Ý nghĩa">${item.meaning}</td>
+        <td data-label="Nguồn"><span class="vocab-badge" style="background: var(--accent-soft); color: var(--accent); font-weight: bold;">Online</span></td>
+        <td data-label="Thao tác" style="text-align: center;">
           <div style="display: flex; gap: 0.4rem; justify-content: center; align-items: center;">
             <select class="form-control select-dict-project" data-index="${itemIndex}" style="padding: 4px 8px; font-size: 0.85rem; height: 30px; width: 140px; margin-bottom: 0;">
               ${optionsHtml}
@@ -2198,6 +2227,13 @@ let userStrokeCount = 0; // Đếm số nét vẽ thực tế của người dù
 let userStrokes = []; // Lưu trữ tọa độ chi tiết các nét vẽ
 let isCanvasEventsBound = false; // Tránh bind trùng sự kiện canvas
 
+// Hàm helper lưu danh sách chữ cái Kana đã chọn vào localStorage
+function saveKanaSelection(kanaType) {
+  const checkedBoxes = document.querySelectorAll(".kana-checkbox:checked");
+  const checkedRomajis = Array.from(checkedBoxes).map(cb => cb.value);
+  localStorage.setItem(`web_fcard_selected_${kanaType}`, JSON.stringify(checkedRomajis));
+}
+
 // Khởi tạo các sự kiện cho bảng chữ cái
 function setupKanaEvents() {
   const selectAllBtn = document.getElementById("kana-select-all");
@@ -2212,6 +2248,9 @@ function setupKanaEvents() {
   if (selectAllBtn) {
     selectAllBtn.onclick = () => {
       document.querySelectorAll(".kana-checkbox").forEach(cb => cb.checked = true);
+      document.querySelectorAll(".kana-row-select-all").forEach(cb => cb.checked = true);
+      const kanaType = document.querySelector('input[name="kana-type"]:checked').value;
+      saveKanaSelection(kanaType);
     };
   }
 
@@ -2219,6 +2258,9 @@ function setupKanaEvents() {
   if (selectNoneBtn) {
     selectNoneBtn.onclick = () => {
       document.querySelectorAll(".kana-checkbox").forEach(cb => cb.checked = false);
+      document.querySelectorAll(".kana-row-select-all").forEach(cb => cb.checked = false);
+      const kanaType = document.querySelector('input[name="kana-type"]:checked').value;
+      saveKanaSelection(kanaType);
     };
   }
 
@@ -2349,6 +2391,17 @@ function renderKanaSetup() {
   grid.style.overflowY = "auto";
   grid.style.padding = "12px";
 
+  // Đọc danh sách đã lưu từ localStorage
+  let savedSelection = null;
+  try {
+    const savedStr = localStorage.getItem(`web_fcard_selected_${kanaType}`);
+    if (savedStr) {
+      savedSelection = JSON.parse(savedStr);
+    }
+  } catch (e) {
+    console.error("Lỗi khi đọc danh sách chữ cái đã chọn:", e);
+  }
+
   const KANA_ROWS = [
     { rowName: "Hàng A", keys: ["a", "i", "u", "e", "o"] },
     { rowName: "Hàng KA", keys: ["ka", "ki", "ku", "ke", "ko"] },
@@ -2375,8 +2428,14 @@ function renderKanaSetup() {
     rowHeader.className = "kana-row-header";
 
     const rowCheckboxId = `row-select-${row.rowName.replace(/\s+/g, '-').toLowerCase()}`;
+    
+    // Xác định trạng thái check của hàng
+    const totalRowItems = rowItems.length;
+    const checkedRowItems = rowItems.filter(item => savedSelection ? savedSelection.includes(item.romaji) : true).length;
+    const isRowAllChecked = totalRowItems === checkedRowItems;
+
     rowHeader.innerHTML = `
-      <input type="checkbox" id="${rowCheckboxId}" class="kana-row-select-all" checked style="accent-color: var(--accent); cursor: pointer; width: 15px; height: 15px;">
+      <input type="checkbox" id="${rowCheckboxId}" class="kana-row-select-all" ${isRowAllChecked ? "checked" : ""} style="accent-color: var(--accent); cursor: pointer; width: 15px; height: 15px;">
       <label for="${rowCheckboxId}" style="font-weight: bold; cursor: pointer; font-size: 13px; color: var(--accent); font-family: var(--font-serif); user-select: none; margin-bottom: 0; text-transform: none; letter-spacing: normal;">${row.rowName}</label>
     `;
 
@@ -2388,6 +2447,7 @@ function renderKanaSetup() {
     rowItemsContainer.style.flex = "1";
 
     rowItems.forEach(item => {
+      const isChecked = savedSelection ? savedSelection.includes(item.romaji) : true;
       const itemEl = document.createElement("label");
       itemEl.style.display = "flex";
       itemEl.style.alignItems = "center";
@@ -2402,7 +2462,7 @@ function renderKanaSetup() {
       itemEl.style.margin = "0";
 
       itemEl.innerHTML = `
-        <input type="checkbox" class="kana-checkbox" value="${item.romaji}" checked style="accent-color: var(--accent); margin: 0; width: 14px; height: 14px;">
+        <input type="checkbox" class="kana-checkbox" value="${item.romaji}" ${isChecked ? "checked" : ""} style="accent-color: var(--accent); margin: 0; width: 14px; height: 14px;">
         <span style="font-family: var(--font-jp); font-size: 16px; font-weight: bold; color: var(--accent); margin-right: 2px;">${item.kana}</span>
         <span>${item.romaji}</span>
       `;
@@ -2421,6 +2481,7 @@ function renderKanaSetup() {
       rowItemsContainer.querySelectorAll(".kana-checkbox").forEach(cb => {
         cb.checked = isChecked;
       });
+      saveKanaSelection(kanaType);
     });
 
     // Cập nhật trạng thái checkbox Chọn cả hàng dựa trên các checkbox con
@@ -2429,6 +2490,7 @@ function renderKanaSetup() {
         const totalCbs = rowItemsContainer.querySelectorAll(".kana-checkbox").length;
         const checkedCbs = rowItemsContainer.querySelectorAll(".kana-checkbox:checked").length;
         rowSelectAllCb.checked = totalCbs === checkedCbs;
+        saveKanaSelection(kanaType);
       });
     });
   });
