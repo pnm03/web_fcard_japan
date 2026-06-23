@@ -714,6 +714,15 @@
               <input type="checkbox" id="quiz-setting-disable-confetti" style="accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer;">
               <span>Tắt tung hoa chúc mừng khi hoàn thành</span>
             </label>
+            <label style="display: flex; align-items: center; gap: 10px; font-size: 13.5px; cursor: pointer; user-select: none;">
+              <input type="checkbox" id="quiz-setting-auto-next" style="accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer;">
+              <span>Tự động chuyển câu khi trả lời đúng</span>
+            </label>
+            <div id="quiz-setting-auto-next-delay-group" style="display: flex; align-items: center; gap: 10px; padding-left: 26px; font-size: 13px; color: var(--ink-soft);">
+              <span>Thời gian chờ chuyển câu:</span>
+              <input type="number" id="quiz-setting-auto-next-delay" step="0.1" min="0" max="10" style="width: 60px; padding: 2px 6px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--field); font-family: var(--font-mono); text-align: center; color: var(--ink);">
+              <span>giây</span>
+            </div>
           </div>
           
           <div style="display: flex; justify-content: flex-end;">

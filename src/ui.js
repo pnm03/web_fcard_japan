@@ -37,7 +37,9 @@ let quizActiveSettings = {
   hideTimer: false,
   muteSounds: false,
   disableTts: false,
-  disableConfetti: false
+  disableConfetti: false,
+  autoNext: true,
+  autoNextDelay: 1.0
 };
 
 // Lọc bỏ Kanji, chỉ lấy phần chữ mềm Hiragana/Katakana
@@ -1191,11 +1193,17 @@ function syncActiveSettingsToCheckboxes() {
   const muteSoundsCb = document.getElementById("quiz-setting-mute-sounds");
   const disableTtsCb = document.getElementById("quiz-setting-disable-tts");
   const disableConfettiCb = document.getElementById("quiz-setting-disable-confetti");
+  const autoNextCb = document.getElementById("quiz-setting-auto-next");
+  const autoNextDelayInput = document.getElementById("quiz-setting-auto-next-delay");
+  const autoNextDelayGroup = document.getElementById("quiz-setting-auto-next-delay-group");
 
   if (hideTimerCb) hideTimerCb.checked = !!quizActiveSettings.hideTimer;
   if (muteSoundsCb) muteSoundsCb.checked = !!quizActiveSettings.muteSounds;
   if (disableTtsCb) disableTtsCb.checked = !!quizActiveSettings.disableTts;
   if (disableConfettiCb) disableConfettiCb.checked = !!quizActiveSettings.disableConfetti;
+  if (autoNextCb) autoNextCb.checked = !!quizActiveSettings.autoNext;
+  if (autoNextDelayInput) autoNextDelayInput.value = quizActiveSettings.autoNextDelay !== undefined ? quizActiveSettings.autoNextDelay : 1.0;
+  if (autoNextDelayGroup) autoNextDelayGroup.style.display = quizActiveSettings.autoNext ? "flex" : "none";
 }
 
 function setupQuizActiveSettingsEvents() {
@@ -1233,12 +1241,25 @@ function setupQuizActiveSettingsEvents() {
   const muteSoundsCb = document.getElementById("quiz-setting-mute-sounds");
   const disableTtsCb = document.getElementById("quiz-setting-disable-tts");
   const disableConfettiCb = document.getElementById("quiz-setting-disable-confetti");
+  const autoNextCb = document.getElementById("quiz-setting-auto-next");
+  const autoNextDelayInput = document.getElementById("quiz-setting-auto-next-delay");
+  const autoNextDelayGroup = document.getElementById("quiz-setting-auto-next-delay-group");
 
   const updateSettings = () => {
     if (hideTimerCb) quizActiveSettings.hideTimer = hideTimerCb.checked;
     if (muteSoundsCb) quizActiveSettings.muteSounds = muteSoundsCb.checked;
     if (disableTtsCb) quizActiveSettings.disableTts = disableTtsCb.checked;
     if (disableConfettiCb) quizActiveSettings.disableConfetti = disableConfettiCb.checked;
+    if (autoNextCb) quizActiveSettings.autoNext = autoNextCb.checked;
+    if (autoNextDelayInput) {
+      let val = parseFloat(autoNextDelayInput.value);
+      if (isNaN(val) || val < 0) val = 0;
+      quizActiveSettings.autoNextDelay = val;
+    }
+
+    if (autoNextDelayGroup) {
+      autoNextDelayGroup.style.display = quizActiveSettings.autoNext ? "flex" : "none";
+    }
     
     saveQuizActiveSettings();
     applyQuizActiveSettingsUI();
@@ -1248,6 +1269,8 @@ function setupQuizActiveSettingsEvents() {
   if (muteSoundsCb) muteSoundsCb.onchange = updateSettings;
   if (disableTtsCb) disableTtsCb.onchange = updateSettings;
   if (disableConfettiCb) disableConfettiCb.onchange = updateSettings;
+  if (autoNextCb) autoNextCb.onchange = updateSettings;
+  if (autoNextDelayInput) autoNextDelayInput.oninput = updateSettings;
 }
 
 function setupQuizConfigEvents() {
@@ -1521,11 +1544,15 @@ function handleQuizAnswerSubmit() {
     nextBtn.textContent = "Đúng rồi! Câu tiếp theo (Enter)";
     nextBtn.focus();
 
-    setTimeout(() => {
-      if (activeQuizSession.getCurrentQuestion() && activeQuizSession.getCurrentQuestion().answerState !== "unanswered") {
-        goToNextQuestion();
-      }
-    }, 1300);
+    if (quizActiveSettings.autoNext) {
+      const delayMs = (quizActiveSettings.autoNextDelay !== undefined ? quizActiveSettings.autoNextDelay : 1.0) * 1000;
+      const currentQ = question;
+      setTimeout(() => {
+        if (activeQuizSession.getCurrentQuestion() === currentQ && currentQ.answerState !== "unanswered") {
+          goToNextQuestion();
+        }
+      }, delayMs);
+    }
 
   } else if (result.status === "retry_allowed") {
     playFeedbackSound(false);
