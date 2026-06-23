@@ -28,6 +28,8 @@ let activeQuizSession = null;
 let quizTimerInterval = null;
 let currentQuestionTime = 0;
 let quizConfigBackup = null; // Dùng để làm lại bài kiểm tra
+let quizSelectedVocabIds = [];
+let tempSelectedVocabIds = [];
 
 // Lọc bỏ Kanji, chỉ lấy phần chữ mềm Hiragana/Katakana
 export function cleanToKanaOnly(japaneseText) {
@@ -602,9 +604,7 @@ function setupVocabActions() {
 
   document.getElementById("detail-start-quiz-btn").onclick = () => {
     switchView("quiz-setup-view");
-    const select = document.getElementById("quiz-setup-projects-select");
-    select.value = currentProjectId;
-    setupQuizConfig();
+    setupQuizConfig(currentProjectId);
   };
 
   document.getElementById("detail-edit-project-btn").onclick = () => {
@@ -750,82 +750,346 @@ function renderWeakVocabView() {
 }
 
 // 6. Cấu hình bài kiểm tra (Quiz Setup View)
-function setupQuizConfig() {
+let currentPickerProjectId = "all";
+
+function updateQuizSelectedSummaryText() {
   const projects = getProjects();
-  const select = document.getElementById("quiz-setup-projects-select");
-  
-  const currentValue = select.value || "all";
-  
-  select.innerHTML = `<option value="all">Tất cả dự án (${projects.reduce((acc, p) => acc + p.vocab.length, 0)} từ)</option>`;
-  
+  const allVocabs = [];
   projects.forEach(p => {
-    select.innerHTML += `<option value="${p.id}">${p.name} (${p.vocab.length} từ)</option>`;
+    if (p.vocab) {
+      p.vocab.forEach(v => allVocabs.push(v));
+    }
   });
 
-  select.value = currentValue;
+  const selectedCount = quizSelectedVocabIds.length;
+  const totalCount = allVocabs.length;
 
-  const updateRecommendedCount = () => {
-    const projId = select.value;
-    let wordCount = 0;
+  const summarySpan = document.getElementById("quiz-selected-summary");
+  const infoSpan = document.getElementById("quiz-selected-info");
 
-    if (projId === "all") {
-      wordCount = projects.reduce((acc, p) => acc + p.vocab.length, 0);
+  if (summarySpan) {
+    if (selectedCount === 0) {
+      summarySpan.textContent = "Không chọn từ nào";
+    } else if (selectedCount === totalCount) {
+      summarySpan.textContent = `Tất cả từ vựng (${selectedCount} từ)`;
     } else {
-      const p = getProjectById(projId);
-      wordCount = p ? p.vocab.length : 0;
+      summarySpan.textContent = `Đã chọn ${selectedCount}/${totalCount} từ`;
+    }
+  }
+
+  if (infoSpan) {
+    infoSpan.textContent = `(Hiện tại đang chọn: ${selectedCount} từ)`;
+  }
+}
+
+function renderPickerProjects() {
+  const projects = getProjects();
+  const listContainer = document.getElementById("picker-projects-list");
+  if (!listContainer) return;
+
+  listContainer.innerHTML = "";
+
+  // 1. "Tất cả dự án" item
+  const totalVocabCount = projects.reduce((acc, p) => acc + (p.vocab ? p.vocab.length : 0), 0);
+  const allItem = document.createElement("button");
+  allItem.className = `picker-project-item ${currentPickerProjectId === "all" ? "active" : ""}`;
+  allItem.type = "button";
+  allItem.innerHTML = `<span>🌐 Tất cả dự án</span> <span style="font-size: 11px; opacity: 0.7;">(${totalVocabCount})</span>`;
+  allItem.addEventListener("click", () => {
+    selectPickerProject("all");
+  });
+  listContainer.appendChild(allItem);
+
+  // 2. Individual projects
+  projects.forEach(p => {
+    const vocabCount = p.vocab ? p.vocab.length : 0;
+    const item = document.createElement("button");
+    item.className = `picker-project-item ${currentPickerProjectId === p.id ? "active" : ""}`;
+    item.type = "button";
+    item.innerHTML = `<span>📁 ${p.name}</span> <span style="font-size: 11px; opacity: 0.7;">(${vocabCount})</span>`;
+    item.addEventListener("click", () => {
+      selectPickerProject(p.id);
+    });
+    listContainer.appendChild(item);
+  });
+}
+
+function selectPickerProject(projectId) {
+  currentPickerProjectId = projectId;
+  
+  const titleEl = document.getElementById("picker-current-project-title");
+  const projects = getProjects();
+  if (titleEl) {
+    if (projectId === "all") {
+      titleEl.textContent = "Tất cả dự án";
+    } else {
+      const p = projects.find(proj => proj.id === projectId);
+      titleEl.textContent = p ? p.name : "";
+    }
+  }
+
+  renderPickerProjects();
+  renderPickerWords();
+}
+
+function renderPickerWords() {
+  const projects = getProjects();
+  const listContainer = document.getElementById("picker-words-list");
+  if (!listContainer) return;
+
+  listContainer.innerHTML = "";
+
+  let words = [];
+  if (currentPickerProjectId === "all") {
+    projects.forEach(p => {
+      if (p.vocab) {
+        p.vocab.forEach(v => {
+          words.push({ ...v, projectId: p.id, projectName: p.name });
+        });
+      }
+    });
+  } else {
+    const p = projects.find(proj => proj.id === currentPickerProjectId);
+    if (p && p.vocab) {
+      p.vocab.forEach(v => {
+        words.push({ ...v, projectId: p.id, projectName: p.name });
+      });
+    }
+  }
+
+  if (words.length === 0) {
+    listContainer.innerHTML = `<div style="text-align: center; color: var(--ink-faint); padding: 2rem; font-size: 14px;">Không có từ vựng nào trong danh mục này</div>`;
+    return;
+  }
+
+  words.forEach((v, index) => {
+    const isChecked = tempSelectedVocabIds.includes(v.id);
+    
+    const itemDiv = document.createElement("div");
+    itemDiv.style.display = "flex";
+    itemDiv.style.alignItems = "center";
+    itemDiv.style.justifyContent = "space-between";
+    itemDiv.style.padding = "6px 8px";
+    itemDiv.style.borderBottom = "1px solid var(--line-light)";
+    itemDiv.style.borderRadius = "4px";
+    itemDiv.style.background = isChecked ? "var(--bg-light)" : "transparent";
+    itemDiv.style.transition = "background 0.2s";
+
+    const leftPart = document.createElement("label");
+    leftPart.style.display = "flex";
+    leftPart.style.alignItems = "center";
+    leftPart.style.gap = "10px";
+    leftPart.style.cursor = "pointer";
+    leftPart.style.flex = "1";
+    leftPart.style.margin = "0";
+    leftPart.style.userSelect = "none";
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = isChecked;
+    cb.style.cursor = "pointer";
+    cb.style.accentColor = "var(--accent)";
+    cb.addEventListener("change", (e) => {
+      if (e.target.checked) {
+        if (!tempSelectedVocabIds.includes(v.id)) {
+          tempSelectedVocabIds.push(v.id);
+        }
+        itemDiv.style.background = "var(--bg-light)";
+      } else {
+        tempSelectedVocabIds = tempSelectedVocabIds.filter(id => id !== v.id);
+        itemDiv.style.background = "transparent";
+      }
+      updateTempSelectedCount();
+    });
+
+    const wordInfo = document.createElement("div");
+    wordInfo.style.display = "flex";
+    wordInfo.style.flexDirection = "column";
+
+    const stt = `<span style="color: var(--ink-faint); font-size: 11px; margin-right: 4px;">#${index + 1}</span>`;
+    
+    const textSpan = document.createElement("span");
+    textSpan.style.fontWeight = "600";
+    textSpan.style.color = "var(--ink)";
+    textSpan.innerHTML = `${stt} <span style="font-size: 15px; color: var(--accent);">${v.japanese}</span> <span style="color: var(--ink-soft); font-size: 12px; font-weight: normal; margin-left: 6px;">[${v.romaji}]</span>`;
+
+    const meaningSpan = document.createElement("span");
+    meaningSpan.style.fontSize = "12px";
+    meaningSpan.style.color = "var(--ink-soft)";
+    meaningSpan.textContent = v.meaning;
+
+    wordInfo.appendChild(textSpan);
+    wordInfo.appendChild(meaningSpan);
+
+    leftPart.appendChild(cb);
+    leftPart.appendChild(wordInfo);
+    itemDiv.appendChild(leftPart);
+
+    if (currentPickerProjectId === "all") {
+      const projTag = document.createElement("span");
+      projTag.style.fontSize = "10px";
+      projTag.style.padding = "2px 6px";
+      projTag.style.background = "var(--field)";
+      projTag.style.border = "1px solid var(--line)";
+      projTag.style.borderRadius = "10px";
+      projTag.style.color = "var(--ink-soft)";
+      projTag.style.maxWidth = "100px";
+      projTag.style.overflow = "hidden";
+      projTag.style.textOverflow = "ellipsis";
+      projTag.style.whiteSpace = "nowrap";
+      projTag.textContent = v.projectName;
+      itemDiv.appendChild(projTag);
     }
 
-    const countInput = document.getElementById("quiz-setup-count");
-    if (wordCount > 0) {
-      countInput.value = Math.min(15, wordCount);
-      countInput.max = Math.max(100, wordCount * 3);
-    } else {
-      countInput.value = 0;
+    listContainer.appendChild(itemDiv);
+  });
+}
+
+function updateTempSelectedCount() {
+  const el = document.getElementById("picker-total-selected-count");
+  if (el) {
+    el.textContent = tempSelectedVocabIds.length;
+  }
+}
+
+function selectAllInCurrentPickerProject() {
+  const projects = getProjects();
+  let words = [];
+  if (currentPickerProjectId === "all") {
+    projects.forEach(p => {
+      if (p.vocab) {
+        p.vocab.forEach(v => words.push(v));
+      }
+    });
+  } else {
+    const p = projects.find(proj => proj.id === currentPickerProjectId);
+    if (p && p.vocab) {
+      p.vocab.forEach(v => words.push(v));
     }
-  };
+  }
 
-  select.onchange = updateRecommendedCount;
+  words.forEach(v => {
+    if (!tempSelectedVocabIds.includes(v.id)) {
+      tempSelectedVocabIds.push(v.id);
+    }
+  });
 
-  // Khôi phục cấu hình cũ từ localStorage
+  renderPickerWords();
+  updateTempSelectedCount();
+}
+
+function deselectAllInCurrentPickerProject() {
+  const projects = getProjects();
+  let words = [];
+  if (currentPickerProjectId === "all") {
+    projects.forEach(p => {
+      if (p.vocab) {
+        p.vocab.forEach(v => words.push(v));
+      }
+    });
+  } else {
+    const p = projects.find(proj => proj.id === currentPickerProjectId);
+    if (p && p.vocab) {
+      p.vocab.forEach(v => words.push(v));
+    }
+  }
+
+  const wordIds = words.map(v => v.id);
+  tempSelectedVocabIds = tempSelectedVocabIds.filter(id => !wordIds.includes(id));
+
+  renderPickerWords();
+  updateTempSelectedCount();
+}
+
+function setupQuizConfig(preselectedProjectId = null) {
+  const projects = getProjects();
+  const allVocabs = [];
+  projects.forEach(p => {
+    if (p.vocab) {
+      p.vocab.forEach(v => {
+        allVocabs.push({
+          ...v,
+          projectId: p.id,
+          projectName: p.name
+        });
+      });
+    }
+  });
+
+  let restoredVocabIds = null;
+  let restoredQuestionCount = null;
+  let restoredQuizMode = "meaning_to_romaji";
+  let restoredOrder = "random";
+  let restoredAllowRetry = true;
+
   const savedConfigStr = localStorage.getItem("nihongo_quiz_config");
   if (savedConfigStr) {
     try {
       const savedConfig = JSON.parse(savedConfigStr);
-      
-      // 1. Phục hồi dự án chọn
-      if (savedConfig.projectIds && savedConfig.projectIds.length > 0) {
-        select.value = savedConfig.projectIds[0];
-        updateRecommendedCount();
-      }
-      
-      // 2. Phục hồi chế độ
-      if (savedConfig.quizMode) {
-        const modeCard = document.querySelector(`.radio-card input[name="quiz-mode"][value="${savedConfig.quizMode}"]`);
-        if (modeCard) {
-          modeCard.closest(".radio-card").click();
+      if (Array.isArray(savedConfig.vocabIds)) {
+        restoredVocabIds = savedConfig.vocabIds.filter(id => allVocabs.some(v => v.id === id));
+      } else if (savedConfig.projectIds && savedConfig.projectIds.length > 0) {
+        const pIds = savedConfig.projectIds;
+        if (pIds.includes("all")) {
+          restoredVocabIds = allVocabs.map(v => v.id);
+        } else {
+          restoredVocabIds = allVocabs.filter(v => pIds.includes(v.projectId)).map(v => v.id);
         }
       }
-      
-      // 3. Phục hồi thứ tự
-      if (savedConfig.order) {
-        const orderCard = document.querySelector(`.radio-card input[name="quiz-order"][value="${savedConfig.order}"]`);
-        if (orderCard) {
-          orderCard.closest(".radio-card").click();
-        }
-      }
-      
-      // 4. Phục hồi số lượng
       if (savedConfig.questionCount) {
-        document.getElementById("quiz-setup-count").value = savedConfig.questionCount;
+        restoredQuestionCount = parseInt(savedConfig.questionCount);
       }
-      
-      // 5. Phục hồi retry
-      document.getElementById("quiz-setup-retry").checked = savedConfig.allowRetry !== false;
-      
+      if (savedConfig.quizMode) {
+        restoredQuizMode = savedConfig.quizMode;
+      }
+      if (savedConfig.order) {
+        restoredOrder = savedConfig.order;
+      }
+      if (savedConfig.allowRetry !== undefined) {
+        restoredAllowRetry = savedConfig.allowRetry;
+      }
     } catch (e) {
       console.error("Lỗi khi khôi phục cấu hình kiểm tra", e);
     }
   }
+
+  if (preselectedProjectId) {
+    const proj = projects.find(p => p.id === preselectedProjectId);
+    if (proj && proj.vocab && proj.vocab.length > 0) {
+      quizSelectedVocabIds = proj.vocab.map(v => v.id);
+      restoredQuestionCount = quizSelectedVocabIds.length;
+    } else {
+      quizSelectedVocabIds = [];
+      restoredQuestionCount = 0;
+    }
+  } else {
+    if (!restoredVocabIds || restoredVocabIds.length === 0) {
+      quizSelectedVocabIds = allVocabs.map(v => v.id);
+    } else {
+      quizSelectedVocabIds = restoredVocabIds;
+    }
+  }
+
+  updateQuizSelectedSummaryText();
+
+  const countInput = document.getElementById("quiz-setup-count");
+  if (restoredQuestionCount !== null) {
+    countInput.value = restoredQuestionCount;
+  } else {
+    countInput.value = quizSelectedVocabIds.length;
+  }
+
+  const modeCard = document.querySelector(`.radio-card input[name="quiz-mode"][value="${restoredQuizMode}"]`);
+  if (modeCard) {
+    modeCard.closest(".radio-card").click();
+  }
+  
+  const orderCard = document.querySelector(`.radio-card input[name="quiz-order"][value="${restoredOrder}"]`);
+  if (orderCard) {
+    orderCard.closest(".radio-card").click();
+  }
+
+  document.getElementById("quiz-setup-retry").checked = restoredAllowRetry;
 }
 
 function setupQuizConfigEvents() {
@@ -844,46 +1108,91 @@ function setupQuizConfigEvents() {
     });
   });
 
-  document.getElementById("start-quiz-session-btn").addEventListener("click", () => {
-    const projSelect = document.getElementById("quiz-setup-projects-select").value;
-    const selectedMode = document.querySelector('input[name="quiz-mode"]:checked').value;
-    const selectedOrder = document.querySelector('input[name="quiz-order"]:checked').value;
-    const count = parseInt(document.getElementById("quiz-setup-count").value) || 10;
-    const allowRetry = document.getElementById("quiz-setup-retry").checked;
+  // Sự kiện mở modal chọn từ vựng
+  const selectVocabBtn = document.getElementById("quiz-setup-select-vocab-btn");
+  if (selectVocabBtn) {
+    selectVocabBtn.addEventListener("click", () => {
+      tempSelectedVocabIds = [...quizSelectedVocabIds];
+      currentPickerProjectId = "all";
+      
+      document.getElementById("quiz-vocab-picker-modal").classList.add("active");
+      selectPickerProject("all");
+      updateTempSelectedCount();
+    });
+  }
 
-    const projects = getProjects();
-    let totalAvailableWords = 0;
-    if (projSelect === "all") {
-      totalAvailableWords = projects.reduce((acc, p) => acc + p.vocab.length, 0);
-    } else {
-      const p = getProjectById(projSelect);
-      totalAvailableWords = p ? p.vocab.length : 0;
-    }
+  // Nút Hủy bỏ trong picker modal
+  const closePickerBtn = document.getElementById("close-picker-modal-btn");
+  if (closePickerBtn) {
+    closePickerBtn.addEventListener("click", () => {
+      document.getElementById("quiz-vocab-picker-modal").classList.remove("active");
+    });
+  }
 
-    if (totalAvailableWords === 0) {
-      alert("Dự án được chọn không có từ vựng nào để kiểm tra. Vui lòng thêm từ vựng trước!");
-      return;
-    }
+  // Nút Đồng ý trong picker modal
+  const confirmPickerBtn = document.getElementById("confirm-picker-modal-btn");
+  if (confirmPickerBtn) {
+    confirmPickerBtn.addEventListener("click", () => {
+      quizSelectedVocabIds = [...tempSelectedVocabIds];
+      updateQuizSelectedSummaryText();
+      
+      // Chọn bao nhiêu thì số lượng câu hỏi phải phản ánh lại bấy nhiêu
+      document.getElementById("quiz-setup-count").value = quizSelectedVocabIds.length;
+      
+      document.getElementById("quiz-vocab-picker-modal").classList.remove("active");
+    });
+  }
 
-    if (count <= 0) {
-      alert("Số lượng câu hỏi phải lớn hơn 0!");
-      return;
-    }
+  // Nút Chọn tất cả trong picker modal
+  const selectAllBtn = document.getElementById("picker-select-all-btn");
+  if (selectAllBtn) {
+    selectAllBtn.addEventListener("click", () => {
+      selectAllInCurrentPickerProject();
+    });
+  }
 
-    const config = {
-      projectIds: [projSelect],
-      questionCount: count,
-      quizMode: selectedMode,
-      order: selectedOrder,
-      allowRetry: allowRetry
-    };
+  // Nút Bỏ chọn hết trong picker modal
+  const selectNoneBtn = document.getElementById("picker-select-none-btn");
+  if (selectNoneBtn) {
+    selectNoneBtn.addEventListener("click", () => {
+      deselectAllInCurrentPickerProject();
+    });
+  }
 
-    // Lưu cấu hình vào localStorage
-    localStorage.setItem("nihongo_quiz_config", JSON.stringify(config));
+  // Nút bắt đầu kiểm tra
+  const startQuizBtn = document.getElementById("start-quiz-session-btn");
+  if (startQuizBtn) {
+    startQuizBtn.addEventListener("click", () => {
+      const selectedMode = document.querySelector('input[name="quiz-mode"]:checked').value;
+      const selectedOrder = document.querySelector('input[name="quiz-order"]:checked').value;
+      const count = parseInt(document.getElementById("quiz-setup-count").value) || 10;
+      const allowRetry = document.getElementById("quiz-setup-retry").checked;
 
-    quizConfigBackup = config;
-    startQuiz(config);
-  });
+      if (quizSelectedVocabIds.length === 0) {
+        alert("Vui lòng chọn ít nhất 1 từ vựng để kiểm tra!");
+        return;
+      }
+
+      if (count <= 0) {
+        alert("Số lượng câu hỏi phải lớn hơn 0!");
+        return;
+      }
+
+      const config = {
+        vocabIds: quizSelectedVocabIds,
+        questionCount: count,
+        quizMode: selectedMode,
+        order: selectedOrder,
+        allowRetry: allowRetry
+      };
+
+      // Lưu cấu hình vào localStorage
+      localStorage.setItem("nihongo_quiz_config", JSON.stringify(config));
+
+      quizConfigBackup = config;
+      startQuiz(config);
+    });
+  }
 }
 
 // 7. Khu vực kiểm tra đang diễn ra (Quiz Active Arena)

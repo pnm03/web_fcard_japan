@@ -338,10 +338,12 @@
             <h1 class="quiz-setup-title">Thiết lập Bài Kiểm tra</h1>
             
             <div class="form-group">
-              <label>Chọn Dự án Kiểm tra</label>
-              <select class="form-control" id="quiz-setup-projects-select">
-                <option value="all">Tất cả dự án</option>
-              </select>
+              <label>Chọn Dự án & Từ vựng Kiểm tra</label>
+              <button class="btn btn-secondary form-control" id="quiz-setup-select-vocab-btn" style="text-align: left; display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem; height: auto; min-height: 42px; width: 100%;">
+                <span>🔍 Chọn từ vựng để kiểm tra...</span>
+                <span id="quiz-selected-summary" style="font-weight: bold; color: var(--accent);">Tất cả từ vựng</span>
+              </button>
+              <input type="hidden" id="quiz-setup-projects-select" value="all">
             </div>
 
             <div class="form-group">
@@ -389,7 +391,10 @@
             <div class="form-group">
               <label for="quiz-setup-count">Số lượng câu hỏi</label>
               <input type="number" class="form-control" id="quiz-setup-count" value="10" min="1" max="100">
-              <p style="color: var(--ink-faint); font-size: 0.75rem; margin-top: 0.3rem;">
+              <p id="quiz-selected-info" style="font-weight: bold; color: var(--accent); font-size: 0.8rem; margin-top: 0.2rem; margin-bottom: 0.1rem;">
+                (Hiện tại đang chọn: 0 từ)
+              </p>
+              <p style="color: var(--ink-faint); font-size: 0.75rem; margin-top: 0.2rem;">
                 * Nếu nhập số câu lớn hơn số từ hiện có, hệ thống đảm bảo toàn bộ các từ sẽ xuất hiện ít nhất 1 lần.
               </p>
             </div>
@@ -628,6 +633,49 @@
               <button type="submit" class="btn btn-primary">Lưu cài đặt</button>
             </div>
           </form>
+        </div>
+      </div>
+
+      <!-- Modal: Chọn Dự án & Từ vựng Kiểm tra (2 cột) -->
+      <div class="modal-overlay" id="quiz-vocab-picker-modal">
+        <div class="modal-container glass-panel" style="max-width: 800px; width: 90%;">
+          <h2 style="margin-bottom: 1rem; color: var(--accent); font-family: var(--font-display);">🔍 Chọn Từ Vựng Kiểm Tra</h2>
+          
+          <div class="vocab-picker-layout" style="display: flex; gap: 20px; height: 450px; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--bg);">
+            <!-- Cột trái: Danh sách các dự án (nhỏ hơn) -->
+            <div class="vocab-picker-left" style="width: 250px; border-right: 1px solid var(--line); overflow-y: auto; background: var(--field); padding: 8px;">
+              <h3 style="font-size: 11px; text-transform: uppercase; color: var(--ink-faint); margin: 8px 12px; font-family: var(--font-mono); letter-spacing: 0.05em;">Dự án</h3>
+              <div id="picker-projects-list" style="display: flex; flex-direction: column; gap: 4px;">
+                <!-- Render các dự án động ở đây -->
+              </div>
+            </div>
+            
+            <!-- Cột phải: Toàn bộ từ vựng trong dự án đang chọn -->
+            <div class="vocab-picker-right" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                <h3 id="picker-current-project-title" style="margin: 0; font-family: var(--font-display); font-size: 15px; color: var(--accent);">Tên dự án đang chọn</h3>
+                <div style="display: flex; gap: 6px;">
+                  <button class="btn btn-secondary" id="picker-select-all-btn" style="padding: 2px 8px; font-size: 11px; min-height: 24px;">Chọn tất cả</button>
+                  <button class="btn btn-secondary" id="picker-select-none-btn" style="padding: 2px 8px; font-size: 11px; min-height: 24px;">Bỏ chọn hết</button>
+                </div>
+              </div>
+              
+              <!-- Danh sách từ với checkbox -->
+              <div id="picker-words-list" style="flex: 1; overflow-y: auto; border: 1px solid var(--line-light); border-radius: 4px; padding: 8px; background: var(--paper); display: flex; flex-direction: column; gap: 6px;">
+                <!-- Render danh sách từ vựng với checkbox động ở đây -->
+              </div>
+            </div>
+          </div>
+          
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem;">
+            <div style="font-size: 0.9rem; color: var(--ink-soft); font-family: var(--font-serif);">
+              Đang chọn: <span id="picker-total-selected-count" style="font-weight: bold; color: var(--accent);">0</span> từ vựng
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button type="button" class="btn btn-secondary" id="close-picker-modal-btn">Hủy bỏ</button>
+              <button type="button" class="btn btn-primary" id="confirm-picker-modal-btn">Đồng ý</button>
+            </div>
+          </div>
         </div>
       </div>
 

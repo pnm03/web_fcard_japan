@@ -1263,6 +1263,46 @@ select.form-control {
 }
 
 
+.picker-project-item {
+  transition: var(--transition);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  text-align: left;
+  border: none;
+  display: block;
+  width: 100%;
+}
+.picker-project-item:hover {
+  background: var(--bg) !important;
+  color: var(--accent) !important;
+}
+.picker-project-item.active {
+  background: var(--accent) !important;
+  color: var(--paper) !important;
+  font-weight: 600;
+}
+
+/* Responsive Vocab Picker Modal Layout */
+@media (max-width: 600px) {
+  .vocab-picker-layout {
+    flex-direction: column;
+    height: 500px !important;
+  }
+  .vocab-picker-left {
+    width: 100% !important;
+    height: 140px !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--line) !important;
+  }
+  .vocab-picker-right {
+    flex: 1;
+  }
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }

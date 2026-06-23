@@ -67,6 +67,7 @@ export function generateHint(answer, mode) {
 export class QuizSession {
   constructor(config) {
     this.projectIds = config.projectIds || ["all"];
+    this.vocabIds = config.vocabIds || []; // Danh sách từ vựng được chọn cụ thể
     this.questionCount = parseInt(config.questionCount) || 10;
     this.quizMode = config.quizMode || "mixed"; // 'jp_to_romaji', 'meaning_to_romaji', 'jp_to_meaning', 'mixed'
     this.order = config.order || "random"; // 'sequential', 'random'
@@ -82,22 +83,38 @@ export class QuizSession {
     this.generateQuestions();
   }
 
-  // Tải danh sách từ vựng từ các dự án đã chọn
+  // Tải danh sách từ vựng từ các dự án đã chọn hoặc theo ID cụ thể
   loadVocabPool() {
     const projects = getProjects();
     let selectedVocab = [];
 
-    projects.forEach(p => {
-      if (this.projectIds.includes("all") || this.projectIds.includes(p.id)) {
+    if (this.vocabIds && this.vocabIds.length > 0) {
+      // Nếu có danh sách ID từ chọn cụ thể (từ popup)
+      projects.forEach(p => {
         p.vocab.forEach(v => {
-          selectedVocab.push({
-            ...v,
-            projectId: p.id,
-            projectName: p.name
-          });
+          if (this.vocabIds.includes(v.id)) {
+            selectedVocab.push({
+              ...v,
+              projectId: p.id,
+              projectName: p.name
+            });
+          }
         });
-      }
-    });
+      });
+    } else {
+      // Cách cũ: Lấy toàn bộ từ thuộc danh mục dự án
+      projects.forEach(p => {
+        if (this.projectIds.includes("all") || this.projectIds.includes(p.id)) {
+          p.vocab.forEach(v => {
+            selectedVocab.push({
+              ...v,
+              projectId: p.id,
+              projectName: p.name
+            });
+          });
+        }
+      });
+    }
 
     this.vocabPool = selectedVocab;
   }
