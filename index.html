@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nihongo Flashcard - Sổ Tay Luyện Tập Tiếng Nhật</title>
+  </head>
+  <body>
+    <div id="app">
+      <!-- Main Navigation Header -->
+      <header class="main-header">
+        <a href="#" class="logo" id="logo-btn">
+          <div class="logo-icon">日</div>
+          <span>Nihongo Flashcard</span>
+        </a>
+        <div id="cloud-sync-status" class="sync-status" title="Trạng thái đồng bộ đám mây Supabase">
+          <span class="sync-icon">☁️</span>
+          <span class="sync-text">Đang kết nối...</span>
+        </div>
+        <nav class="main-nav">
+          <button class="nav-btn active" data-target="dashboard-view" id="nav-dashboard">
+            Dashboard
+          </button>
+          <button class="nav-btn" data-target="projects-view" id="nav-projects">
+            Dự án
+          </button>
+          <button class="nav-btn" data-target="dictionary-view" id="nav-dictionary">
+            Tra từ
+          </button>
+          <button class="nav-btn" data-target="kana-setup-view" id="nav-kana">
+            Luyện chữ cái
+          </button>
+          <button class="nav-btn" data-target="weak-vocab-view" id="nav-weak-vocab">
+            Ôn từ yếu
+          </button>
+          <button class="nav-btn" data-target="quiz-setup-view" id="nav-quiz-setup">
+            Kiểm tra
+          </button>
+        </nav>
+      </header>
+
+      <!-- Main Application Container -->
+      <main class="container">
+        
+        <!-- ================= VIEW 1: DASHBOARD ================= -->
+        <section id="dashboard-view" class="view-section active">
+          <div class="dashboard-banner">
+            <h1 id="welcome-text">Kính chào Học viên!</h1>
+            <p>Chào mừng bạn đến với Nihongo Flashcard. Hãy luyện tập đều đặn hàng ngày để nâng cao phản xạ tiếng Nhật và ghi nhớ từ vựng lâu hơn.</p>
+          </div>
+
+          <div class="dashboard-grid">
+            <div class="stats-card glass-panel">
+              <div class="stats-info">
+                <h3>Dự án</h3>
+                <p id="stat-projects-count">0</p>
+              </div>
+            </div>
+            <div class="stats-card glass-panel">
+              <div class="stats-info">
+                <h3>Tổng số từ</h3>
+                <p id="stat-words-count">0</p>
+              </div>
+            </div>
+            <div class="stats-card glass-panel">
+              <div class="stats-info">
+                <h3>Độ chính xác</h3>
+                <p id="stat-accuracy">0%</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: Quick Actions / Weak Words Summary -->
+          <div class="glass-panel" style="margin-top: 2rem;">
+            <div class="project-list-header">
+              <h2>Cần Ôn Tập Ngay (Từ chưa nhớ)</h2>
+              <button class="btn btn-primary" id="dashboard-start-weak-btn">Ôn tập ngay</button>
+            </div>
+            <div id="dashboard-weak-vocab-preview">
+              <!-- Bảng tóm tắt từ yếu sẽ được render tại đây -->
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 2: PROJECTS LIST ================= -->
+        <section id="projects-view" class="view-section">
+          <div class="project-list-header">
+            <div>
+              <h1>Quản lý Dự án</h1>
+              <p style="color: var(--text-muted); margin-top: 0.2rem;">Tạo các bộ từ vựng theo chủ đề để bắt đầu ôn luyện.</p>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+              <button class="btn btn-secondary" id="import-json-btn">Nhập JSON</button>
+              <button class="btn btn-primary" id="open-create-project-modal-btn">Tạo dự án mới</button>
+            </div>
+          </div>
+          <input type="file" id="json-file-input" accept=".json" style="display: none;">
+          
+          <div class="project-grid" id="project-list-container">
+            <!-- Danh sách dự án sẽ được hiển thị tại đây -->
+          </div>
+        </section>
+
+        <!-- ================= VIEW 8: DICTIONARY SEARCH ================= -->
+        <section id="dictionary-view" class="view-section">
+          <div class="project-list-header">
+            <div>
+              <h1>Tra từ điển & Thêm nhanh</h1>
+              <p style="color: var(--text-muted); margin-top: 0.2rem;">Gõ tiếng Nhật, Romaji hoặc nghĩa tiếng Việt để tìm từ vựng có sẵn và thêm vào dự án của bạn.</p>
+            </div>
+          </div>
+          
+          <div class="glass-panel" style="margin-bottom: 2rem;">
+            <div class="form-group" style="margin-bottom: 0; display: flex; gap: 0.8rem;">
+              <input type="text" class="form-control" id="dict-search-input" placeholder="Nhập từ cần tìm (Ví dụ: taberu, ăn, 猫, hoặc neko...)" style="font-size: 1.1rem; padding: 0.9rem 1.2rem; flex: 1;">
+              <button class="btn btn-primary" id="dict-search-btn" style="padding: 0 1.5rem; font-size: 1rem; height: 50px; display: flex; align-items: center; justify-content: center; margin-bottom: 0; gap: 0.3rem;">
+                🔍 Tìm kiếm
+              </button>
+            </div>
+            <div style="margin-top: 0.8rem; display: flex; align-items: center; gap: 0.5rem;">
+              <input type="checkbox" id="dict-hiragana-only-cb" style="cursor: pointer; width: 16px; height: 16px;">
+              <label for="dict-hiragana-only-cb" style="cursor: pointer; font-size: 0.9rem; user-select: none; color: var(--ink-soft); font-weight: 500;">
+                Chỉ hiển thị Hiragana (Tự động chuyển Katakana ➔ Hiragana)
+              </label>
+            </div>
+          </div>
+
+          <div class="glass-panel" id="dict-results-panel" style="display: none;">
+            <h2>Kết quả tìm kiếm</h2>
+            <div id="dict-results-container" style="margin-top: 1.5rem;">
+              <!-- Bảng kết quả tìm kiếm sẽ được hiển thị ở đây -->
+            </div>
+          </div>
+
+          <div class="glass-panel" id="dict-welcome-panel" style="text-align: center; padding: 3rem; color: var(--ink-faint);">
+            Nhập từ khóa phía trên để bắt đầu tra cứu từ điển Nhật - Việt.
+          </div>
+        </section>
+
+        <!-- ================= VIEW 3: PROJECT DETAIL ================= -->
+        <section id="project-detail-view" class="view-section">
+          <div class="project-detail-header">
+            <div class="project-meta-info">
+              <div>
+                <button class="btn btn-secondary btn-icon" id="back-to-projects-btn" style="margin-bottom: 0.5rem; font-family: var(--font-serif); font-size: 13px; width: auto; padding: 0 10px;">Quay lại</button>
+                <h1 id="detail-project-title">Tên dự án</h1>
+                <p id="detail-project-desc" style="color: var(--text-muted); margin-top: 0.2rem;">Mô tả dự án</p>
+              </div>
+              <div class="project-actions">
+                <button class="btn btn-success" id="detail-start-quiz-btn">Kiểm tra dự án này</button>
+                <button class="btn btn-secondary" id="detail-export-project-btn">Xuất JSON</button>
+                <button class="btn btn-secondary" id="detail-edit-project-btn">Sửa thông tin</button>
+                <button class="btn btn-danger" id="detail-delete-project-btn">Xóa dự án</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabs hoặc Panels cho từ vựng và Import -->
+          <div class="glass-panel">
+            <div class="project-list-header">
+              <h2>Từ vựng trong dự án (<span id="detail-vocab-count">0</span>)</h2>
+              <div style="display: flex; gap: 0.5rem;">
+                <button class="btn btn-secondary" id="open-import-modal-btn">Nhập hàng loạt (Bulk Import)</button>
+                <button class="btn btn-primary" id="open-add-vocab-modal-btn">Thêm từ mới</button>
+              </div>
+            </div>
+
+            <div id="vocab-table-container-placeholder">
+              <!-- Bảng từ vựng sẽ render tại đây -->
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 9: KANA SETUP ================= -->
+        <section id="kana-setup-view" class="view-section">
+          <div class="glass-panel" style="max-width: 700px; margin: 10px auto;">
+            <h1 style="text-align: center; margin-bottom: 20px; color: var(--accent);">Luyện tập bảng chữ cái</h1>
+            <p style="text-align: center; color: var(--ink-soft); margin-bottom: 24px;">Chọn bảng chữ cái và các kí tự bạn muốn luyện tập bên dưới.</p>
+            
+            <div class="form-group">
+              <label>Chọn Bảng chữ cái</label>
+              <div class="radio-card-grid">
+                <div class="radio-card selected" id="kana-type-hira">
+                  <input type="radio" name="kana-type" value="hiragana" checked>
+                  <span class="radio-card-title">Hiragana (Chữ mềm)</span>
+                  <span class="radio-card-desc">Bảng chữ cái cơ bản nhất trong tiếng Nhật</span>
+                </div>
+                <div class="radio-card" id="kana-type-kata">
+                  <input type="radio" name="kana-type" value="katakana">
+                  <span class="radio-card-title">Katakana (Chữ cứng)</span>
+                  <span class="radio-card-desc">Dùng để phiên âm từ mượn tiếng nước ngoài</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <label style="margin-bottom: 0;">Chọn kí tự ôn tập</label>
+                <div style="display: flex; gap: 8px;">
+                  <button class="btn btn-secondary" id="kana-select-all" style="padding: 2px 8px; font-size: 9px; min-height: 24px;">Chọn tất cả</button>
+                  <button class="btn btn-secondary" id="kana-select-none" style="padding: 2px 8px; font-size: 9px; min-height: 24px;">Bỏ chọn hết</button>
+                </div>
+              </div>
+              
+              <!-- Khung danh sách chữ cái dạng lưới (Grid) -->
+              <div class="kana-grid-selection" id="kana-selection-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 8px; max-height: 250px; overflow-y: auto; padding: 12px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--field);">
+                <!-- Các checkbox chữ cái sẽ được sinh tự động bằng JS -->
+              </div>
+            </div>
+
+            <button class="btn btn-primary" id="start-kana-practice-btn" style="width: 100%; padding: 12px; font-size: 1.1rem; margin-top: 15px;">
+              Bắt đầu luyện tập
+            </button>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 10: KANA PRACTICE ARENA ================= -->
+        <section id="kana-practice-view" class="view-section">
+          <!-- Kana practice header & tab navigation -->
+          <div class="glass-panel" style="margin-bottom: 20px; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <button class="btn btn-secondary" id="back-to-kana-setup-btn" style="min-height: 30px; padding: 5px 10px;">Quay lại</button>
+              <h2 id="kana-practice-title" style="margin-bottom: 0;">Luyện Hiragana</h2>
+              <button class="btn btn-secondary btn-icon" id="kana-settings-btn" style="width: 32px; height: 32px; padding: 0; min-height: auto; font-size: 1.1rem; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;" title="Cài đặt luyện tập">⚙️</button>
+            </div>
+            
+            <!-- Sub tabs inside practice arena -->
+            <div style="display: flex; gap: 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 3px;">
+              <button class="btn btn-secondary active-sub-tab" id="sub-tab-quiz" style="border: none; box-shadow: none; min-height:28px; padding: 4px 12px; border-radius: 6px; font-size: 10px; background: transparent;">Trắc nghiệm</button>
+              <button class="btn btn-secondary" id="sub-tab-card" style="border: none; box-shadow: none; min-height:28px; padding: 4px 12px; border-radius: 6px; font-size: 10px; background: transparent;">Flashcard</button>
+              <button class="btn btn-secondary" id="sub-tab-draw" style="border: none; box-shadow: none; min-height:28px; padding: 4px 12px; border-radius: 6px; font-size: 10px; background: transparent;">Tập viết</button>
+            </div>
+          </div>
+
+          <!-- SUB-VIEW 1: TRẮC NGHIỆM -->
+          <div class="glass-panel kana-sub-view" id="kana-sub-view-quiz" style="max-width: 550px; margin: 0 auto; text-align: center; min-height: 380px; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); margin-bottom: 20px;">
+              <span id="kana-quiz-counter">Câu 1 / 10</span>
+              <span id="kana-quiz-score">Đúng: 0</span>
+            </div>
+            
+            <!-- Chế độ trắc nghiệm options -->
+            <div style="margin-bottom: 20px; display: flex; justify-content: center; gap: 10px;">
+              <select class="form-control" id="kana-quiz-mode-select" style="max-width: 250px; height: 32px; padding: 2px 10px; font-size: 0.85rem; margin-bottom: 0;">
+                <option value="kana_to_romaji">Chữ Nhật ➔ Romaji</option>
+                <option value="romaji_to_kana">Romaji ➔ Chữ Nhật</option>
+                <option value="mixed">Xáo trộn</option>
+              </select>
+            </div>
+
+            <div class="quiz-word-box" style="margin-bottom: 30px;">
+              <h2 class="quiz-question-word" id="kana-quiz-question-word" style="font-size: 72px;">あ</h2>
+            </div>
+
+            <!-- 4 Đáp án -->
+            <div class="kana-options-grid" id="kana-quiz-options-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+              <!-- 4 nút đáp án sẽ render ở đây -->
+            </div>
+
+            <!-- Nút chuyển câu khi làm sai -->
+            <div id="kana-quiz-next-container" style="margin-top: 10px; display: none;">
+              <button class="btn btn-success" id="kana-quiz-next-btn" style="width: 100%; padding: 12px; font-size: 1.1rem; font-family: var(--font-serif);">Tiếp theo ➔</button>
+            </div>
+          </div>
+
+          <!-- SUB-VIEW 2: FLASHCARD -->
+          <div class="kana-sub-view" id="kana-sub-view-card" style="display: none; max-width: 480px; margin: 0 auto;">
+            <!-- Thẻ Flashcard -->
+            <div class="glass-panel" id="kana-flashcard-box" style="height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border: 2px solid var(--ink); border-radius: var(--radius-lg); position: relative; user-select: none;">
+              <div id="kana-card-front" style="font-family: var(--font-jp); font-size: 84px; font-weight: 700; color: var(--accent);">あ</div>
+              <div id="kana-card-back" style="font-family: var(--font-mono); font-size: 40px; font-weight: 600; color: var(--ink-soft); display: none;">a</div>
+              <div style="position: absolute; bottom: 12px; font-family: var(--font-mono); font-size: 9px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.05em;">Click hoặc nhấn Enter để lật thẻ</div>
+            </div>
+            
+            <!-- Điều khiển chuyển thẻ -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+              <button class="btn btn-secondary" id="kana-card-prev">Trở về</button>
+              <span id="kana-card-counter" style="font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">Thẻ 1 / 10</span>
+              <button class="btn btn-secondary" id="kana-card-next">Tiếp theo</button>
+            </div>
+          </div>
+
+          <!-- SUB-VIEW 3: TẬP VIẾT -->
+          <div class="glass-panel kana-sub-view" id="kana-sub-view-draw" style="display: none; max-width: 580px; margin: 0 auto; text-align: center;">
+            <div class="kana-draw-layout">
+              <!-- Cột trái: canvas vẽ chữ -->
+              <div style="display: flex; flex-direction: column; align-items: center;">
+                <div style="position: relative; width: 220px; height: 220px; border: 2px solid var(--ink); border-radius: 8px; background: var(--field); overflow: hidden;">
+                  <!-- Chữ mẫu mờ bên dưới -->
+                  <div id="kana-draw-template" style="position: absolute; top:0; left:0; width:100%; height:100%; display: flex; align-items: center; justify-content: center; font-family: var(--font-jp); font-size: 140px; font-weight:700; color: rgba(28, 26, 23, 0.08); user-select: none; pointer-events: none;">あ</div>
+                  <!-- Canvas vẽ tay bên trên -->
+                  <canvas id="kana-draw-canvas" width="220" height="220" style="position: absolute; top:0; left:0; z-index: 10; cursor: crosshair;"></canvas>
+                </div>
+                
+                <div style="display: flex; gap: 8px; margin-top: 12px; width: 220px;">
+                  <button class="btn btn-secondary" id="kana-draw-clear" style="flex: 1; padding: 4px; font-size: 10px;">Xóa nét</button>
+                  <button class="btn btn-primary" id="kana-draw-check" style="flex: 1; padding: 4px; font-size: 10px;">Kiểm tra</button>
+                </div>
+                <div style="margin-top: 10px; display: flex; align-items: center; gap: 6px;">
+                  <input type="checkbox" id="kana-draw-hide-template-cb" style="accent-color: var(--accent); cursor: pointer;">
+                  <label for="kana-draw-hide-template-cb" style="font-size: 12px; cursor: pointer; user-select: none; color: var(--ink-soft);">Ẩn chữ mẫu</label>
+                </div>
+              </div>
+
+              <!-- Cột phải: hướng dẫn và đánh giá -->
+              <div class="kana-draw-info">
+                <div>
+                  <h3 id="kana-draw-char-name" style="font-size: 22px; color: var(--accent); margin-bottom: 6px;">Kí tự: あ (a)</h3>
+                  <p style="color: var(--ink-soft); font-size: 13px; line-height: 1.4; margin-bottom: 12px;">Hãy dùng chuột hoặc ngón tay vẽ đè lên hình chữ mờ ở ô bên trái, sau đó nhấn nút "Kiểm tra" để hệ thống đánh giá nét vẽ của bạn.</p>
+                </div>
+                
+                <!-- Kết quả đánh giá vẽ chữ -->
+                <div id="kana-draw-result-box" style="display: none; padding: 12px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--bg); animation: quizSlideUp var(--transition) forwards;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <strong style="font-size: 14px;">Độ khớp nét vẽ:</strong>
+                    <span id="kana-draw-score-text" style="font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--accent);">0%</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 14px; font-weight: bold;">
+                    <span>Kết quả:</span>
+                    <span id="kana-draw-status-text" style="font-size: 16px;">ĐÚNG ✔️</span>
+                  </div>
+                  <p id="kana-draw-remark-text" style="font-size: 13px; color: var(--ink-soft); margin-bottom: 0;">Khá chính xác!</p>
+                </div>
+
+                <div style="display: flex; gap: 8px;">
+                  <button class="btn btn-secondary" id="kana-draw-prev-char" style="flex:1;">Từ trước</button>
+                  <button class="btn btn-secondary" id="kana-draw-next-char" style="flex:1;">Từ tiếp theo</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 4: QUIZ SETUP ================= -->
+        <section id="quiz-setup-view" class="view-section">
+          <div class="glass-panel quiz-setup-card">
+            <h1 class="quiz-setup-title">Thiết lập Bài Kiểm tra</h1>
+            
+            <div class="form-group">
+              <label>Chọn Dự án Kiểm tra</label>
+              <select class="form-control" id="quiz-setup-projects-select">
+                <option value="all">Tất cả dự án</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Chế độ Kiểm tra</label>
+              <div class="radio-card-grid">
+                <div class="radio-card selected" data-value="meaning_to_romaji">
+                  <input type="radio" name="quiz-mode" value="meaning_to_romaji" checked>
+                  <span class="radio-card-title">Nghĩa ➔ Romaji</span>
+                  <span class="radio-card-desc">Hiển thị nghĩa Tiếng Việt, gõ phiên âm Romaji tiếng Nhật</span>
+                </div>
+                <div class="radio-card" data-value="jp_to_romaji">
+                  <input type="radio" name="quiz-mode" value="jp_to_romaji">
+                  <span class="radio-card-title">Tiếng Nhật ➔ Romaji</span>
+                  <span class="radio-card-desc">Hiển thị Kanji/Kana, gõ phiên âm Romaji</span>
+                </div>
+                <div class="radio-card" data-value="jp_to_meaning">
+                  <input type="radio" name="quiz-mode" value="jp_to_meaning">
+                  <span class="radio-card-title">Tiếng Nhật ➔ Nghĩa</span>
+                  <span class="radio-card-desc">Hiển thị Kanji/Kana, gõ nghĩa Tiếng Việt</span>
+                </div>
+                <div class="radio-card" data-value="mixed">
+                  <input type="radio" name="quiz-mode" value="mixed">
+                  <span class="radio-card-title">Xáo trộn (Mixed)</span>
+                  <span class="radio-card-desc">Trộn ngẫu nhiên cả 3 chế độ kiểm tra trên</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Thứ tự Câu hỏi</label>
+              <div class="radio-card-grid">
+                <div class="radio-card" data-value="sequential">
+                  <input type="radio" name="quiz-order" value="sequential">
+                  <span class="radio-card-title">Lần lượt (Sequential)</span>
+                  <span class="radio-card-desc">Theo thứ tự nhập trong dự án</span>
+                </div>
+                <div class="radio-card selected" data-value="random">
+                  <input type="radio" name="quiz-order" value="random" checked>
+                  <span class="radio-card-title">Ngẫu nhiên (Random)</span>
+                  <span class="radio-card-desc">Trộn ngẫu nhiên câu hỏi</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="quiz-setup-count">Số lượng câu hỏi</label>
+              <input type="number" class="form-control" id="quiz-setup-count" value="10" min="1" max="100">
+              <p style="color: var(--ink-faint); font-size: 0.75rem; margin-top: 0.3rem;">
+                * Nếu nhập số câu lớn hơn số từ hiện có, hệ thống đảm bảo toàn bộ các từ sẽ xuất hiện ít nhất 1 lần.
+              </p>
+            </div>
+
+            <div class="form-group">
+              <label class="checkbox-control-group">
+                <input type="checkbox" id="quiz-setup-retry" checked>
+                <span>Cho phép sai 1 lần (Có gợi ý ký tự và nhập lại)</span>
+              </label>
+            </div>
+
+            <button class="btn btn-primary" id="start-quiz-session-btn" style="width: 100%; padding: 1rem; font-size: 1.1rem; margin-top: 1rem;">
+              Bắt đầu kiểm tra
+            </button>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 5: QUIZ ACTIVE ARENA ================= -->
+        <section id="quiz-active-view" class="view-section">
+          <div class="glass-panel quiz-container-card" id="quiz-box">
+            <!-- Progress Bar -->
+            <div class="quiz-progress-bar-wrapper">
+              <div class="quiz-progress-bar-fill" id="quiz-progress-fill"></div>
+            </div>
+
+            <!-- Quiz Header -->
+            <div class="quiz-meta-header">
+              <span id="quiz-question-counter">Câu hỏi 1 / 10</span>
+              <div class="quiz-timer">
+                Thời gian: <span id="quiz-question-timer-text">0.0s</span>
+              </div>
+            </div>
+
+            <!-- Word display -->
+            <div class="quiz-word-box">
+              <p class="quiz-question-prompt" id="quiz-question-prompt">Từ này có Romaji là gì?</p>
+              <div style="display: flex; align-items: center; justify-content: center; gap: 1rem;">
+                <h2 class="quiz-question-word" id="quiz-question-word-display">傘</h2>
+                <button class="btn btn-secondary btn-icon" id="quiz-speak-btn" style="width: 42px; height: 42px; font-size: 1.2rem;" title="Phát âm tiếng Nhật">🔊</button>
+              </div>
+            </div>
+
+            <!-- Input area -->
+            <div class="quiz-input-box">
+              <input type="text" class="quiz-input" id="quiz-answer-input" placeholder="Gõ câu trả lời tại đây..." autocomplete="off">
+            </div>
+
+            <!-- Hint Box (shown on retry) -->
+            <div class="quiz-hint-box" id="quiz-hint-container">
+              Gợi ý: <span class="quiz-hint-text" id="quiz-hint-text">k*s*</span>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="quiz-action-bar">
+              <button class="btn btn-secondary" id="quiz-abort-btn">Thoát kiểm tra</button>
+              <button class="btn btn-primary" id="quiz-submit-btn">Đồng ý (Enter)</button>
+              <button class="btn btn-success" id="quiz-next-btn" style="display: none;">Câu tiếp theo (Enter)</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 6: QUIZ REPORT ================= -->
+        <section id="quiz-report-view" class="view-section">
+          <div class="glass-panel report-card">
+            <div class="report-header">
+              <h1 style="margin-bottom: 1.5rem;">Báo cáo kết quả kiểm tra</h1>
+              <div class="report-score-ring">
+                <span class="report-score-num" id="report-score-text">8/10</span>
+                <span class="report-score-label" id="report-accuracy-text">80% ĐÚNG</span>
+              </div>
+              <p id="report-evaluation-text" style="font-size: 1.1rem; font-weight: 600; color: var(--accent);">Khá tốt! Hãy cố gắng cải thiện tốc độ phản xạ nhé.</p>
+            </div>
+
+            <div class="report-stats-row">
+              <div class="report-stat-item">
+                <h4>Thời gian làm bài</h4>
+                <p id="report-total-time">45 giây</p>
+              </div>
+              <div class="report-stat-item">
+                <h4>Phản xạ trung bình</h4>
+                <p id="report-avg-time">4.5s / câu</p>
+              </div>
+              <div class="report-stat-item">
+                <h4>Câu phản xạ chậm</h4>
+                <p class="slow-count" id="report-slow-count">2 câu (>8s)</p>
+              </div>
+            </div>
+
+            <div class="report-details-section">
+              <h3>Chi tiết từng câu hỏi</h3>
+              <div id="report-details-list">
+                <!-- Danh sách câu hỏi chi tiết được render tại đây -->
+              </div>
+            </div>
+
+            <div class="report-actions">
+              <button class="btn btn-secondary" id="report-back-home-btn">Về Trang Chủ</button>
+              <button class="btn btn-primary" id="report-restart-quiz-btn">Làm Lại Bài Này</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 7: WEAK VOCAB REVIEW ================= -->
+        <section id="weak-vocab-view" class="view-section">
+          <div class="project-list-header">
+            <div>
+              <h1>Ôn Tập Từ Chưa Nhớ</h1>
+              <p style="color: var(--text-muted); margin-top: 0.2rem;">Những từ có tỷ lệ trả lời sai cao hoặc phản xạ trả lời chậm sẽ tự động được gom vào đây.</p>
+            </div>
+            <button class="btn btn-primary" id="weak-start-quiz-btn">Bắt đầu kiểm tra từ yếu</button>
+          </div>
+
+          <div class="glass-panel">
+            <div id="weak-vocab-table-container">
+              <!-- Bảng từ yếu được render tại đây -->
+            </div>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- ================= MODALS SECTION ================= -->
+      
+      <!-- Modal: Tạo/Sửa Dự Án -->
+      <div class="modal-overlay" id="project-modal">
+        <div class="modal-container glass-panel">
+          <h2 id="project-modal-title" style="margin-bottom: 1.5rem;">Tạo Dự Án Mới</h2>
+          <form id="project-form">
+            <input type="hidden" id="project-modal-id">
+            <div class="form-group">
+              <label for="project-modal-name">Tên Dự Án *</label>
+              <input type="text" class="form-control" id="project-modal-name" required placeholder="VD: Động từ N5, Thời tiết...">
+            </div>
+            <div class="form-group">
+              <label for="project-modal-desc">Mô tả dự án</label>
+              <textarea class="form-control" id="project-modal-desc" placeholder="VD: Các động từ thông dụng..." rows="3"></textarea>
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+              <button type="button" class="btn btn-secondary" id="close-project-modal-btn">Hủy bỏ</button>
+              <button type="submit" class="btn btn-primary" id="save-project-modal-btn">Lưu lại</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Modal: Thêm/Sửa Từ Vựng -->
+      <div class="modal-overlay" id="vocab-modal">
+        <div class="modal-container glass-panel">
+          <h2 id="vocab-modal-title" style="margin-bottom: 1.5rem;">Thêm Từ Vựng Mới</h2>
+          <form id="vocab-form">
+            <input type="hidden" id="vocab-modal-id">
+            <div class="form-group">
+              <label for="vocab-modal-japanese">Tiếng Nhật (Kanji / Kana) *</label>
+              <input type="text" class="form-control" id="vocab-modal-japanese" required placeholder="VD: 傘 hoặc かさ">
+            </div>
+            <div class="form-group">
+              <label for="vocab-modal-romaji">Romaji (Cách gõ để kiểm tra) *</label>
+              <input type="text" class="form-control" id="vocab-modal-romaji" required placeholder="VD: kasa">
+            </div>
+            <div class="form-group">
+              <label for="vocab-modal-meaning">Nghĩa Tiếng Việt *</label>
+              <input type="text" class="form-control" id="vocab-modal-meaning" required placeholder="VD: cái ô">
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+              <button type="button" class="btn btn-secondary" id="close-vocab-modal-btn">Hủy bỏ</button>
+              <button type="submit" class="btn btn-primary">Lưu lại</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Modal: Nhập Hàng Loạt (Bulk Import) -->
+      <div class="modal-overlay" id="bulk-import-modal">
+        <div class="modal-container glass-panel" style="max-width: 550px;">
+          <h2 style="margin-bottom: 1rem;">Nhập Từ Vựng Hàng Loạt</h2>
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.2rem; line-height: 1.4;">
+            Nhập danh sách từ vựng, mỗi từ trên một dòng. Định dạng:<br>
+            <strong style="color: var(--accent);">Tiếng Nhật | Romaji | Nghĩa</strong><br>
+            VD: <br>
+            <span>つくえ | tsukue | cái bàn</span><br>
+            <span>いす | isu | cái ghế</span>
+          </p>
+          <form id="bulk-import-form">
+            <div class="form-group">
+              <label for="bulk-import-textarea">Dữ liệu từ vựng</label>
+              <textarea class="form-control" id="bulk-import-textarea" placeholder="Nhập dữ liệu ở đây..." rows="8" required></textarea>
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+              <button type="button" class="btn btn-secondary" id="close-import-modal-btn">Hủy bỏ</button>
+              <button type="submit" class="btn btn-primary">Bắt đầu nhập</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Modal: Cài Đặt Luyện Chữ Cái (Kana Settings) -->
+      <div class="modal-overlay" id="kana-settings-modal">
+        <div class="modal-container glass-panel" style="max-width: 420px;">
+          <h2 style="margin-bottom: 1.5rem; text-align: center; color: var(--accent); font-family: var(--font-display);">⚙️ Cấu Hình Luyện Tập</h2>
+          <form id="kana-settings-form">
+            <div class="form-group">
+              <label for="kana-settings-delay">Thời gian chuyển câu (giây) *</label>
+              <input type="number" class="form-control" id="kana-settings-delay" min="0" max="10" step="0.1" value="1.2" required>
+              <p style="color: var(--ink-faint); font-size: 0.75rem; margin-top: 0.3rem;">Chọn 0 để chuyển sang câu tiếp theo ngay lập tức.</p>
+            </div>
+            
+            <div class="form-group">
+              <label class="checkbox-control-group">
+                <input type="checkbox" id="kana-settings-pause-on-wrong" checked>
+                <span>Tạm dừng xem đáp án khi trả lời sai</span>
+              </label>
+              <p style="color: var(--ink-faint); font-size: 0.75rem; margin-left: 1.5rem; margin-top: 0.1rem;">Khi sai, hệ thống sẽ dừng lại để bạn xem đáp án đúng và bấm nút "Tiếp theo".</p>
+            </div>
+
+            <div class="form-group">
+              <label class="checkbox-control-group">
+                <input type="checkbox" id="kana-settings-sound" checked>
+                <span>Bật âm thanh hiệu ứng (Đúng/Sai riêng biệt)</span>
+              </label>
+            </div>
+
+            <div class="form-group">
+              <label class="checkbox-control-group">
+                <input type="checkbox" id="kana-settings-confetti" checked>
+                <span>Tung hoa chúc mừng khi hoàn thành xuất sắc</span>
+              </label>
+            </div>
+
+            <div class="form-group" id="kana-settings-confetti-threshold-group">
+              <label for="kana-settings-confetti-threshold">Tỷ lệ chính xác tối thiểu để chúc mừng (%)</label>
+              <input type="number" class="form-control" id="kana-settings-confetti-threshold" min="0" max="100" value="80" required>
+            </div>
+
+            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+              <button type="button" class="btn btn-secondary" id="close-kana-settings-modal-btn">Hủy bỏ</button>
+              <button type="submit" class="btn btn-primary">Lưu cài đặt</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
