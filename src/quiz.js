@@ -11,57 +11,40 @@ export function normalizeString(str) {
 export function generateHint(answer, mode) {
   if (!answer) return "";
   
-  if (mode === "jp_to_meaning") {
-    // Gợi ý cho nghĩa tiếng Việt (giữ nguyên dấu cách, hiển thị một số chữ cái chính)
-    const words = answer.split(" ");
-    const hintedWords = words.map(word => {
-      if (word.length <= 2) {
-        return word; // Từ quá ngắn, giữ nguyên
-      }
-      
-      // Che một số ký tự ở giữa
-      let wordChars = word.split("");
-      // Che các ký tự ngẫu nhiên, chỉ giữ lại ký tự đầu (và ký tự cuối nếu từ dài)
-      for (let i = 1; i < wordChars.length; i++) {
-        if (wordChars.length > 4 && i === wordChars.length - 1) {
-          continue; // giữ lại ký tự cuối đối với từ dài
-        }
-        // Tỷ lệ che ký tự là 65%
-        if (Math.random() < 0.65) {
-          wordChars[i] = "*";
-        }
-      }
-      return wordChars.join("");
+  function maskWord(word) {
+    if (!word) return "";
+    const L = word.length;
+    if (L <= 1) return word;
+    if (L === 2) {
+      return Math.random() < 0.5 ? "*" + word[1] : word[0] + "*";
+    }
+    
+    const M = Math.min(L - 1, Math.ceil(0.70 * L));
+    let chars = word.split("");
+    
+    let maskableIndices = [];
+    for (let i = 1; i < L; i++) {
+      maskableIndices.push(i);
+    }
+    if (M > maskableIndices.length) {
+      maskableIndices.push(0);
+    }
+    
+    maskableIndices.sort(() => Math.random() - 0.5);
+    const indicesToMask = maskableIndices.slice(0, M);
+    indicesToMask.forEach(idx => {
+      chars[idx] = "*";
     });
     
-    return hintedWords.join(" ");
-  } else {
-    // Gợi ý cho Romaji
-    const chars = answer.split("");
-    if (chars.length <= 2) {
-      return chars[0] + "*";
-    }
-
-    // Luôn giữ lại ký tự đầu tiên
-    const hint = chars.map((char, index) => {
-      if (index === 0) return char;
-      // Đối với ký tự cuối cùng của từ có độ dài trên 4 ký tự, giữ lại
-      if (chars.length > 4 && index === chars.length - 1) return char;
-      
-      // Random che khoảng 60% số ký tự còn lại
-      return Math.random() < 0.6 ? "*" : char;
-    });
-
-    // Đảm bảo có ít nhất một ký tự bị che và một ký tự hiển thị (ngoài ký tự đầu)
-    let hasStars = hint.includes("*");
-    if (!hasStars) {
-      // Ép buộc che ký tự ở giữa
-      const mid = Math.floor(chars.length / 2);
-      hint[mid] = "*";
-    }
-
-    return hint.join("");
+    return chars.join("");
   }
+
+  const words = answer.split(" ");
+  const hintedWords = words.map(word => {
+    return word.replace(/[a-zA-Z0-9à-ỹÀ-ỸđĐ]+/g, match => maskWord(match));
+  });
+  
+  return hintedWords.join(" ");
 }
 
 export class QuizSession {
