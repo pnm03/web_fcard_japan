@@ -32,6 +32,7 @@ let quizConfigBackup = null; // Dùng để làm lại bài kiểm tra
 let quizSelectedVocabIds = [];
 let tempSelectedVocabIds = [];
 let isQuizTransitioning = false;
+let answerJustSubmitted = false;
 let quizActiveSettings = {
   hideTimer: false,
   muteSounds: false,
@@ -1483,6 +1484,9 @@ function renderCurrentQuestion() {
 }
 
 function handleQuizAnswerSubmit() {
+  answerJustSubmitted = true;
+  setTimeout(() => { answerJustSubmitted = false; }, 150);
+
   const inputEl = document.getElementById("quiz-answer-input");
   const answer = inputEl.value.trim();
 
@@ -1685,6 +1689,8 @@ function setupQuizActiveEvents() {
     if (e.key === "Enter") {
       const isUnanswered = activeQuizSession.getCurrentQuestion()?.answerState === "unanswered";
       if (isUnanswered) {
+        e.preventDefault();
+        e.stopPropagation();
         handleQuizAnswerSubmit();
       }
     }
@@ -1692,9 +1698,16 @@ function setupQuizActiveEvents() {
 
   window.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && document.getElementById("quiz-active-view").classList.contains("active")) {
+      if (answerJustSubmitted) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
       const bottomSheet = document.getElementById("quiz-bottom-sheet");
       if (bottomSheet && bottomSheet.classList.contains("active")) {
         e.preventDefault();
+        e.stopPropagation();
         goToNextQuestion();
         return;
       }
@@ -1702,6 +1715,7 @@ function setupQuizActiveEvents() {
       const nextBtnVisible = nextBtn.style.display !== "none";
       if (nextBtnVisible && document.activeElement !== inputEl) {
         e.preventDefault();
+        e.stopPropagation();
         goToNextQuestion();
       }
     }
