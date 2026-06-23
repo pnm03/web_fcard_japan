@@ -832,117 +832,151 @@ function selectPickerProject(projectId) {
   renderPickerWords();
 }
 
+let collapsedPickerProjects = {};
+
+function createWordCard(v, displayIndex, projectName) {
+  const isChecked = tempSelectedVocabIds.includes(v.id);
+  
+  const itemDiv = document.createElement("div");
+  itemDiv.className = "picker-word-card";
+  itemDiv.style.display = "flex";
+  itemDiv.style.alignItems = "center";
+  itemDiv.style.justifyContent = "space-between";
+  itemDiv.style.padding = "4px 8px";
+  itemDiv.style.border = isChecked ? "1px solid var(--accent)" : "1px solid var(--line-light)";
+  itemDiv.style.borderRadius = "var(--radius-sm, 4px)";
+  itemDiv.style.background = isChecked ? "var(--accent-soft)" : "var(--paper)";
+  itemDiv.style.cursor = "pointer";
+  itemDiv.style.transition = "all 0.2s ease";
+  itemDiv.style.userSelect = "none";
+
+  itemDiv.addEventListener("click", () => {
+    const checked = tempSelectedVocabIds.includes(v.id);
+    if (!checked) {
+      tempSelectedVocabIds.push(v.id);
+    } else {
+      tempSelectedVocabIds = tempSelectedVocabIds.filter(id => id !== v.id);
+    }
+    updateTempSelectedCount();
+    renderPickerWords();
+  });
+
+  const wordInfo = document.createElement("div");
+  wordInfo.style.display = "flex";
+  wordInfo.style.flexDirection = "column";
+
+  const stt = `<span style="color: var(--ink-faint); font-size: 11px; margin-right: 4px;">#${displayIndex}</span>`;
+  
+  const textSpan = document.createElement("span");
+  textSpan.style.fontWeight = isChecked ? "600" : "500";
+  textSpan.style.color = "var(--ink)";
+  textSpan.innerHTML = `${stt} <span style="font-size: 14px; color: var(--accent);">${v.japanese}</span> <span style="color: var(--ink-soft); font-size: 11px; font-weight: normal; margin-left: 6px;">[${v.romaji}]</span>`;
+
+  const meaningSpan = document.createElement("span");
+  meaningSpan.style.fontSize = "11px";
+  meaningSpan.style.color = "var(--ink-soft)";
+  meaningSpan.textContent = v.meaning;
+
+  wordInfo.appendChild(textSpan);
+  wordInfo.appendChild(meaningSpan);
+
+  itemDiv.appendChild(wordInfo);
+
+  if (currentPickerProjectId === "all") {
+    const projTag = document.createElement("span");
+    projTag.style.fontSize = "9px";
+    projTag.style.padding = "2px 5px";
+    projTag.style.background = "var(--field)";
+    projTag.style.border = "1px solid var(--line)";
+    projTag.style.borderRadius = "8px";
+    projTag.style.color = "var(--ink-soft)";
+    projTag.style.maxWidth = "80px";
+    projTag.style.overflow = "hidden";
+    projTag.style.textOverflow = "ellipsis";
+    projTag.style.whiteSpace = "nowrap";
+    projTag.textContent = projectName;
+    itemDiv.appendChild(projTag);
+  }
+
+  return itemDiv;
+}
+
 function renderPickerWords() {
   const projects = getProjects();
   const listContainer = document.getElementById("picker-words-list");
   if (!listContainer) return;
 
+  const scrollPos = listContainer.scrollTop;
+
   listContainer.innerHTML = "";
 
-  let words = [];
   if (currentPickerProjectId === "all") {
+    let globalIndex = 0;
+    
     projects.forEach(p => {
-      if (p.vocab) {
+      if (!p.vocab || p.vocab.length === 0) return;
+
+      const isCollapsed = collapsedPickerProjects[p.id] === true;
+
+      // 1. Header cho từng dự án
+      const headerDiv = document.createElement("div");
+      headerDiv.className = "picker-project-group-header";
+      headerDiv.style.gridColumn = "1 / -1";
+      headerDiv.style.display = "flex";
+      headerDiv.style.justifyContent = "space-between";
+      headerDiv.style.alignItems = "center";
+      headerDiv.style.padding = "5px 8px";
+      headerDiv.style.marginTop = "6px";
+      headerDiv.style.background = "var(--field)";
+      headerDiv.style.border = "1px solid var(--line)";
+      headerDiv.style.borderRadius = "var(--radius-sm, 4px)";
+      headerDiv.style.fontWeight = "bold";
+      headerDiv.style.fontSize = "12px";
+      headerDiv.style.color = "var(--accent)";
+      headerDiv.style.cursor = "pointer";
+      headerDiv.style.userSelect = "none";
+      headerDiv.style.transition = "background 0.2s";
+
+      const projectSelectedCount = p.vocab.filter(v => tempSelectedVocabIds.includes(v.id)).length;
+
+      headerDiv.innerHTML = `
+        <span style="display: flex; align-items: center; gap: 6px;">
+          📁 ${p.name} <span style="font-size: 11px; color: var(--ink-soft); font-weight: normal;">(Đã chọn ${projectSelectedCount}/${p.vocab.length} từ)</span>
+        </span>
+        <span style="font-size: 10px;">${isCollapsed ? "▶" : "▼"}</span>
+      `;
+
+      headerDiv.addEventListener("click", () => {
+        collapsedPickerProjects[p.id] = !isCollapsed;
+        renderPickerWords();
+      });
+
+      listContainer.appendChild(headerDiv);
+
+      // 2. Render từ thuộc dự án này nếu không bị collapse
+      if (!isCollapsed) {
         p.vocab.forEach(v => {
-          words.push({ ...v, projectId: p.id, projectName: p.name });
+          globalIndex++;
+          const wordCard = createWordCard(v, globalIndex, p.name);
+          listContainer.appendChild(wordCard);
         });
       }
     });
   } else {
+    // Chỉ xem 1 dự án cụ thể
     const p = projects.find(proj => proj.id === currentPickerProjectId);
-    if (p && p.vocab) {
-      p.vocab.forEach(v => {
-        words.push({ ...v, projectId: p.id, projectName: p.name });
-      });
+    if (!p || !p.vocab || p.vocab.length === 0) {
+      listContainer.innerHTML = `<div style="text-align: center; color: var(--ink-faint); padding: 2rem; font-size: 14px;">Không có từ vựng nào trong danh mục này</div>`;
+      return;
     }
-  }
 
-  if (words.length === 0) {
-    listContainer.innerHTML = `<div style="text-align: center; color: var(--ink-faint); padding: 2rem; font-size: 14px;">Không có từ vựng nào trong danh mục này</div>`;
-    return;
-  }
-
-  words.forEach((v, index) => {
-    const isChecked = tempSelectedVocabIds.includes(v.id);
-    
-    const itemDiv = document.createElement("div");
-    itemDiv.style.display = "flex";
-    itemDiv.style.alignItems = "center";
-    itemDiv.style.justifyContent = "space-between";
-    itemDiv.style.padding = "3px 6px";
-    itemDiv.style.borderBottom = "1px solid var(--line-light)";
-    itemDiv.style.borderRadius = "4px";
-    itemDiv.style.background = isChecked ? "var(--bg-light)" : "transparent";
-    itemDiv.style.transition = "background 0.2s";
-
-    const leftPart = document.createElement("label");
-    leftPart.style.display = "flex";
-    leftPart.style.alignItems = "center";
-    leftPart.style.gap = "10px";
-    leftPart.style.cursor = "pointer";
-    leftPart.style.flex = "1";
-    leftPart.style.margin = "0";
-    leftPart.style.userSelect = "none";
-
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.checked = isChecked;
-    cb.style.cursor = "pointer";
-    cb.style.accentColor = "var(--accent)";
-    cb.addEventListener("change", (e) => {
-      if (e.target.checked) {
-        if (!tempSelectedVocabIds.includes(v.id)) {
-          tempSelectedVocabIds.push(v.id);
-        }
-        itemDiv.style.background = "var(--bg-light)";
-      } else {
-        tempSelectedVocabIds = tempSelectedVocabIds.filter(id => id !== v.id);
-        itemDiv.style.background = "transparent";
-      }
-      updateTempSelectedCount();
+    p.vocab.forEach((v, index) => {
+      const wordCard = createWordCard(v, index + 1, p.name);
+      listContainer.appendChild(wordCard);
     });
+  }
 
-    const wordInfo = document.createElement("div");
-    wordInfo.style.display = "flex";
-    wordInfo.style.flexDirection = "column";
-
-    const stt = `<span style="color: var(--ink-faint); font-size: 11px; margin-right: 4px;">#${index + 1}</span>`;
-    
-    const textSpan = document.createElement("span");
-    textSpan.style.fontWeight = "600";
-    textSpan.style.color = "var(--ink)";
-    textSpan.innerHTML = `${stt} <span style="font-size: 15px; color: var(--accent);">${v.japanese}</span> <span style="color: var(--ink-soft); font-size: 12px; font-weight: normal; margin-left: 6px;">[${v.romaji}]</span>`;
-
-    const meaningSpan = document.createElement("span");
-    meaningSpan.style.fontSize = "12px";
-    meaningSpan.style.color = "var(--ink-soft)";
-    meaningSpan.textContent = v.meaning;
-
-    wordInfo.appendChild(textSpan);
-    wordInfo.appendChild(meaningSpan);
-
-    leftPart.appendChild(cb);
-    leftPart.appendChild(wordInfo);
-    itemDiv.appendChild(leftPart);
-
-    if (currentPickerProjectId === "all") {
-      const projTag = document.createElement("span");
-      projTag.style.fontSize = "10px";
-      projTag.style.padding = "2px 6px";
-      projTag.style.background = "var(--field)";
-      projTag.style.border = "1px solid var(--line)";
-      projTag.style.borderRadius = "10px";
-      projTag.style.color = "var(--ink-soft)";
-      projTag.style.maxWidth = "100px";
-      projTag.style.overflow = "hidden";
-      projTag.style.textOverflow = "ellipsis";
-      projTag.style.whiteSpace = "nowrap";
-      projTag.textContent = v.projectName;
-      itemDiv.appendChild(projTag);
-    }
-
-    listContainer.appendChild(itemDiv);
-  });
+  listContainer.scrollTop = scrollPos;
 }
 
 function updateTempSelectedCount() {
