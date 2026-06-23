@@ -1755,7 +1755,13 @@ function setupQuizActiveEvents() {
       return;
     }
 
-    if (inputEl && !inputEl.disabled && document.activeElement !== inputEl) {
+    // Nếu đang focus ở một ô nhập liệu hoặc phần tử chỉnh sửa khác, không được cướp focus
+    const activeEl = document.activeElement;
+    if (activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA" || activeEl.isContentEditable)) {
+      return;
+    }
+
+    if (inputEl && !inputEl.disabled) {
       const isCharacterKey = e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey;
       if (isCharacterKey) {
         inputEl.focus({ preventScroll: true });
