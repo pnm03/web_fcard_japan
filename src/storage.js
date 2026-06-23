@@ -309,6 +309,41 @@ export function updateVocabStats(projectId, vocabId, isCorrect, timeSpentSec) {
   return vocab;
 }
 
+export function markVocabAsMaxDifficulty(projectId, vocabId) {
+  const projects = getProjects();
+  const projectIndex = projects.findIndex(p => p.id === projectId);
+  if (projectIndex === -1) return null;
+
+  const vocabIndex = projects[projectIndex].vocab.findIndex(v => v.id === vocabId);
+  if (vocabIndex === -1) return null;
+
+  const vocab = projects[projectIndex].vocab[vocabIndex];
+  vocab.wrongCount = (vocab.wrongCount || 0) + 2;
+  vocab.difficultyScore = 100;
+  vocab.lastTested = Date.now();
+
+  saveProjects(projects);
+  
+  // Đồng bộ đám mây ngầm
+  safeSync(async () => {
+    const { error } = await supabase
+      .from("vocab")
+      .upsert({
+        id: vocab.id,
+        project_id: projectId,
+        japanese: vocab.japanese,
+        romaji: vocab.romaji,
+        meaning: vocab.meaning,
+        correct_count: vocab.correctCount,
+        wrong_count: vocab.wrongCount,
+        difficulty_score: vocab.difficultyScore
+      });
+    if (error) throw error;
+  });
+
+  return vocab;
+}
+
 // Kéo dữ liệu từ đám mây Supabase về ghi đè LocalStorage
 export async function fetchAndSyncFromSupabase() {
   updateSyncState("syncing");

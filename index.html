@@ -415,9 +415,12 @@
         <!-- ================= VIEW 5: QUIZ ACTIVE ARENA ================= -->
         <section id="quiz-active-view" class="view-section">
           <div class="glass-panel quiz-container-card" id="quiz-box">
-            <!-- Progress Bar -->
-            <div class="quiz-progress-bar-wrapper">
-              <div class="quiz-progress-bar-fill" id="quiz-progress-fill"></div>
+            <!-- Progress Bar & Active settings -->
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+              <div class="quiz-progress-bar-wrapper" style="flex: 1; margin-bottom: 0;">
+                <div class="quiz-progress-bar-fill" id="quiz-progress-fill"></div>
+              </div>
+              <button class="btn btn-secondary btn-icon" id="quiz-active-settings-btn" style="width: 28px; height: 28px; min-height: 28px; padding: 0; font-size: 14px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;" title="Cài đặt nhanh">⚙️</button>
             </div>
 
             <!-- Quiz Header -->
@@ -443,8 +446,9 @@
             </div>
 
             <!-- Hint Box (shown on retry) -->
-            <div class="quiz-hint-box" id="quiz-hint-container">
-              Gợi ý: <span class="quiz-hint-text" id="quiz-hint-text">k*s*</span>
+            <div class="quiz-hint-box" id="quiz-hint-container" style="display: none; align-items: center; justify-content: center; gap: 8px; margin-top: 10px;">
+              <span><span id="quiz-hint-label-text">Gợi ý: </span><span class="quiz-hint-text" id="quiz-hint-text">k*s*</span></span>
+              <button class="btn btn-secondary btn-icon" id="quiz-reveal-correct-btn" style="width: 26px; height: 26px; min-height: 26px; padding: 0; font-size: 12px; border-radius: 4px; display: none; align-items: center; justify-content: center;" title="Xem đáp án đầy đủ">👁️</button>
             </div>
 
             <!-- Action buttons -->
@@ -675,6 +679,36 @@
               <button type="button" class="btn btn-secondary" id="close-picker-modal-btn">Hủy bỏ</button>
               <button type="button" class="btn btn-primary" id="confirm-picker-modal-btn">Đồng ý</button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal: Cài đặt nhanh trong bài kiểm tra -->
+      <div class="modal-overlay" id="quiz-active-settings-modal">
+        <div class="modal-container glass-panel" style="max-width: 380px; width: 90%;">
+          <h3 style="margin-bottom: 1.2rem; color: var(--accent); font-family: var(--font-display); font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">⚙️ Cài đặt nhanh bài kiểm tra</h3>
+          
+          <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 1.5rem;">
+            <label style="display: flex; align-items: center; gap: 10px; font-size: 13.5px; cursor: pointer; user-select: none;">
+              <input type="checkbox" id="quiz-setting-hide-timer" style="accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer;">
+              <span>Ẩn thời gian chạy (Timer)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 10px; font-size: 13.5px; cursor: pointer; user-select: none;">
+              <input type="checkbox" id="quiz-setting-mute-sounds" style="accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer;">
+              <span>Tắt âm thanh hiệu ứng (Đúng/Sai)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 10px; font-size: 13.5px; cursor: pointer; user-select: none;">
+              <input type="checkbox" id="quiz-setting-disable-tts" style="accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer;">
+              <span>Tắt giọng nói tiếng Nhật tự động</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 10px; font-size: 13.5px; cursor: pointer; user-select: none;">
+              <input type="checkbox" id="quiz-setting-disable-confetti" style="accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer;">
+              <span>Tắt tung hoa chúc mừng khi hoàn thành</span>
+            </label>
+          </div>
+          
+          <div style="display: flex; justify-content: flex-end;">
+            <button type="button" class="btn btn-primary" id="close-active-settings-modal-btn" style="min-height: 32px; padding: 4px 16px; font-size: 13px;">Đóng</button>
           </div>
         </div>
       </div>

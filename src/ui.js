@@ -11,7 +11,8 @@ import {
   searchDictionary,
   saveToDictionaryCache,
   fetchAndSyncFromSupabase,
-  setOnSyncStateChange
+  setOnSyncStateChange,
+  markVocabAsMaxDifficulty
 } from "./storage.js";
 import { QuizSession } from "./quiz.js";
 import { 
@@ -30,6 +31,12 @@ let currentQuestionTime = 0;
 let quizConfigBackup = null; // Dùng để làm lại bài kiểm tra
 let quizSelectedVocabIds = [];
 let tempSelectedVocabIds = [];
+let quizActiveSettings = {
+  hideTimer: false,
+  muteSounds: false,
+  disableTts: false,
+  disableConfetti: false
+};
 
 // Lọc bỏ Kanji, chỉ lấy phần chữ mềm Hiragana/Katakana
 export function cleanToKanaOnly(japaneseText) {
@@ -50,7 +57,12 @@ export function cleanToKanaOnly(japaneseText) {
 }
 
 // Hàm phát âm tiếng Nhật dùng Text-to-Speech của trình duyệt
-export function speakJapanese(text) {
+export function speakJapanese(text, isManual = false) {
+  const isQuizActive = document.getElementById("quiz-active-view")?.classList.contains("active");
+  if (!isManual && isQuizActive && typeof quizActiveSettings !== "undefined" && quizActiveSettings.disableTts) {
+    return;
+  }
+
   if ('speechSynthesis' in window) {
     // Hủy các giọng đọc đang dang dở để tránh xếp hàng quá lâu
     window.speechSynthesis.cancel();
@@ -80,6 +92,7 @@ export function initUI() {
   setupVocabActions();
   setupQuizConfigEvents();
   setupQuizActiveEvents();
+  setupQuizActiveSettingsEvents();
   setupReportEvents();
   setupJsonImportExport();
   setupDictionaryEvents();
@@ -1145,6 +1158,96 @@ function saveCurrentQuizConfig() {
   localStorage.setItem("nihongo_quiz_config", JSON.stringify(config));
 }
 
+function loadQuizActiveSettings() {
+  try {
+    const saved = localStorage.getItem("nihongo_quiz_active_settings");
+    if (saved) {
+      quizActiveSettings = { ...quizActiveSettings, ...JSON.parse(saved) };
+    }
+  } catch (e) {
+    console.error("Error loading quiz active settings:", e);
+  }
+}
+
+function saveQuizActiveSettings() {
+  try {
+    localStorage.setItem("nihongo_quiz_active_settings", JSON.stringify(quizActiveSettings));
+  } catch (e) {
+    console.error("Error saving quiz active settings:", e);
+  }
+}
+
+function applyQuizActiveSettingsUI() {
+  const timerEl = document.querySelector(".quiz-timer");
+  if (timerEl) {
+    timerEl.style.display = quizActiveSettings.hideTimer ? "none" : "block";
+  }
+}
+
+function syncActiveSettingsToCheckboxes() {
+  const hideTimerCb = document.getElementById("quiz-setting-hide-timer");
+  const muteSoundsCb = document.getElementById("quiz-setting-mute-sounds");
+  const disableTtsCb = document.getElementById("quiz-setting-disable-tts");
+  const disableConfettiCb = document.getElementById("quiz-setting-disable-confetti");
+
+  if (hideTimerCb) hideTimerCb.checked = !!quizActiveSettings.hideTimer;
+  if (muteSoundsCb) muteSoundsCb.checked = !!quizActiveSettings.muteSounds;
+  if (disableTtsCb) disableTtsCb.checked = !!quizActiveSettings.disableTts;
+  if (disableConfettiCb) disableConfettiCb.checked = !!quizActiveSettings.disableConfetti;
+}
+
+function setupQuizActiveSettingsEvents() {
+  loadQuizActiveSettings();
+  syncActiveSettingsToCheckboxes();
+  applyQuizActiveSettingsUI();
+
+  const modal = document.getElementById("quiz-active-settings-modal");
+  const openBtn = document.getElementById("quiz-active-settings-btn");
+  const closeBtn = document.getElementById("close-active-settings-modal-btn");
+
+  if (openBtn && modal) {
+    openBtn.onclick = (e) => {
+      e.stopPropagation();
+      syncActiveSettingsToCheckboxes();
+      modal.classList.add("active");
+    };
+  }
+
+  if (closeBtn && modal) {
+    closeBtn.onclick = () => {
+      modal.classList.remove("active");
+    };
+  }
+
+  if (modal) {
+    modal.onclick = (e) => {
+      if (e.target === modal) {
+        modal.classList.remove("active");
+      }
+    };
+  }
+
+  const hideTimerCb = document.getElementById("quiz-setting-hide-timer");
+  const muteSoundsCb = document.getElementById("quiz-setting-mute-sounds");
+  const disableTtsCb = document.getElementById("quiz-setting-disable-tts");
+  const disableConfettiCb = document.getElementById("quiz-setting-disable-confetti");
+
+  const updateSettings = () => {
+    if (hideTimerCb) quizActiveSettings.hideTimer = hideTimerCb.checked;
+    if (muteSoundsCb) quizActiveSettings.muteSounds = muteSoundsCb.checked;
+    if (disableTtsCb) quizActiveSettings.disableTts = disableTtsCb.checked;
+    if (disableConfettiCb) quizActiveSettings.disableConfetti = disableConfettiCb.checked;
+    
+    saveQuizActiveSettings();
+    applyQuizActiveSettingsUI();
+  };
+
+  if (hideTimerCb) hideTimerCb.onchange = updateSettings;
+  if (muteSoundsCb) muteSoundsCb.onchange = updateSettings;
+  if (disableTtsCb) disableTtsCb.onchange = updateSettings;
+  if (disableConfettiCb) disableConfettiCb.onchange = updateSettings;
+}
+
 function setupQuizConfigEvents() {
   const radioCards = document.querySelectorAll(".radio-card");
   radioCards.forEach(card => {
@@ -1276,6 +1379,7 @@ function startQuiz(config) {
   }
 
   switchView("quiz-active-view");
+  applyQuizActiveSettingsUI();
   activeQuizSession.startQuestionTimer();
   renderCurrentQuestion();
 }
@@ -1295,6 +1399,22 @@ function renderCurrentQuestion() {
   document.getElementById("quiz-progress-fill").style.width = `${percentage}%`;
 
   const hintContainer = document.getElementById("quiz-hint-container");
+  const hintLabel = document.getElementById("quiz-hint-label-text");
+  const hintText = document.getElementById("quiz-hint-text");
+  const revealBtn = document.getElementById("quiz-reveal-correct-btn");
+
+  if (hintLabel) hintLabel.textContent = "Gợi ý: ";
+  if (hintText) {
+    hintText.textContent = "";
+    hintText.style.fontWeight = "";
+    hintText.style.fontFamily = "";
+    hintText.style.color = "";
+  }
+  if (revealBtn) revealBtn.style.display = "none";
+
+  hintContainer.style.background = "var(--warning-soft)";
+  hintContainer.style.borderColor = "var(--warning)";
+  hintContainer.style.color = "var(--warning)";
   hintContainer.style.display = "none";
   
   const inputEl = document.getElementById("quiz-answer-input");
@@ -1334,7 +1454,7 @@ function renderCurrentQuestion() {
 
   // Gắn sự kiện cho nút loa trong Quiz
   speakBtn.onclick = () => {
-    speakJapanese(cleanToKanaOnly(question.vocab.japanese));
+    speakJapanese(cleanToKanaOnly(question.vocab.japanese), true);
   };
 
   document.getElementById("quiz-submit-btn").style.display = "inline-flex";
@@ -1366,6 +1486,7 @@ function handleQuizAnswerSubmit() {
   const speakBtn = document.getElementById("quiz-speak-btn");
 
   if (result.status === "correct") {
+    playFeedbackSound(true);
     inputEl.classList.add("input-correct");
     inputEl.classList.add("pulse-success");
     inputEl.disabled = true;
@@ -1375,6 +1496,9 @@ function handleQuizAnswerSubmit() {
     // Phát âm từ tiếng Nhật khi trả lời đúng
     speakJapanese(cleanToKanaOnly(question.vocab.japanese));
     speakBtn.style.display = "inline-flex"; // luôn hiện loa sau khi trả lời xong
+
+    const revealBtn = document.getElementById("quiz-reveal-correct-btn");
+    if (revealBtn) revealBtn.style.display = "none";
 
     document.getElementById("quiz-submit-btn").style.display = "none";
     
@@ -1390,21 +1514,87 @@ function handleQuizAnswerSubmit() {
     }, 1300);
 
   } else if (result.status === "retry_allowed") {
+    playFeedbackSound(false);
     inputEl.classList.add("input-wrong");
     inputEl.classList.add("shake");
     
     setTimeout(() => inputEl.classList.remove("shake"), 500);
 
     const hintContainer = document.getElementById("quiz-hint-container");
+    const hintLabel = document.getElementById("quiz-hint-label-text");
     const hintText = document.getElementById("quiz-hint-text");
-    hintText.textContent = result.hint;
-    hintContainer.style.display = "block";
+    const revealBtn = document.getElementById("quiz-reveal-correct-btn");
+
+    if (hintLabel) hintLabel.textContent = "Gợi ý: ";
+    if (hintText) {
+      hintText.textContent = result.hint;
+      hintText.style.fontWeight = "";
+      hintText.style.fontFamily = "";
+      hintText.style.color = "";
+    }
+    
+    if (revealBtn) {
+      revealBtn.style.display = "inline-flex";
+      revealBtn.onclick = () => {
+        let correctAnswer = "";
+        if (question.mode === "jp_to_meaning") {
+          correctAnswer = question.vocab.meaning;
+        } else {
+          correctAnswer = question.vocab.romaji;
+        }
+
+        // Điền đáp án, khóa input
+        inputEl.value = correctAnswer;
+        inputEl.classList.remove("input-correct");
+        inputEl.classList.add("input-wrong");
+        inputEl.disabled = true;
+
+        // Đánh dấu từ này là độ khó tối đa (100) và tăng wrongCount thêm 2
+        markVocabAsMaxDifficulty(question.vocab.projectId, question.vocab.id);
+
+        // Thiết lập trạng thái sai trong QuizSession
+        question.answerState = "wrong";
+        question.attempts = 2;
+
+        if (quizTimerInterval) clearInterval(quizTimerInterval);
+
+        // Tự động phát âm đáp án tiếng Nhật (TTS) và hiện loa
+        speakJapanese(cleanToKanaOnly(question.vocab.japanese));
+        speakBtn.style.display = "inline-flex";
+
+        // Hiển thị đáp án đầy đủ trên dòng gợi ý
+        if (hintLabel) hintLabel.textContent = "👁️ Đã xem đáp án: ";
+        if (hintText) {
+          hintText.textContent = correctAnswer;
+          hintText.style.fontWeight = "800";
+          hintText.style.fontFamily = "var(--font-mono)";
+          hintText.style.color = "var(--accent)";
+        }
+        revealBtn.style.display = "none";
+        hintContainer.style.background = "var(--error-soft)";
+        hintContainer.style.borderColor = "var(--error)";
+        hintContainer.style.color = "var(--error)";
+
+        // Hiện nút Tiếp theo
+        document.getElementById("quiz-submit-btn").style.display = "none";
+        const nextBtn = document.getElementById("quiz-next-btn");
+        nextBtn.style.display = "inline-flex";
+        nextBtn.textContent = "Xem đáp án & Tiếp tục (Enter)";
+        nextBtn.focus();
+      };
+    }
+
+    hintContainer.style.background = "var(--warning-soft)";
+    hintContainer.style.borderColor = "var(--warning)";
+    hintContainer.style.color = "var(--warning)";
+    hintContainer.style.display = "flex";
 
     inputEl.value = "";
     inputEl.focus();
     inputEl.placeholder = "Gợi ý đã hiển thị, hãy gõ lại...";
 
   } else if (result.status === "wrong") {
+    playFeedbackSound(false);
     inputEl.classList.add("input-wrong");
     inputEl.classList.add("shake");
     inputEl.disabled = true;
@@ -1416,11 +1606,23 @@ function handleQuizAnswerSubmit() {
     speakBtn.style.display = "inline-flex";
 
     const hintContainer = document.getElementById("quiz-hint-container");
-    hintContainer.innerHTML = `❌ Sai rồi! Đáp án đúng: <span style="font-weight: 800; font-family:var(--font-mono); color:var(--accent);">${result.correctAnswer}</span>`;
-    hintContainer.style.display = "block";
+    const hintLabel = document.getElementById("quiz-hint-label-text");
+    const hintText = document.getElementById("quiz-hint-text");
+    const revealBtn = document.getElementById("quiz-reveal-correct-btn");
+
+    if (hintLabel) hintLabel.textContent = "❌ Sai rồi! Đáp án đúng: ";
+    if (hintText) {
+      hintText.textContent = result.correctAnswer;
+      hintText.style.fontWeight = "800";
+      hintText.style.fontFamily = "var(--font-mono)";
+      hintText.style.color = "var(--accent)";
+    }
+    if (revealBtn) revealBtn.style.display = "none";
+
     hintContainer.style.background = "var(--error-soft)";
     hintContainer.style.borderColor = "var(--error)";
     hintContainer.style.color = "var(--error)";
+    hintContainer.style.display = "flex";
 
     document.getElementById("quiz-submit-btn").style.display = "none";
     
@@ -1432,12 +1634,6 @@ function handleQuizAnswerSubmit() {
 }
 
 function goToNextQuestion() {
-  const hintContainer = document.getElementById("quiz-hint-container");
-  hintContainer.innerHTML = `Gợi ý: <span class="quiz-hint-text" id="quiz-hint-text">k*s*</span>`;
-  hintContainer.style.background = "var(--warning-soft)";
-  hintContainer.style.borderColor = "var(--warning)";
-  hintContainer.style.color = "var(--warning)";
-
   const hasNext = activeQuizSession.nextQuestion();
   if (hasNext) {
     renderCurrentQuestion();
@@ -1454,6 +1650,10 @@ function finishQuiz() {
   const report = activeQuizSession.getReport();
   renderQuizReport(report);
   switchView("quiz-report-view");
+
+  if (!quizActiveSettings.disableConfetti) {
+    triggerConfetti();
+  }
 }
 
 function setupQuizActiveEvents() {
@@ -2467,8 +2667,13 @@ function saveKanaSettings(settings) {
 
 // Hàm phát âm thanh phản hồi bằng Web Audio API
 function playFeedbackSound(isCorrect) {
-  const settings = getKanaSettings();
-  if (!settings.soundEnabled) return;
+  const isQuizActive = document.getElementById("quiz-active-view")?.classList.contains("active");
+  if (isQuizActive) {
+    if (quizActiveSettings.muteSounds) return;
+  } else {
+    const settings = getKanaSettings();
+    if (!settings.soundEnabled) return;
+  }
 
   try {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
