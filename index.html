@@ -92,6 +92,7 @@
             </div>
             <div style="display: flex; gap: 0.5rem;">
               <button class="btn btn-secondary" id="import-json-btn">Nhập JSON</button>
+              <button class="btn btn-secondary" id="check-meaning-btn" style="color: var(--accent); border-color: var(--accent);">Kiểm tra nghĩa</button>
               <button class="btn btn-primary" id="open-create-project-modal-btn">Tạo dự án mới</button>
             </div>
           </div>
@@ -554,6 +555,41 @@
       </main>
 
       <!-- ================= MODALS SECTION ================= -->
+      
+      <!-- Modal: Kiểm tra nghĩa từ vựng -->
+      <div class="modal-overlay" id="quiz-check-meaning-modal">
+        <div class="modal-container glass-panel" style="max-width: 650px; width: 90%;">
+          <h2 id="check-meaning-modal-title" style="margin-bottom: 1rem; color: var(--accent); font-family: var(--font-display);">🔍 Kiểm Tra Nghĩa Từ Vựng</h2>
+          
+          <!-- Trạng thái 1: Đang quét -->
+          <div id="check-meaning-scanning-state">
+            <p style="margin-bottom: 1rem; font-size: 0.95rem;">Hệ thống đang đối chiếu nghĩa của các từ vựng với từ điển trực tuyến...</p>
+            <div style="background: var(--line); border-radius: 8px; height: 16px; overflow: hidden; margin-bottom: 0.5rem; position: relative;">
+              <div id="check-meaning-progress-fill" style="background: var(--accent); height: 100%; width: 0%; transition: width 0.2s ease;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--ink-soft); margin-bottom: 1.5rem;">
+              <span id="check-meaning-progress-text">Đang quét: 0 / 0 từ</span>
+              <span id="check-meaning-current-word">Từ: ...</span>
+            </div>
+            <div style="display: flex; justify-content: flex-end;">
+              <button type="button" class="btn btn-secondary" id="check-meaning-cancel-btn">Hủy bỏ quét</button>
+            </div>
+          </div>
+          
+          <!-- Trạng thái 2: Kết quả quét -->
+          <div id="check-meaning-result-state" style="display: none;">
+            <div id="check-meaning-result-summary" style="margin-bottom: 1rem; font-weight: 600;"></div>
+            
+            <div id="check-meaning-wrong-list-container" style="max-height: 320px; overflow-y: auto; border: 1px solid var(--line); border-radius: var(--radius); padding: 8px; margin-bottom: 1.5rem; background: var(--bg);">
+              <!-- Danh sách từ sai nghĩa render động ở đây -->
+            </div>
+            
+            <div style="display: flex; justify-content: flex-end;">
+              <button type="button" class="btn btn-primary" id="check-meaning-close-btn">Đóng</button>
+            </div>
+          </div>
+        </div>
+      </div>
       
       <!-- Modal: Tạo/Sửa Dự Án -->
       <div class="modal-overlay" id="project-modal">

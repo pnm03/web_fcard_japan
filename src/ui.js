@@ -34,6 +34,7 @@ let tempSelectedVocabIds = [];
 let isQuizTransitioning = false;
 let answerJustSubmitted = false;
 let quizMultiplier = "custom";
+let isScanningMeanings = false;
 let quizActiveSettings = {
   hideTimer: false,
   muteSounds: false,
@@ -2087,6 +2088,237 @@ function setupJsonImportExport() {
       downloadAnchor.click();
       downloadAnchor.remove();
     };
+  }
+
+  // Đăng ký sự kiện nút Kiểm tra nghĩa
+  const checkMeaningBtn = document.getElementById("check-meaning-btn");
+  if (checkMeaningBtn) {
+    checkMeaningBtn.onclick = () => {
+      checkVocabMeanings();
+    };
+  }
+
+  // Nút Hủy bỏ quét
+  const cancelScanBtn = document.getElementById("check-meaning-cancel-btn");
+  if (cancelScanBtn) {
+    cancelScanBtn.onclick = () => {
+      isScanningMeanings = false;
+      const progressText = document.getElementById("check-meaning-progress-text");
+      if (progressText) progressText.textContent = "Đang hủy quét...";
+    };
+  }
+
+  // Nút Đóng kết quả
+  const closeResultBtn = document.getElementById("check-meaning-close-btn");
+  if (closeResultBtn) {
+    closeResultBtn.onclick = () => {
+      document.getElementById("quiz-check-meaning-modal").classList.remove("active");
+    };
+  }
+}
+
+function isMeaningSimilar(meaning1, meaning2) {
+  if (!meaning1 || !meaning2) return false;
+  
+  const cleanStr = (str) => {
+    return str
+      .toLowerCase()
+      .trim()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/g, "d")
+      .replace(/\s+/g, " ");
+  };
+
+  const norm1 = cleanStr(meaning1);
+  const norm2 = cleanStr(meaning2);
+  
+  if (norm1 === norm2) return true;
+
+  const stopwords = [
+    "cai", "con", "qua", "trai", "chiec", "doa", "ngoi", "buc", "tam",
+    "cay", "la", "soi", "hat", "quyen", "cuon", "bai", "su", "cuoc",
+    "viec", "niem", "noi", "ve", "nguoi", "dua", "mau", "sac", "mot",
+    "nhung", "cac", "la", "bi", "duoc", "va", "hoac", "cua", "trong", "ngoai"
+  ];
+
+  const getKeywords = (str) => {
+    return str.split(/[\s,./()\-+?]+/g)
+      .filter(Boolean)
+      .filter(w => !stopwords.includes(w));
+  };
+
+  const keys1 = getKeywords(norm1);
+  const keys2 = getKeywords(norm2);
+
+  if (keys1.length === 0 || keys2.length === 0) {
+    return norm1.includes(norm2) || norm2.includes(norm1);
+  }
+
+  const hasIntersection = keys1.some(k => keys2.includes(k));
+  if (hasIntersection) return true;
+
+  const str1 = keys1.join(" ");
+  const str2 = keys2.join(" ");
+  if (str1.includes(str2) || str2.includes(str1)) return true;
+
+  return false;
+}
+
+async function checkVocabMeanings() {
+  const projects = getProjects();
+  const allVocab = [];
+  
+  projects.forEach(p => {
+    if (p.vocab) {
+      p.vocab.forEach(v => {
+        allVocab.push({
+          ...v,
+          projectId: p.id,
+          projectName: p.name
+        });
+      });
+    }
+  });
+
+  const modal = document.getElementById("quiz-check-meaning-modal");
+  const scanState = document.getElementById("check-meaning-scanning-state");
+  const resultState = document.getElementById("check-meaning-result-state");
+  
+  if (!modal || !scanState || !resultState) return;
+
+  if (allVocab.length === 0) {
+    alert("Không có từ vựng nào trong tất cả dự án để kiểm tra!");
+    return;
+  }
+
+  // Reset UI
+  modal.classList.add("active");
+  scanState.style.display = "block";
+  resultState.style.display = "none";
+  
+  const progressFill = document.getElementById("check-meaning-progress-fill");
+  const progressText = document.getElementById("check-meaning-progress-text");
+  const currentWordText = document.getElementById("check-meaning-current-word");
+  
+  progressFill.style.width = "0%";
+  progressText.textContent = `Đang quét: 0 / ${allVocab.length} từ`;
+  currentWordText.textContent = "Từ: ...";
+
+  isScanningMeanings = true;
+  const wrongMeanings = [];
+
+  for (let i = 0; i < allVocab.length; i++) {
+    if (!isScanningMeanings) {
+      break;
+    }
+
+    const v = allVocab[i];
+    currentWordText.textContent = `Từ: "${cleanToKanaOnly(v.japanese)}"`;
+    
+    try {
+      const translated = await translateText(cleanToKanaOnly(v.japanese), "ja", "vi");
+      const isSimilar = isMeaningSimilar(v.meaning, translated);
+      
+      if (!isSimilar) {
+        wrongMeanings.push({
+          vocab: v,
+          translated: translated
+        });
+      }
+    } catch (e) {
+      console.error("Lỗi khi kiểm tra từ:", v.japanese, e);
+    }
+
+    const percent = Math.round(((i + 1) / allVocab.length) * 100);
+    progressFill.style.width = `${percent}%`;
+    progressText.textContent = `Đang quét: ${i + 1} / ${allVocab.length} từ`;
+
+    await new Promise(r => setTimeout(r, 150));
+  }
+
+  isScanningMeanings = false;
+  scanState.style.display = "none";
+  resultState.style.display = "block";
+
+  const summaryEl = document.getElementById("check-meaning-result-summary");
+  const listContainer = document.getElementById("check-meaning-wrong-list-container");
+
+  if (wrongMeanings.length === 0) {
+    summaryEl.innerHTML = `<span style="color: var(--good);">✔️ Quét hoàn tất! Tất cả ${allVocab.length} từ vựng đều đúng nghĩa.</span>`;
+    listContainer.innerHTML = `<div style="text-align: center; padding: 2rem; color: var(--ink-faint); font-size: 14px;">Không phát hiện từ nào sai nghĩa! 🎉</div>`;
+  } else {
+    summaryEl.innerHTML = `<span style="color: var(--error);">⚠️ Phát hiện ${wrongMeanings.length} / ${allVocab.length} từ nghi ngờ sai nghĩa:</span>`;
+    
+    let listHtml = `
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        <thead>
+          <tr style="border-bottom: 1px solid var(--line); color: var(--ink-faint); text-align: left;">
+            <th style="padding: 6px 4px;">Từ (Kana)</th>
+            <th style="padding: 6px 4px;">Dự án</th>
+            <th style="padding: 6px 4px;">Nghĩa hiện tại</th>
+            <th style="padding: 6px 4px;">Nghĩa online</th>
+            <th style="padding: 6px 4px; text-align: right;">Sửa</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    wrongMeanings.forEach((item) => {
+      listHtml += `
+        <tr style="border-bottom: 1px solid var(--line-light);" id="check-meaning-row-${item.vocab.id}">
+          <td style="padding: 8px 4px; font-weight: bold; color: var(--accent);">${cleanToKanaOnly(item.vocab.japanese)}</td>
+          <td style="padding: 8px 4px; color: var(--ink-faint); max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.vocab.projectName}</td>
+          <td style="padding: 8px 4px;" id="check-meaning-current-text-${item.vocab.id}">${item.vocab.meaning}</td>
+          <td style="padding: 8px 4px; color: var(--good); font-style: italic;">${item.translated}</td>
+          <td style="padding: 8px 4px; text-align: right;">
+            <button class="btn btn-secondary edit-scanned-vocab-btn" 
+                    data-proj-id="${item.vocab.projectId}" 
+                    data-vocab-id="${item.vocab.id}" 
+                    data-vocab-jp="${cleanToKanaOnly(item.vocab.japanese)}" 
+                    style="padding: 2px 6px; font-size: 11px; min-height: 20px;">
+              ✏️ Sửa
+            </button>
+          </td>
+        </tr>
+      `;
+    });
+
+    listHtml += `
+        </tbody>
+      </table>
+    `;
+    listContainer.innerHTML = listHtml;
+
+    document.querySelectorAll(".edit-scanned-vocab-btn").forEach(btn => {
+      btn.onclick = () => {
+        const projId = btn.getAttribute("data-proj-id");
+        const vocabId = btn.getAttribute("data-vocab-id");
+        const vocabJp = btn.getAttribute("data-vocab-jp");
+        const currentTextEl = document.getElementById(`check-meaning-current-text-${vocabId}`);
+        const oldVal = currentTextEl ? currentTextEl.textContent : "";
+        
+        const newVal = prompt(`Nhập nghĩa mới cho từ "${vocabJp}":`, oldVal);
+        if (newVal !== null) {
+          const trimmed = newVal.trim();
+          if (trimmed) {
+            updateVocabInProject(projId, vocabId, { meaning: trimmed });
+            
+            if (currentTextEl) {
+              currentTextEl.textContent = trimmed;
+              currentTextEl.style.fontWeight = "bold";
+              currentTextEl.style.color = "var(--good)";
+            }
+            
+            btn.style.display = "none";
+            
+            if (typeof renderProjects === "function") renderProjects();
+            if (typeof renderProjectDetail === "function" && currentProjectId === projId) renderProjectDetail();
+            if (typeof renderWeakVocabView === "function") renderWeakVocabView();
+          }
+        }
+      };
+    });
   }
 }
 
