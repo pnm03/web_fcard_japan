@@ -3515,8 +3515,6 @@ function renderKanaSetup() {
   grid.style.display = "flex";
   grid.style.flexDirection = "column";
   grid.style.gap = "12px";
-  grid.style.maxHeight = "350px";
-  grid.style.overflowY = "auto";
   grid.style.padding = "12px";
 
   // Đọc danh sách đã lưu từ localStorage
