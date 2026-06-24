@@ -3517,7 +3517,9 @@ function setupKanaEvents() {
       const confettiEnabled = confettiCb.checked;
       const confettiThreshold = parseInt(document.getElementById("kana-settings-confetti-threshold").value) || 0;
       
+      const currentSettings = getKanaSettings();
       saveKanaSettings({
+        ...currentSettings,
         delay,
         pauseOnWrong,
         soundEnabled,
@@ -3709,6 +3711,10 @@ function switchKanaSubTab(subTabId) {
 // --- SUB-VIEW 1: TRẮC NGHIỆM ---
 function setupKanaQuizEvents() {
   const quizModeSelect = document.getElementById("kana-quiz-mode-select");
+  const settings = getKanaSettings();
+  if (quizModeSelect) {
+    quizModeSelect.value = settings.practiceMode || "quiz_kana_to_romaji";
+  }
 
   const handleModeChange = (val) => {
     // Lưu cài đặt mới
@@ -4084,6 +4090,9 @@ function renderKanaQuizQuestion() {
         if (e.key === "Enter") {
           const userVal = typedInput.value.trim().toLowerCase();
           if (!userVal) return;
+
+          e.preventDefault();
+          e.stopPropagation();
 
           typedInput.disabled = true;
           const isCorrect = userVal === currentItem.romaji.toLowerCase();
