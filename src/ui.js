@@ -3379,6 +3379,7 @@ function setupKanaEvents() {
       document.querySelectorAll(".kana-row-select-all").forEach(cb => cb.checked = true);
       const kanaType = document.querySelector('input[name="kana-type"]:checked').value;
       saveKanaSelection(kanaType);
+      updateKanaSetupCountDefault();
     };
   }
 
@@ -3389,8 +3390,21 @@ function setupKanaEvents() {
       document.querySelectorAll(".kana-row-select-all").forEach(cb => cb.checked = false);
       const kanaType = document.querySelector('input[name="kana-type"]:checked').value;
       saveKanaSelection(kanaType);
+      updateKanaSetupCountDefault();
     };
   }
+
+  // Lắng nghe các nút nhân nhanh số lượng câu hỏi
+  document.querySelectorAll(".kana-mul-btn").forEach(btn => {
+    btn.onclick = () => {
+      const mul = parseInt(btn.getAttribute("data-mul"), 10) || 1;
+      const checkedBoxes = document.querySelectorAll(".kana-checkbox:checked");
+      const countInput = document.getElementById("kana-setup-count");
+      if (countInput) {
+        countInput.value = checkedBoxes.length * mul;
+      }
+    };
+  });
 
   // Bấm bắt đầu luyện tập
   if (startBtn) {
@@ -3608,6 +3622,7 @@ function renderKanaSetup() {
         cb.checked = isChecked;
       });
       saveKanaSelection(kanaType);
+      updateKanaSetupCountDefault();
     });
 
     // Cập nhật trạng thái checkbox Chọn cả hàng dựa trên các checkbox con
@@ -3617,9 +3632,21 @@ function renderKanaSetup() {
         const checkedCbs = rowItemsContainer.querySelectorAll(".kana-checkbox:checked").length;
         rowSelectAllCb.checked = totalCbs === checkedCbs;
         saveKanaSelection(kanaType);
+        updateKanaSetupCountDefault();
       });
     });
   });
+
+  // Cập nhật số lượng mặc định sau khi render toàn bộ lưới
+  updateKanaSetupCountDefault();
+}
+
+function updateKanaSetupCountDefault() {
+  const checkedBoxes = document.querySelectorAll(".kana-checkbox:checked");
+  const countInput = document.getElementById("kana-setup-count");
+  if (countInput) {
+    countInput.value = checkedBoxes.length;
+  }
 }
 
 // Chuyển đổi các tab con trong Luyện tập
@@ -3685,8 +3712,47 @@ function setupKanaQuizEvents() {
 }
 
 function startKanaQuiz() {
-  // Clone danh sách được chọn và trộn ngẫu nhiên để làm câu hỏi
-  activeKanaQuizList = [...selectedKanaList].sort(() => Math.random() - 0.5);
+  if (selectedKanaList.length === 0) {
+    return;
+  }
+
+  // Đọc số lượng câu hỏi từ ô nhập
+  const countInput = document.getElementById("kana-setup-count");
+  let practiceCount = selectedKanaList.length;
+  if (countInput) {
+    const val = parseInt(countInput.value, 10);
+    if (!isNaN(val) && val > 0) {
+      practiceCount = val;
+    }
+  }
+
+  // Clone danh sách được chọn
+  let list = [...selectedKanaList];
+
+  if (practiceCount <= list.length) {
+    // Trộn ngẫu nhiên và cắt lấy đúng số lượng yêu cầu
+    list.sort(() => Math.random() - 0.5);
+    activeKanaQuizList = list.slice(0, practiceCount);
+  } else {
+    // Lặp lại ngẫu nhiên các kí tự được chọn
+    let combinedList = [];
+    const fullCycles = Math.floor(practiceCount / list.length);
+    for (let i = 0; i < fullCycles; i++) {
+      combinedList = combinedList.concat(list.map(item => ({ ...item })));
+    }
+    
+    const remainder = practiceCount % list.length;
+    if (remainder > 0) {
+      const shuffledList = [...list].sort(() => Math.random() - 0.5);
+      for (let i = 0; i < remainder; i++) {
+        combinedList.push({ ...shuffledList[i] });
+      }
+    }
+    
+    // Trộn ngẫu nhiên toàn bộ danh sách kết quả
+    activeKanaQuizList = combinedList.sort(() => Math.random() - 0.5);
+  }
+
   currentKanaQuizIndex = 0;
   correctKanaQuizCount = 0;
 
