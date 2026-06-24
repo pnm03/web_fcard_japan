@@ -4019,8 +4019,9 @@ function renderKanaQuizQuestion() {
       const optVal = isKanaToRomaji ? opt.romaji : opt.kana;
       btn.dataset.value = optVal;
 
+      const shortcutLabels = ["Q", "W", "A", "S"];
       btn.innerHTML = `
-        <span class="quiz-btn-number" style="position: absolute; top: 4px; left: 6px; font-size: 0.7rem; color: var(--ink-soft); font-family: var(--font-sans); font-weight: normal; line-height: 1; opacity: 0.6;">${idx + 1}</span>
+        <span class="quiz-btn-number" style="position: absolute; top: 4px; left: 6px; font-size: 0.7rem; color: var(--ink-soft); font-family: var(--font-sans); font-weight: normal; line-height: 1; opacity: 0.6;">${shortcutLabels[idx]}</span>
         <span class="quiz-btn-text">${optVal}</span>
       `;
 
@@ -4152,11 +4153,17 @@ function setupKanaCardEvents() {
       const mode = document.getElementById("kana-quiz-mode-select")?.value || "quiz_kana_to_romaji";
       const isMultipleChoice = mode === "quiz_kana_to_romaji" || mode === "quiz_romaji_to_kana";
       
-      if (isMultipleChoice && ["1", "2", "3", "4"].includes(e.key)) {
+      const keyMap = {
+        "q": 0, "Q": 0,
+        "w": 1, "W": 1,
+        "a": 2, "A": 2,
+        "s": 3, "S": 3
+      };
+      if (isMultipleChoice && e.key in keyMap) {
         const optionsContainer = document.getElementById("kana-quiz-options-container");
         if (optionsContainer && optionsContainer.style.display !== "none") {
           const buttons = optionsContainer.querySelectorAll("button");
-          const btnIndex = parseInt(e.key, 10) - 1;
+          const btnIndex = keyMap[e.key];
           if (buttons[btnIndex] && !buttons[btnIndex].disabled) {
             e.preventDefault();
             buttons[btnIndex].click();
