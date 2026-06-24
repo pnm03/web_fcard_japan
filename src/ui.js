@@ -4008,13 +4008,21 @@ function renderKanaQuizQuestion() {
     
     const options = [currentItem, ...distractors].sort(() => Math.random() - 0.5);
 
-    options.forEach(opt => {
+    options.forEach((opt, idx) => {
       const btn = document.createElement("button");
       btn.className = "btn btn-secondary";
-      btn.style.padding = "14px";
+      btn.style.padding = "18px 14px 10px 14px";
       btn.style.fontSize = isKanaToRomaji ? "1.2rem" : "1.5rem";
       btn.style.fontFamily = isKanaToRomaji ? "var(--font-mono)" : "var(--font-jp)";
-      btn.textContent = isKanaToRomaji ? opt.romaji : opt.kana;
+      btn.style.position = "relative";
+
+      const optVal = isKanaToRomaji ? opt.romaji : opt.kana;
+      btn.dataset.value = optVal;
+
+      btn.innerHTML = `
+        <span class="quiz-btn-number" style="position: absolute; top: 4px; left: 6px; font-size: 0.7rem; color: var(--ink-soft); font-family: var(--font-sans); font-weight: normal; line-height: 1; opacity: 0.6;">${idx + 1}</span>
+        <span class="quiz-btn-text">${optVal}</span>
+      `;
 
       btn.onclick = () => {
         // Khóa tất cả các nút
@@ -4034,7 +4042,7 @@ function renderKanaQuizQuestion() {
           
           // Tìm và highlight đáp án đúng
           optionsContainer.querySelectorAll("button").forEach(b => {
-            const val = b.textContent;
+            const val = b.dataset.value;
             if (isKanaToRomaji && val === currentItem.romaji) {
               b.style.background = "var(--good-soft)";
               b.style.color = "var(--good)";
