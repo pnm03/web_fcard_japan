@@ -1355,5 +1355,20 @@ select.form-control {
   to { transform: rotate(360deg); }
 }
 
+/* Responsive cho Setup Kana */
+@media (max-width: 768px) {
+  .kana-setup-layout {
+    flex-direction: column !important;
+  }
+  .kana-setup-left {
+    min-width: 100% !important;
+  }
+  .kana-setup-right {
+    min-width: 100% !important;
+    margin-top: 12px;
+  }
+}
+
+
 
 

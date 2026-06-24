@@ -1162,6 +1162,7 @@ function setupQuizConfig(preselectedProjectId = null) {
   let restoredOrder = "random";
   let restoredAllowRetry = true;
   let restoredMultiplier = "custom";
+  let restoredAnswerSource = "all";
 
   const savedConfigStr = localStorage.getItem("nihongo_quiz_config");
   if (savedConfigStr) {
@@ -1191,6 +1192,9 @@ function setupQuizConfig(preselectedProjectId = null) {
       }
       if (savedConfig.multiplier !== undefined) {
         restoredMultiplier = savedConfig.multiplier;
+      }
+      if (savedConfig.answerSource) {
+        restoredAnswerSource = savedConfig.answerSource;
       }
     } catch (e) {
       console.error("Lỗi khi khôi phục cấu hình kiểm tra", e);
@@ -1236,6 +1240,10 @@ function setupQuizConfig(preselectedProjectId = null) {
   }
 
   document.getElementById("quiz-setup-retry").checked = restoredAllowRetry;
+  const answerSourceSelect = document.getElementById("quiz-setup-answer-source");
+  if (answerSourceSelect) {
+    answerSourceSelect.value = restoredAnswerSource;
+  }
 }
 
 function saveCurrentQuizConfig() {
@@ -1245,6 +1253,7 @@ function saveCurrentQuizConfig() {
   const selectedOrder = selectedOrderEl ? selectedOrderEl.value : "random";
   const count = parseInt(document.getElementById("quiz-setup-count").value) || 10;
   const allowRetry = document.getElementById("quiz-setup-retry").checked;
+  const answerSource = document.getElementById("quiz-setup-answer-source")?.value || "all";
 
   const config = {
     vocabIds: quizSelectedVocabIds,
@@ -1252,7 +1261,8 @@ function saveCurrentQuizConfig() {
     quizMode: selectedMode,
     order: selectedOrder,
     allowRetry: allowRetry,
-    multiplier: quizMultiplier
+    multiplier: quizMultiplier,
+    answerSource: answerSource
   };
 
   localStorage.setItem("nihongo_quiz_config", JSON.stringify(config));
@@ -1485,6 +1495,13 @@ function setupQuizConfigEvents() {
     });
   });
 
+  const vocabAnswerSourceSelect = document.getElementById("quiz-setup-answer-source");
+  if (vocabAnswerSourceSelect) {
+    vocabAnswerSourceSelect.addEventListener("change", () => {
+      saveCurrentQuizConfig();
+    });
+  }
+
   // Nút bắt đầu kiểm tra
   const startQuizBtn = document.getElementById("start-quiz-session-btn");
   if (startQuizBtn) {
@@ -1493,6 +1510,7 @@ function setupQuizConfigEvents() {
       const selectedOrder = document.querySelector('input[name="quiz-order"]:checked').value;
       const count = parseInt(document.getElementById("quiz-setup-count").value) || 10;
       const allowRetry = document.getElementById("quiz-setup-retry").checked;
+      const answerSource = document.getElementById("quiz-setup-answer-source")?.value || "all";
 
       if (quizSelectedVocabIds.length === 0) {
         alert("Vui lòng chọn ít nhất 1 từ vựng để kiểm tra!");
@@ -1509,7 +1527,8 @@ function setupQuizConfigEvents() {
         questionCount: count,
         quizMode: selectedMode,
         order: selectedOrder,
-        allowRetry: allowRetry
+        allowRetry: allowRetry,
+        answerSource: answerSource
       };
 
       // Lưu cấu hình vào localStorage
@@ -3095,7 +3114,9 @@ function getKanaSettings() {
     pauseOnWrong: true,
     soundEnabled: true,
     confettiEnabled: true,
-    confettiThreshold: 80
+    confettiThreshold: 80,
+    practiceMode: "quiz_kana_to_romaji",
+    answerSource: "all"
   };
   
   try {
@@ -3283,6 +3304,26 @@ function setupKanaEvents() {
   const selectAllBtn = document.getElementById("kana-select-all");
   const selectNoneBtn = document.getElementById("kana-select-none");
   const startBtn = document.getElementById("start-kana-practice-btn");
+
+  const settings = getKanaSettings();
+  const practiceModeSelect = document.getElementById("kana-practice-mode");
+  if (practiceModeSelect) {
+    practiceModeSelect.value = settings.practiceMode || "quiz_kana_to_romaji";
+  }
+  const quizModeSelect = document.getElementById("kana-quiz-mode-select");
+  if (quizModeSelect) {
+    quizModeSelect.value = settings.practiceMode || "quiz_kana_to_romaji";
+  }
+
+  const answerSourceSelect = document.getElementById("kana-answer-source");
+  if (answerSourceSelect) {
+    answerSourceSelect.value = settings.answerSource || "all";
+    answerSourceSelect.onchange = (e) => {
+      const currentSettings = getKanaSettings();
+      currentSettings.answerSource = e.target.value;
+      saveKanaSettings(currentSettings);
+    };
+  }
   
   // Đăng ký thay đổi bảng chữ cái (Hiragana / Katakana)
   document.getElementById("kana-type-hira").onclick = () => renderKanaSetup();
@@ -3566,9 +3607,33 @@ function switchKanaSubTab(subTabId) {
 
 // --- SUB-VIEW 1: TRẮC NGHIỆM ---
 function setupKanaQuizEvents() {
-  document.getElementById("kana-quiz-mode-select").onchange = () => {
-    startKanaQuiz();
+  const quizModeSelect = document.getElementById("kana-quiz-mode-select");
+  const practiceModeSelect = document.getElementById("kana-practice-mode");
+
+  const handleModeChange = (val) => {
+    // Lưu cài đặt mới
+    const settings = getKanaSettings();
+    settings.practiceMode = val;
+    saveKanaSettings(settings);
+
+    // Đồng bộ UI
+    if (quizModeSelect) quizModeSelect.value = val;
+    if (practiceModeSelect) practiceModeSelect.value = val;
+
+    // Reset quiz nếu đang chạy và ở tab trắc nghiệm
+    const practiceView = document.getElementById("kana-practice-view");
+    const subTabQuiz = document.getElementById("sub-tab-quiz");
+    if (practiceView && practiceView.classList.contains("active") && subTabQuiz && subTabQuiz.classList.contains("active-sub-tab")) {
+      startKanaQuiz();
+    }
   };
+
+  if (quizModeSelect) {
+    quizModeSelect.onchange = (e) => handleModeChange(e.target.value);
+  }
+  if (practiceModeSelect) {
+    practiceModeSelect.onchange = (e) => handleModeChange(e.target.value);
+  }
 }
 
 function startKanaQuiz() {
@@ -3581,22 +3646,31 @@ function startKanaQuiz() {
 }
 
 function renderKanaQuizQuestion() {
+  const optionsContainer = document.getElementById("kana-quiz-options-container");
+  const inputContainer = document.getElementById("kana-quiz-input-container");
+
   if (currentKanaQuizIndex >= activeKanaQuizList.length) {
     // Kết thúc lượt trắc nghiệm, hiển thị thông báo điểm
-    const grid = document.getElementById("kana-quiz-options-container");
-    grid.innerHTML = "";
+    if (inputContainer) inputContainer.style.display = "none";
+    if (optionsContainer) {
+      optionsContainer.style.display = "block";
+      optionsContainer.innerHTML = "";
+    }
+    
     document.getElementById("kana-quiz-question-word").textContent = "Xong!";
     document.getElementById("kana-quiz-question-word").className = "quiz-question-word meaning-word";
     document.getElementById("kana-quiz-counter").textContent = "Hoàn thành!";
     
     const accuracy = Math.round((correctKanaQuizCount / activeKanaQuizList.length) * 100);
-    grid.innerHTML = `
-      <div style="grid-column: 1/-1; padding: 1.5rem; text-align:center;">
-        <p style="font-size: 1.25rem; font-weight: bold; margin-bottom: 1rem;">Lượt trắc nghiệm hoàn tất!</p>
-        <p style="font-size: 1.1rem; color: var(--ink-soft); margin-bottom: 1.5rem;">Kết quả: <strong style="color: var(--accent); font-size:1.5rem;">${correctKanaQuizCount} / ${activeKanaQuizList.length}</strong> (${accuracy}% chính xác)</p>
-        <button class="btn btn-primary" id="restart-kana-quiz-btn" style="width:200px; margin: 0 auto;">Luyện tập lại</button>
-      </div>
-    `;
+    if (optionsContainer) {
+      optionsContainer.innerHTML = `
+        <div style="padding: 1.5rem; text-align:center;">
+          <p style="font-size: 1.25rem; font-weight: bold; margin-bottom: 1rem;">Lượt luyện tập hoàn tất!</p>
+          <p style="font-size: 1.1rem; color: var(--ink-soft); margin-bottom: 1.5rem;">Kết quả: <strong style="color: var(--accent); font-size:1.5rem;">${correctKanaQuizCount} / ${activeKanaQuizList.length}</strong> (${accuracy}% chính xác)</p>
+          <button class="btn btn-primary" id="restart-kana-quiz-btn" style="width:200px; margin: 0 auto;">Luyện tập lại</button>
+        </div>
+      `;
+    }
     
     // Kiểm tra và tung hoa chúc mừng nếu đạt điều kiện
     const settings = getKanaSettings();
@@ -3604,9 +3678,12 @@ function renderKanaQuizQuestion() {
       triggerConfetti();
     }
 
-    document.getElementById("restart-kana-quiz-btn").onclick = () => {
-      startKanaQuiz();
-    };
+    const restartBtn = document.getElementById("restart-kana-quiz-btn");
+    if (restartBtn) {
+      restartBtn.onclick = () => {
+        startKanaQuiz();
+      };
+    }
     return;
   }
 
@@ -3622,116 +3699,203 @@ function renderKanaQuizQuestion() {
   document.getElementById("kana-quiz-counter").textContent = `Câu hỏi ${currentKanaQuizIndex + 1} / ${total}`;
   document.getElementById("kana-quiz-score").textContent = `Đúng: ${correctKanaQuizCount}`;
 
-  // Xác định chế độ trắc nghiệm
-  let mode = document.getElementById("kana-quiz-mode-select").value;
-  if (mode === "mixed") {
-    mode = Math.random() < 0.5 ? "kana_to_romaji" : "romaji_to_kana";
-  }
+  // Xác định chế độ
+  let mode = document.getElementById("kana-quiz-mode-select")?.value || "quiz_kana_to_romaji";
 
   // Render câu hỏi
   const wordDisplay = document.getElementById("kana-quiz-question-word");
-  wordDisplay.className = "quiz-question-word";
-  
-  if (mode === "kana_to_romaji") {
-    wordDisplay.textContent = currentItem.kana;
-  } else {
-    wordDisplay.textContent = currentItem.romaji;
-    wordDisplay.className = "quiz-question-word meaning-word";
+  if (wordDisplay) {
+    wordDisplay.className = "quiz-question-word";
+    if (mode === "quiz_kana_to_romaji" || mode === "typed_kana_to_romaji") {
+      wordDisplay.textContent = currentItem.kana;
+    } else {
+      wordDisplay.textContent = currentItem.romaji;
+      wordDisplay.className = "quiz-question-word meaning-word";
+    }
   }
 
-  // Chuẩn bị 4 đáp án (1 đúng + 3 nhiễu)
-  const kanaType = document.querySelector('input[name="kana-type"]:checked').value;
-  const fullList = kanaType === "hiragana" ? HIRAGANA_LIST : KATAKANA_LIST;
-  const distractors = generateKanaDistractors(currentItem, fullList, 3);
-  
-  const options = [currentItem, ...distractors].sort(() => Math.random() - 0.5);
+  // Khai báo hàm chuyển tiếp câu hỏi
+  const handleNext = (isCorrect) => {
+    const settings = getKanaSettings();
+    const delayMs = settings.delay * 1000;
 
-  // Render các nút đáp án
-  const container = document.getElementById("kana-quiz-options-container");
-  container.innerHTML = "";
-
-  options.forEach(opt => {
-    const btn = document.createElement("button");
-    btn.className = "btn btn-secondary";
-    btn.style.padding = "14px";
-    btn.style.fontSize = mode === "kana_to_romaji" ? "1.2rem" : "1.5rem";
-    btn.style.fontFamily = mode === "kana_to_romaji" ? "var(--font-mono)" : "var(--font-jp)";
-    
-    btn.textContent = mode === "kana_to_romaji" ? opt.romaji : opt.kana;
-
-    btn.onclick = () => {
-      // Khóa tất cả các nút
-      container.querySelectorAll("button").forEach(b => b.disabled = true);
-
-      const isCorrect = opt.romaji === currentItem.romaji;
-      
-      if (isCorrect) {
-        correctKanaQuizCount++;
-        btn.style.background = "var(--good-soft)";
-        btn.style.color = "var(--good)";
-        btn.style.borderColor = "var(--good)";
-      } else {
-        btn.style.background = "var(--error-soft)";
-        btn.style.color = "var(--error)";
-        btn.style.borderColor = "var(--error)";
-        
-        // Tìm và highlight đáp án đúng
-        container.querySelectorAll("button").forEach(b => {
-          const val = b.textContent;
-          if (mode === "kana_to_romaji" && val === currentItem.romaji) {
-            b.style.background = "var(--good-soft)";
-            b.style.color = "var(--good)";
-            b.style.borderColor = "var(--good)";
-          } else if (mode === "romaji_to_kana" && val === currentItem.kana) {
-            b.style.background = "var(--good-soft)";
-            b.style.color = "var(--good)";
-            b.style.borderColor = "var(--good)";
-          }
-        });
-      }
-
-      // Phát âm thanh phản hồi
-      playFeedbackSound(isCorrect);
-
-      // Đọc cấu hình cài đặt
-      const settings = getKanaSettings();
-      const delayMs = settings.delay * 1000;
-
-      // Xử lý chuyển câu tiếp theo
-      if (!isCorrect && settings.pauseOnWrong) {
-        // Trả lời sai và có bật tạm dừng
-        const nextContainer = document.getElementById("kana-quiz-next-container");
+    if (!isCorrect && settings.pauseOnWrong) {
+      if (nextContainer) {
+        nextContainer.style.display = "block";
         const nextBtn = document.getElementById("kana-quiz-next-btn");
-        if (nextContainer && nextBtn) {
-          nextContainer.style.display = "block";
-          nextBtn.onclick = () => {
+        if (nextBtn) {
+          const goNext = () => {
             nextContainer.style.display = "none";
             currentKanaQuizIndex++;
             renderKanaQuizQuestion();
           };
-        } else {
-          // Fallback tự chuyển câu
-          setTimeout(() => {
-            currentKanaQuizIndex++;
-            renderKanaQuizQuestion();
-          }, Math.max(1200, delayMs));
+          nextBtn.onclick = goNext;
+
+          // Nếu ở chế độ tự luận, cho phép nhấn Enter trên ô input để chuyển câu tiếp theo
+          if (mode === "typed_kana_to_romaji") {
+            const typedInput = document.getElementById("kana-quiz-typed-input");
+            if (typedInput) {
+              typedInput.disabled = false;
+              typedInput.focus();
+              typedInput.onkeydown = (e) => {
+                if (e.key === "Enter") {
+                  goNext();
+                }
+              };
+            }
+          }
         }
       } else {
-        // Trả lời đúng hoặc làm sai nhưng không tạm dừng
-        if (delayMs <= 0) {
+        setTimeout(() => {
           currentKanaQuizIndex++;
           renderKanaQuizQuestion();
-        } else {
-          setTimeout(() => {
-            currentKanaQuizIndex++;
-            renderKanaQuizQuestion();
-          }, delayMs);
-        }
+        }, Math.max(1200, delayMs));
       }
-    };
+    } else {
+      if (delayMs <= 0) {
+        currentKanaQuizIndex++;
+        renderKanaQuizQuestion();
+      } else {
+        setTimeout(() => {
+          currentKanaQuizIndex++;
+          renderKanaQuizQuestion();
+        }, delayMs);
+      }
+    }
+  };
 
-    container.appendChild(btn);
-  });
+  // Logic hiển thị theo chế độ
+  if (mode === "quiz_kana_to_romaji" || mode === "quiz_romaji_to_kana") {
+    // Chế độ trắc nghiệm
+    if (inputContainer) inputContainer.style.display = "none";
+    if (optionsContainer) {
+      optionsContainer.style.display = "grid";
+      optionsContainer.innerHTML = "";
+    }
+
+    const isKanaToRomaji = mode === "quiz_kana_to_romaji";
+    const kanaType = document.querySelector('input[name="kana-type"]:checked').value;
+    const fullList = kanaType === "hiragana" ? HIRAGANA_LIST : KATAKANA_LIST;
+    
+    // Đọc cấu hình nguồn đáp án trắc nghiệm
+    const settings = getKanaSettings();
+    const isSelectedOnly = settings.answerSource === "selected";
+    
+    let distractors = [];
+    if (isSelectedOnly && selectedKanaList.length > 1) {
+      distractors = generateKanaDistractors(currentItem, selectedKanaList, 3);
+      if (distractors.length < 3) {
+        const needed = 3 - distractors.length;
+        const alreadyPicked = [currentItem, ...distractors];
+        const fallbackPool = fullList.filter(item => !alreadyPicked.some(p => p.romaji === item.romaji));
+        const extraDistractors = generateKanaDistractors(currentItem, fallbackPool, needed);
+        distractors = [...distractors, ...extraDistractors];
+      }
+    } else {
+      distractors = generateKanaDistractors(currentItem, fullList, 3);
+    }
+    
+    const options = [currentItem, ...distractors].sort(() => Math.random() - 0.5);
+
+    options.forEach(opt => {
+      const btn = document.createElement("button");
+      btn.className = "btn btn-secondary";
+      btn.style.padding = "14px";
+      btn.style.fontSize = isKanaToRomaji ? "1.2rem" : "1.5rem";
+      btn.style.fontFamily = isKanaToRomaji ? "var(--font-mono)" : "var(--font-jp)";
+      btn.textContent = isKanaToRomaji ? opt.romaji : opt.kana;
+
+      btn.onclick = () => {
+        // Khóa tất cả các nút
+        optionsContainer.querySelectorAll("button").forEach(b => b.disabled = true);
+
+        const isCorrect = isKanaToRomaji ? (opt.romaji === currentItem.romaji) : (opt.kana === currentItem.kana);
+        
+        if (isCorrect) {
+          correctKanaQuizCount++;
+          btn.style.background = "var(--good-soft)";
+          btn.style.color = "var(--good)";
+          btn.style.borderColor = "var(--good)";
+        } else {
+          btn.style.background = "var(--error-soft)";
+          btn.style.color = "var(--error)";
+          btn.style.borderColor = "var(--error)";
+          
+          // Tìm và highlight đáp án đúng
+          optionsContainer.querySelectorAll("button").forEach(b => {
+            const val = b.textContent;
+            if (isKanaToRomaji && val === currentItem.romaji) {
+              b.style.background = "var(--good-soft)";
+              b.style.color = "var(--good)";
+              b.style.borderColor = "var(--good)";
+            } else if (!isKanaToRomaji && val === currentItem.kana) {
+              b.style.background = "var(--good-soft)";
+              b.style.color = "var(--good)";
+              b.style.borderColor = "var(--good)";
+            }
+          });
+        }
+
+        playFeedbackSound(isCorrect);
+        handleNext(isCorrect);
+      };
+
+      if (optionsContainer) optionsContainer.appendChild(btn);
+    });
+  } else if (mode === "typed_kana_to_romaji") {
+    // Chế độ tự luận gõ Romaji
+    if (optionsContainer) optionsContainer.style.display = "none";
+    if (inputContainer) inputContainer.style.display = "block";
+
+    const typedInput = document.getElementById("kana-quiz-typed-input");
+    const feedbackEl = document.getElementById("kana-quiz-typed-feedback");
+
+    if (typedInput && feedbackEl) {
+      typedInput.value = "";
+      typedInput.disabled = false;
+      typedInput.style.background = "var(--field)";
+      typedInput.style.color = "var(--ink)";
+      typedInput.style.borderColor = "var(--line-strong)";
+      
+      feedbackEl.style.display = "none";
+      feedbackEl.textContent = "";
+
+      // Focus
+      setTimeout(() => typedInput.focus(), 50);
+
+      // Xử lý sự kiện nhấn phím
+      typedInput.onkeydown = (e) => {
+        if (e.key === "Enter") {
+          const userVal = typedInput.value.trim().toLowerCase();
+          if (!userVal) return;
+
+          typedInput.disabled = true;
+          const isCorrect = userVal === currentItem.romaji.toLowerCase();
+
+          if (isCorrect) {
+            correctKanaQuizCount++;
+            typedInput.style.background = "var(--good-soft)";
+            typedInput.style.color = "var(--good)";
+            typedInput.style.borderColor = "var(--good)";
+            
+            feedbackEl.textContent = "Chính xác!";
+            feedbackEl.style.color = "var(--good)";
+          } else {
+            typedInput.style.background = "var(--error-soft)";
+            typedInput.style.color = "var(--error)";
+            typedInput.style.borderColor = "var(--error)";
+            
+            feedbackEl.textContent = `Sai rồi! Đáp án đúng là: ${currentItem.romaji}`;
+            feedbackEl.style.color = "var(--error)";
+          }
+          feedbackEl.style.display = "block";
+
+          playFeedbackSound(isCorrect);
+          handleNext(isCorrect);
+        }
+      };
+    }
+  }
 }
 
 // --- SUB-VIEW 2: FLASHCARD ---

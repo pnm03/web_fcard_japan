@@ -175,44 +175,71 @@
 
         <!-- ================= VIEW 9: KANA SETUP ================= -->
         <section id="kana-setup-view" class="view-section">
-          <div class="glass-panel" style="max-width: 700px; margin: 10px auto;">
+          <div class="glass-panel" style="max-width: 950px; margin: 10px auto;">
             <h1 style="text-align: center; margin-bottom: 20px; color: var(--accent);">Luyện tập bảng chữ cái</h1>
-            <p style="text-align: center; color: var(--ink-soft); margin-bottom: 24px;">Chọn bảng chữ cái và các kí tự bạn muốn luyện tập bên dưới.</p>
+            <p style="text-align: center; color: var(--ink-soft); margin-bottom: 24px;">Cấu hình lựa chọn và bảng chữ cái ôn tập của bạn ở bên dưới.</p>
             
-            <div class="form-group">
-              <label>Chọn Bảng chữ cái</label>
-              <div class="radio-card-grid">
-                <div class="radio-card selected" id="kana-type-hira">
-                  <input type="radio" name="kana-type" value="hiragana" checked>
-                  <span class="radio-card-title">Hiragana (Chữ mềm)</span>
-                  <span class="radio-card-desc">Bảng chữ cái cơ bản nhất trong tiếng Nhật</span>
+            <div class="kana-setup-layout" style="display: flex; gap: 24px; align-items: stretch; flex-wrap: wrap;">
+              <!-- Cột trái: Cấu hình và Bắt đầu -->
+              <div class="kana-setup-left" style="flex: 1; min-width: 320px; display: flex; flex-direction: column; gap: 16px;">
+                <div class="form-group">
+                  <label style="font-weight: bold; margin-bottom: 8px; display: block;">Chọn Bảng chữ cái</label>
+                  <div class="radio-card-grid" style="grid-template-columns: 1fr; gap: 10px;">
+                    <div class="radio-card selected" id="kana-type-hira" style="padding: 10px 14px;">
+                      <input type="radio" name="kana-type" value="hiragana" checked>
+                      <span class="radio-card-title" style="font-size: 14px;">Hiragana (Chữ mềm)</span>
+                      <span class="radio-card-desc" style="font-size: 11px; line-height: 1.3;">Bảng chữ cái cơ bản nhất trong tiếng Nhật</span>
+                    </div>
+                    <div class="radio-card" id="kana-type-kata" style="padding: 10px 14px;">
+                      <input type="radio" name="kana-type" value="katakana">
+                      <span class="radio-card-title" style="font-size: 14px;">Katakana (Chữ cứng)</span>
+                      <span class="radio-card-desc" style="font-size: 11px; line-height: 1.3;">Dùng để phiên âm từ mượn tiếng nước ngoài</span>
+                    </div>
+                  </div>
                 </div>
-                <div class="radio-card" id="kana-type-kata">
-                  <input type="radio" name="kana-type" value="katakana">
-                  <span class="radio-card-title">Katakana (Chữ cứng)</span>
-                  <span class="radio-card-desc">Dùng để phiên âm từ mượn tiếng nước ngoài</span>
+
+                <div class="form-group">
+                  <label for="kana-practice-mode" style="font-weight: bold; margin-bottom: 8px; display: block;">Cách luyện tập</label>
+                  <select class="form-control" id="kana-practice-mode" style="width: 100%; height: 42px; font-size: 0.95rem;">
+                    <option value="quiz_kana_to_romaji">Trắc nghiệm: Hiện chữ ➔ Chọn Romaji</option>
+                    <option value="quiz_romaji_to_kana">Trắc nghiệm: Hiện Romaji ➔ Chọn chữ</option>
+                    <option value="typed_kana_to_romaji">Tự luận: Hiện chữ ➔ Gõ Romaji</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="kana-answer-source" style="font-weight: bold; margin-bottom: 8px; display: block;">Nguồn đáp án trắc nghiệm</label>
+                  <select class="form-control" id="kana-answer-source" style="width: 100%; height: 42px; font-size: 0.95rem;">
+                    <option value="selected">Chỉ trong các kí tự đã chọn để luyện</option>
+                    <option value="all">Mở rộng (Random toàn bộ bảng chữ cái)</option>
+                  </select>
+                </div>
+
+                <div style="flex-grow: 1;"></div>
+
+                <button class="btn btn-primary" id="start-kana-practice-btn" style="width: 100%; padding: 12px; font-size: 1.1rem; margin-top: 15px;">
+                  Bắt đầu luyện tập
+                </button>
+              </div>
+
+              <!-- Cột phải: Bảng chữ cái -->
+              <div class="kana-setup-right" style="flex: 1.5; min-width: 350px; display: flex; flex-direction: column;">
+                <div class="form-group" style="display: flex; flex-direction: column; height: 100%; margin-bottom: 0;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <label style="margin-bottom: 0; font-weight: bold;">Chọn kí tự ôn tập</label>
+                    <div style="display: flex; gap: 8px;">
+                      <button class="btn btn-secondary" id="kana-select-all" style="padding: 2px 8px; font-size: 9px; min-height: 24px;">Chọn tất cả</button>
+                      <button class="btn btn-secondary" id="kana-select-none" style="padding: 2px 8px; font-size: 9px; min-height: 24px;">Bỏ chọn hết</button>
+                    </div>
+                  </div>
+                  
+                  <!-- Khung danh sách chữ cái dạng lưới (Grid) -->
+                  <div class="kana-grid-selection" id="kana-selection-grid" style="display: flex; flex-direction: column; gap: 12px; max-height: 400px; overflow-y: auto; padding: 12px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--field);">
+                    <!-- Các checkbox chữ cái sẽ được sinh tự động bằng JS -->
+                  </div>
                 </div>
               </div>
             </div>
-
-            <div class="form-group">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <label style="margin-bottom: 0;">Chọn kí tự ôn tập</label>
-                <div style="display: flex; gap: 8px;">
-                  <button class="btn btn-secondary" id="kana-select-all" style="padding: 2px 8px; font-size: 9px; min-height: 24px;">Chọn tất cả</button>
-                  <button class="btn btn-secondary" id="kana-select-none" style="padding: 2px 8px; font-size: 9px; min-height: 24px;">Bỏ chọn hết</button>
-                </div>
-              </div>
-              
-              <!-- Khung danh sách chữ cái dạng lưới (Grid) -->
-              <div class="kana-grid-selection" id="kana-selection-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 8px; max-height: 250px; overflow-y: auto; padding: 12px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--field);">
-                <!-- Các checkbox chữ cái sẽ được sinh tự động bằng JS -->
-              </div>
-            </div>
-
-            <button class="btn btn-primary" id="start-kana-practice-btn" style="width: 100%; padding: 12px; font-size: 1.1rem; margin-top: 15px;">
-              Bắt đầu luyện tập
-            </button>
           </div>
         </section>
 
@@ -243,10 +270,10 @@
             
             <!-- Chế độ trắc nghiệm options -->
             <div style="margin-bottom: 20px; display: flex; justify-content: center; gap: 10px;">
-              <select class="form-control" id="kana-quiz-mode-select" style="max-width: 250px; height: 32px; padding: 2px 10px; font-size: 0.85rem; margin-bottom: 0;">
-                <option value="kana_to_romaji">Chữ Nhật ➔ Romaji</option>
-                <option value="romaji_to_kana">Romaji ➔ Chữ Nhật</option>
-                <option value="mixed">Xáo trộn</option>
+              <select class="form-control" id="kana-quiz-mode-select" style="max-width: 320px; height: 32px; padding: 2px 10px; font-size: 0.85rem; margin-bottom: 0;">
+                <option value="quiz_kana_to_romaji">Trắc nghiệm: Hiện chữ ➔ Chọn Romaji</option>
+                <option value="quiz_romaji_to_kana">Trắc nghiệm: Hiện Romaji ➔ Chọn chữ</option>
+                <option value="typed_kana_to_romaji">Tự luận: Hiện chữ ➔ Gõ Romaji</option>
               </select>
             </div>
 
@@ -257,6 +284,12 @@
             <!-- 4 Đáp án -->
             <div class="kana-options-grid" id="kana-quiz-options-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
               <!-- 4 nút đáp án sẽ render ở đây -->
+            </div>
+
+            <!-- Nhập đáp án tự luận -->
+            <div id="kana-quiz-input-container" style="display: none; margin-bottom: 20px;">
+              <input type="text" id="kana-quiz-typed-input" class="form-control" placeholder="Nhập Romaji..." style="text-align: center; font-size: 1.5rem; padding: 10px; max-width: 300px; margin: 0 auto; display: block;" autocomplete="off" autocapitalize="off">
+              <div id="kana-quiz-typed-feedback" style="margin-top: 12px; font-weight: bold; font-size: 1.1rem; display: none;"></div>
             </div>
 
             <!-- Nút chuyển câu khi làm sai -->
@@ -407,6 +440,14 @@
               <p style="color: var(--ink-faint); font-size: 0.75rem; margin-top: 0.2rem;">
                 * Nếu nhập số câu lớn hơn số từ hiện có, hệ thống đảm bảo toàn bộ các từ sẽ xuất hiện ít nhất 1 lần.
               </p>
+            </div>
+
+            <div class="form-group">
+              <label for="quiz-setup-answer-source">Nguồn đáp án trắc nghiệm</label>
+              <select class="form-control" id="quiz-setup-answer-source" style="width: 100%; height: 42px; font-size: 0.95rem;">
+                <option value="selected">Chỉ trong các từ đã chọn để luyện</option>
+                <option value="all">Mở rộng (Random toàn bộ từ vựng)</option>
+              </select>
             </div>
 
             <div class="form-group">
