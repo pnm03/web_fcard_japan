@@ -3379,7 +3379,7 @@ function setupKanaEvents() {
       document.querySelectorAll(".kana-row-select-all").forEach(cb => cb.checked = true);
       const kanaType = document.querySelector('input[name="kana-type"]:checked').value;
       saveKanaSelection(kanaType);
-      updateKanaSetupCountDefault();
+      updateCountToSelection();
     };
   }
 
@@ -3390,7 +3390,7 @@ function setupKanaEvents() {
       document.querySelectorAll(".kana-row-select-all").forEach(cb => cb.checked = false);
       const kanaType = document.querySelector('input[name="kana-type"]:checked').value;
       saveKanaSelection(kanaType);
-      updateKanaSetupCountDefault();
+      updateCountToSelection();
     };
   }
 
@@ -3641,7 +3641,7 @@ function renderKanaSetup() {
         cb.checked = isChecked;
       });
       saveKanaSelection(kanaType);
-      updateKanaSetupCountDefault();
+      updateCountToSelection();
     });
 
     // Cập nhật trạng thái checkbox Chọn cả hàng dựa trên các checkbox con
@@ -3651,12 +3651,12 @@ function renderKanaSetup() {
         const checkedCbs = rowItemsContainer.querySelectorAll(".kana-checkbox:checked").length;
         rowSelectAllCb.checked = totalCbs === checkedCbs;
         saveKanaSelection(kanaType);
-        updateKanaSetupCountDefault();
+        updateCountToSelection();
       });
     });
   });
 
-  // Cập nhật số lượng mặc định sau khi render toàn bộ lưới
+  // Cập nhật số lượng mặc định sau khi render toàn bộ lưới (đọc từ localStorage)
   updateKanaSetupCountDefault();
 }
 
@@ -3671,6 +3671,15 @@ function updateKanaSetupCountDefault() {
     const checkedBoxes = document.querySelectorAll(".kana-checkbox:checked");
     countInput.value = checkedBoxes.length;
   }
+}
+
+function updateCountToSelection() {
+  const countInput = document.getElementById("kana-setup-count");
+  if (!countInput) return;
+
+  const checkedBoxes = document.querySelectorAll(".kana-checkbox:checked");
+  countInput.value = checkedBoxes.length;
+  localStorage.setItem("web_fcard_kana_practice_count", checkedBoxes.length);
 }
 
 // Chuyển đổi các tab con trong Luyện tập
