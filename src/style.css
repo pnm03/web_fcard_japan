@@ -1369,6 +1369,36 @@ select.form-control {
   }
 }
 
+/* Custom Option Cards for Setup Kana */
+.option-card-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.option-card {
+  background: var(--field);
+  border: 1px solid var(--line-strong);
+  padding: 12px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--ink);
+  user-select: none;
+}
+.option-card:hover {
+  border-color: var(--accent);
+  background: var(--paper);
+}
+.option-card.selected {
+  background: rgba(230, 92, 0, 0.08) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
 
 
 

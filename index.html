@@ -175,7 +175,7 @@
 
         <!-- ================= VIEW 9: KANA SETUP ================= -->
         <section id="kana-setup-view" class="view-section">
-          <div class="glass-panel" style="max-width: 950px; margin: 10px auto;">
+          <div class="glass-panel" style="max-width: 1200px; width: 95%; margin: 10px auto;">
             <h1 style="text-align: center; margin-bottom: 20px; color: var(--accent);">Luyện tập bảng chữ cái</h1>
             <p style="text-align: center; color: var(--ink-soft); margin-bottom: 24px;">Cấu hình lựa chọn và bảng chữ cái ôn tập của bạn ở bên dưới.</p>
             
@@ -199,20 +199,20 @@
                 </div>
 
                 <div class="form-group">
-                  <label for="kana-practice-mode" style="font-weight: bold; margin-bottom: 8px; display: block;">Cách luyện tập</label>
-                  <select class="form-control" id="kana-practice-mode" style="width: 100%; height: 42px; font-size: 0.95rem;">
-                    <option value="quiz_kana_to_romaji">Trắc nghiệm: Hiện chữ ➔ Chọn Romaji</option>
-                    <option value="quiz_romaji_to_kana">Trắc nghiệm: Hiện Romaji ➔ Chọn chữ</option>
-                    <option value="typed_kana_to_romaji">Tự luận: Hiện chữ ➔ Gõ Romaji</option>
-                  </select>
+                  <label style="font-weight: bold; margin-bottom: 8px; display: block;">Cách luyện tập</label>
+                  <div class="option-card-group" id="kana-practice-mode-group">
+                    <div class="option-card selected" data-value="quiz_kana_to_romaji">Trắc nghiệm: Hiện chữ ➔ Chọn Romaji</div>
+                    <div class="option-card" data-value="quiz_romaji_to_kana">Trắc nghiệm: Hiện Romaji ➔ Chọn chữ</div>
+                    <div class="option-card" data-value="typed_kana_to_romaji">Tự luận: Hiện chữ ➔ Gõ Romaji</div>
+                  </div>
                 </div>
 
                 <div class="form-group">
-                  <label for="kana-answer-source" style="font-weight: bold; margin-bottom: 8px; display: block;">Nguồn đáp án trắc nghiệm</label>
-                  <select class="form-control" id="kana-answer-source" style="width: 100%; height: 42px; font-size: 0.95rem;">
-                    <option value="selected">Chỉ trong các kí tự đã chọn để luyện</option>
-                    <option value="all">Mở rộng (Random toàn bộ bảng chữ cái)</option>
-                  </select>
+                  <label style="font-weight: bold; margin-bottom: 8px; display: block;">Nguồn đáp án trắc nghiệm</label>
+                  <div class="option-card-group" id="kana-answer-source-group">
+                    <div class="option-card selected" data-value="selected">Chỉ trong các kí tự đã chọn để luyện</div>
+                    <div class="option-card" data-value="all">Mở rộng (Random toàn bộ bảng chữ cái)</div>
+                  </div>
                 </div>
 
                 <div style="flex-grow: 1;"></div>
@@ -234,7 +234,7 @@
                   </div>
                   
                   <!-- Khung danh sách chữ cái dạng lưới (Grid) -->
-                  <div class="kana-grid-selection" id="kana-selection-grid" style="display: flex; flex-direction: column; gap: 12px; max-height: 400px; overflow-y: auto; padding: 12px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--field);">
+                  <div class="kana-grid-selection" id="kana-selection-grid" style="display: flex; flex-direction: column; gap: 12px; padding: 12px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--field);">
                     <!-- Các checkbox chữ cái sẽ được sinh tự động bằng JS -->
                   </div>
                 </div>

@@ -3306,23 +3306,66 @@ function setupKanaEvents() {
   const startBtn = document.getElementById("start-kana-practice-btn");
 
   const settings = getKanaSettings();
-  const practiceModeSelect = document.getElementById("kana-practice-mode");
-  if (practiceModeSelect) {
-    practiceModeSelect.value = settings.practiceMode || "quiz_kana_to_romaji";
-  }
-  const quizModeSelect = document.getElementById("kana-quiz-mode-select");
-  if (quizModeSelect) {
-    quizModeSelect.value = settings.practiceMode || "quiz_kana_to_romaji";
+
+  // Khởi tạo và thiết lập sự kiện cho group Cách Luyện Tập
+  const practiceModeGroup = document.getElementById("kana-practice-mode-group");
+  if (practiceModeGroup) {
+    const practiceCards = practiceModeGroup.querySelectorAll(".option-card");
+    practiceCards.forEach(card => card.classList.remove("selected"));
+    
+    const currentMode = settings.practiceMode || "quiz_kana_to_romaji";
+    const activeCard = practiceModeGroup.querySelector(`[data-value="${currentMode}"]`);
+    if (activeCard) activeCard.classList.add("selected");
+    
+    practiceCards.forEach(card => {
+      card.onclick = () => {
+        practiceCards.forEach(c => c.classList.remove("selected"));
+        card.classList.add("selected");
+        
+        const currentSettings = getKanaSettings();
+        currentSettings.practiceMode = card.getAttribute("data-value");
+        saveKanaSettings(currentSettings);
+        
+        const quizModeSelect = document.getElementById("kana-quiz-mode-select");
+        if (quizModeSelect) {
+          quizModeSelect.value = currentSettings.practiceMode;
+        }
+        
+        const practiceView = document.getElementById("kana-practice-view");
+        const subTabQuiz = document.getElementById("sub-tab-quiz");
+        if (practiceView && practiceView.classList.contains("active") && subTabQuiz && subTabQuiz.classList.contains("active-sub-tab")) {
+          startKanaQuiz();
+        }
+      };
+    });
   }
 
-  const answerSourceSelect = document.getElementById("kana-answer-source");
-  if (answerSourceSelect) {
-    answerSourceSelect.value = settings.answerSource || "all";
-    answerSourceSelect.onchange = (e) => {
-      const currentSettings = getKanaSettings();
-      currentSettings.answerSource = e.target.value;
-      saveKanaSettings(currentSettings);
-    };
+  // Khởi tạo và thiết lập sự kiện cho group Nguồn Đáp Án Trắc Nghiệm
+  const answerSourceGroup = document.getElementById("kana-answer-source-group");
+  if (answerSourceGroup) {
+    const answerCards = answerSourceGroup.querySelectorAll(".option-card");
+    answerCards.forEach(card => card.classList.remove("selected"));
+    
+    const currentSource = settings.answerSource || "all";
+    const activeCard = answerSourceGroup.querySelector(`[data-value="${currentSource}"]`);
+    if (activeCard) activeCard.classList.add("selected");
+    
+    answerCards.forEach(card => {
+      card.onclick = () => {
+        answerCards.forEach(c => c.classList.remove("selected"));
+        card.classList.add("selected");
+        
+        const currentSettings = getKanaSettings();
+        currentSettings.answerSource = card.getAttribute("data-value");
+        saveKanaSettings(currentSettings);
+        
+        const practiceView = document.getElementById("kana-practice-view");
+        const subTabQuiz = document.getElementById("sub-tab-quiz");
+        if (practiceView && practiceView.classList.contains("active") && subTabQuiz && subTabQuiz.classList.contains("active-sub-tab")) {
+          startKanaQuiz();
+        }
+      };
+    });
   }
   
   // Đăng ký thay đổi bảng chữ cái (Hiragana / Katakana)
@@ -3608,7 +3651,6 @@ function switchKanaSubTab(subTabId) {
 // --- SUB-VIEW 1: TRẮC NGHIỆM ---
 function setupKanaQuizEvents() {
   const quizModeSelect = document.getElementById("kana-quiz-mode-select");
-  const practiceModeSelect = document.getElementById("kana-practice-mode");
 
   const handleModeChange = (val) => {
     // Lưu cài đặt mới
@@ -3618,7 +3660,18 @@ function setupKanaQuizEvents() {
 
     // Đồng bộ UI
     if (quizModeSelect) quizModeSelect.value = val;
-    if (practiceModeSelect) practiceModeSelect.value = val;
+
+    // Đồng bộ ngược lại các option-cards ở Setup View
+    const practiceModeGroup = document.getElementById("kana-practice-mode-group");
+    if (practiceModeGroup) {
+      practiceModeGroup.querySelectorAll(".option-card").forEach(card => {
+        if (card.getAttribute("data-value") === val) {
+          card.classList.add("selected");
+        } else {
+          card.classList.remove("selected");
+        }
+      });
+    }
 
     // Reset quiz nếu đang chạy và ở tab trắc nghiệm
     const practiceView = document.getElementById("kana-practice-view");
@@ -3630,9 +3683,6 @@ function setupKanaQuizEvents() {
 
   if (quizModeSelect) {
     quizModeSelect.onchange = (e) => handleModeChange(e.target.value);
-  }
-  if (practiceModeSelect) {
-    practiceModeSelect.onchange = (e) => handleModeChange(e.target.value);
   }
 }
 
