@@ -3401,10 +3401,29 @@ function setupKanaEvents() {
       const checkedBoxes = document.querySelectorAll(".kana-checkbox:checked");
       const countInput = document.getElementById("kana-setup-count");
       if (countInput) {
-        countInput.value = checkedBoxes.length * mul;
+        const newVal = checkedBoxes.length * mul;
+        countInput.value = newVal;
+        localStorage.setItem("web_fcard_kana_practice_count", newVal);
       }
     };
   });
+
+  // Lắng nghe thay đổi trực tiếp trên ô nhập số lượng câu hỏi
+  const countInput = document.getElementById("kana-setup-count");
+  if (countInput) {
+    // Đọc giá trị đã lưu trước đó nếu có
+    const savedCount = localStorage.getItem("web_fcard_kana_practice_count");
+    if (savedCount !== null) {
+      countInput.value = savedCount;
+    }
+
+    countInput.addEventListener("input", (e) => {
+      const val = parseInt(e.target.value, 10);
+      if (!isNaN(val) && val > 0) {
+        localStorage.setItem("web_fcard_kana_practice_count", val);
+      }
+    });
+  }
 
   // Bấm bắt đầu luyện tập
   if (startBtn) {
@@ -3642,9 +3661,14 @@ function renderKanaSetup() {
 }
 
 function updateKanaSetupCountDefault() {
-  const checkedBoxes = document.querySelectorAll(".kana-checkbox:checked");
   const countInput = document.getElementById("kana-setup-count");
-  if (countInput) {
+  if (!countInput) return;
+
+  const savedCount = localStorage.getItem("web_fcard_kana_practice_count");
+  if (savedCount !== null) {
+    countInput.value = savedCount;
+  } else {
+    const checkedBoxes = document.querySelectorAll(".kana-checkbox:checked");
     countInput.value = checkedBoxes.length;
   }
 }
@@ -3728,11 +3752,12 @@ function startKanaQuiz() {
 
   // Clone danh sách được chọn
   let list = [...selectedKanaList];
+  let rawQuizList = [];
 
   if (practiceCount <= list.length) {
     // Trộn ngẫu nhiên và cắt lấy đúng số lượng yêu cầu
     list.sort(() => Math.random() - 0.5);
-    activeKanaQuizList = list.slice(0, practiceCount);
+    rawQuizList = list.slice(0, practiceCount);
   } else {
     // Lặp lại ngẫu nhiên các kí tự được chọn
     let combinedList = [];
@@ -3748,15 +3773,78 @@ function startKanaQuiz() {
         combinedList.push({ ...shuffledList[i] });
       }
     }
-    
-    // Trộn ngẫu nhiên toàn bộ danh sách kết quả
-    activeKanaQuizList = combinedList.sort(() => Math.random() - 0.5);
+    rawQuizList = combinedList;
   }
+
+  // Sắp xếp lại danh sách câu hỏi sử dụng thuật toán greedy để tránh trùng lặp liên tiếp
+  activeKanaQuizList = generateWithoutConsecutiveDuplicates(rawQuizList);
 
   currentKanaQuizIndex = 0;
   correctKanaQuizCount = 0;
 
   renderKanaQuizQuestion();
+}
+
+function generateWithoutConsecutiveDuplicates(items) {
+  if (items.length <= 1) return [...items];
+  
+  // Đếm số lượng của từng kí tự (theo romaji)
+  const frequencyMap = {};
+  const itemMap = {}; // Lưu trữ mẫu đại diện cho từng romaji
+  items.forEach(item => {
+    frequencyMap[item.romaji] = (frequencyMap[item.romaji] || 0) + 1;
+    if (!itemMap[item.romaji]) {
+      itemMap[item.romaji] = [];
+    }
+    itemMap[item.romaji].push(item);
+  });
+
+  const uniqueKeys = Object.keys(frequencyMap);
+  if (uniqueKeys.length <= 1) {
+    // Nếu chỉ có 1 kí tự duy nhất, không thể tránh lặp liên tiếp
+    return [...items].sort(() => Math.random() - 0.5);
+  }
+
+  const result = [];
+  let lastRomaji = null;
+
+  for (let step = 0; step < items.length; step++) {
+    // Tìm các ứng viên có tần suất còn lại lớn nhất và không trùng với lastRomaji
+    let maxFreq = 0;
+    let candidates = [];
+
+    uniqueKeys.forEach(key => {
+      if (key !== lastRomaji && frequencyMap[key] > 0) {
+        if (frequencyMap[key] > maxFreq) {
+          maxFreq = frequencyMap[key];
+          candidates = [key];
+        } else if (frequencyMap[key] === maxFreq) {
+          candidates.push(key);
+        }
+      }
+    });
+
+    // Nếu không tìm thấy ứng viên nào hợp lệ (các kí tự còn lại đều trùng với lastRomaji)
+    if (candidates.length === 0) {
+      // Đành phải bốc đại diện của bất kỳ kí tự nào còn số dư
+      uniqueKeys.forEach(key => {
+        if (frequencyMap[key] > 0) {
+          candidates.push(key);
+        }
+      });
+    }
+
+    // Chọn ngẫu nhiên một trong các ứng viên tốt nhất
+    const chosenKey = candidates[Math.floor(Math.random() * candidates.length)];
+    
+    // Giảm tần suất và thêm vào kết quả
+    frequencyMap[chosenKey]--;
+    const chosenItem = itemMap[chosenKey].pop();
+    result.push(chosenItem);
+    lastRomaji = chosenKey;
+  }
+
+  return result;
 }
 
 function renderKanaQuizQuestion() {
