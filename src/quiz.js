@@ -281,7 +281,7 @@ export class QuizSession {
       updateVocabStats(
         question.vocab.projectId,
         question.vocab.id,
-        true, // isCorrect
+        !wasRetry, // isCorrect
         question.timeSpent // tổng thời gian qua các lượt thử
       );
 
@@ -371,22 +371,22 @@ export class QuizSession {
       };
     });
 
-    const score = correctCount + correctRetryCount;
+    const score = correctCount; // Chỉ gõ 1 lần đúng mới tính làm điểm số
     const accuracy = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
     const averageTime = totalQuestions > 0 ? (totalTimeSpent / totalQuestions) : 0;
 
     return {
       totalQuestions,
       correctCount,
-      correctRetryCount,
+      correctRetryCount, // câu gõ lần 2 đúng (không tính vào điểm chính thức)
       wrongCount,
       accuracy, // tỉ lệ đúng %
       totalTimeSpent,
       averageTime,
       details,
-      // Đề xuất các từ cần ôn tập lại (những từ trả lời sai hoặc trả lời quá chậm)
+      // Đề xuất các từ cần ôn tập lại (những từ trả lời sai, đúng nhờ gợi ý, hoặc trả lời quá chậm)
       weakWordsToReview: this.questions
-        .filter(q => q.answerState === "wrong" || q.timeSpent > 8.0)
+        .filter(q => q.answerState === "wrong" || q.answerState === "correct_retry" || q.timeSpent > 8.0)
         .map(q => q.vocab)
     };
   }

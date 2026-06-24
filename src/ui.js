@@ -709,6 +709,7 @@ function renderWeakVocabView() {
       <table class="vocab-table">
         <thead>
           <tr>
+            <th style="width: 60px; text-align: center;">STT</th>
             <th>Tiếng Nhật</th>
             <th>Romaji</th>
             <th>Nghĩa Tiếng Việt</th>
@@ -720,7 +721,7 @@ function renderWeakVocabView() {
         <tbody>
   `;
 
-  weakVocab.forEach(v => {
+  weakVocab.forEach((v, index) => {
     let difficultyBadge = `<span class="vocab-badge badge-easy">${v.difficultyScore} (Dễ)</span>`;
     if (v.difficultyScore > 70) {
       difficultyBadge = `<span class="vocab-badge badge-hard">${v.difficultyScore} (Quên nặng)</span>`;
@@ -730,6 +731,7 @@ function renderWeakVocabView() {
 
     tableHtml += `
       <tr>
+        <td data-label="STT" style="text-align: center; font-family: var(--font-mono); font-size: 0.95rem; color: var(--ink-soft);">${index + 1}</td>
         <td data-label="Tiếng Nhật" class="vocab-jp-cell">
           ${cleanToKanaOnly(v.japanese)}
           <button class="btn btn-secondary speak-row-btn" data-text="${cleanToKanaOnly(v.japanese)}" style="width:24px; height:24px; font-size:0.7rem; vertical-align:middle; padding:0; border:none; background:transparent; box-shadow:none; cursor:pointer;" title="Nghe phát âm">🔊</button>
@@ -1836,8 +1838,16 @@ function setupQuizActiveEvents() {
 
 // 8. Render Báo cáo kết quả kiểm tra (Quiz Report View)
 function renderQuizReport(report) {
-  document.getElementById("report-score-text").textContent = `${report.correctCount + report.correctRetryCount} / ${report.totalQuestions}`;
+  document.getElementById("report-score-text").textContent = `${report.correctCount} / ${report.totalQuestions}`;
   document.getElementById("report-accuracy-text").textContent = `${report.accuracy}% CHÍNH XÁC`;
+
+  // Gán giá trị thống kê Đúng/Không tính/Sai
+  const statCorrect = document.getElementById("report-stat-correct");
+  const statNeutral = document.getElementById("report-stat-neutral");
+  const statWrong = document.getElementById("report-stat-wrong");
+  if (statCorrect) statCorrect.textContent = report.correctCount;
+  if (statNeutral) statNeutral.textContent = report.correctRetryCount;
+  if (statWrong) statWrong.textContent = report.wrongCount;
 
   const evalEl = document.getElementById("report-evaluation-text");
   if (report.accuracy >= 90) {
@@ -1873,7 +1883,7 @@ function renderQuizReport(report) {
       statusText = "ĐÚNG";
       statusClass = "status-correct";
     } else if (q.answerState === "correct_retry") {
-      statusText = "ĐÚNG GỢI Ý";
+      statusText = "KHÔNG TÍNH";
       statusClass = "status-retry";
     }
 
