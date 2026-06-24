@@ -3898,10 +3898,14 @@ function renderKanaQuizQuestion() {
     return;
   }
 
-  // Ẩn nút "Tiếp theo" của câu hỏi trước (nếu có)
+  // Ẩn nút "Tiếp theo" của câu hỏi trước (nếu có) và ẩn bottom sheet
   const nextContainer = document.getElementById("kana-quiz-next-container");
   if (nextContainer) {
     nextContainer.style.display = "none";
+  }
+  const bottomSheet = document.getElementById("kana-quiz-bottom-sheet");
+  if (bottomSheet) {
+    bottomSheet.classList.remove("active");
   }
 
   const currentItem = activeKanaQuizList[currentKanaQuizIndex];
@@ -3931,36 +3935,28 @@ function renderKanaQuizQuestion() {
     const delayMs = settings.delay * 1000;
 
     if (!isCorrect && settings.pauseOnWrong) {
-      if (nextContainer) {
-        nextContainer.style.display = "block";
-        const nextBtn = document.getElementById("kana-quiz-next-btn");
-        if (nextBtn) {
-          const goNext = () => {
-            nextContainer.style.display = "none";
-            currentKanaQuizIndex++;
-            renderKanaQuizQuestion();
-          };
-          nextBtn.onclick = goNext;
+      const bottomSheet = document.getElementById("kana-quiz-bottom-sheet");
+      const bottomSheetText = document.getElementById("kana-quiz-bottom-sheet-correct-text");
+      if (bottomSheetText) {
+        bottomSheetText.textContent = currentItem.romaji;
+      }
+      if (bottomSheet) {
+        bottomSheet.classList.add("active");
+      }
 
-          // Nếu ở chế độ tự luận, cho phép nhấn Enter trên ô input để chuyển câu tiếp theo
-          if (mode === "typed_kana_to_romaji") {
-            const typedInput = document.getElementById("kana-quiz-typed-input");
-            if (typedInput) {
-              typedInput.disabled = false;
-              typedInput.focus();
-              typedInput.onkeydown = (e) => {
-                if (e.key === "Enter") {
-                  goNext();
-                }
-              };
-            }
-          }
-        }
-      } else {
-        setTimeout(() => {
+      const sheetNextBtn = document.getElementById("kana-quiz-bottom-sheet-next-btn");
+      if (sheetNextBtn) {
+        const goNext = () => {
+          if (bottomSheet) bottomSheet.classList.remove("active");
           currentKanaQuizIndex++;
           renderKanaQuizQuestion();
-        }, Math.max(1200, delayMs));
+        };
+        sheetNextBtn.onclick = goNext;
+
+        // Trì hoãn focus một chút để tránh nhận nhầm sự kiện Enter trước đó
+        setTimeout(() => {
+          sheetNextBtn.focus({ preventScroll: true });
+        }, 100);
       }
     } else {
       if (delayMs <= 0) {
@@ -4171,14 +4167,14 @@ function setupKanaCardEvents() {
         }
       }
 
-      // Enter để qua câu khi bị tạm dừng do trả lời sai
+      // Enter để qua câu khi bị tạm dừng do trả lời sai (hiển thị bottom sheet)
       if (e.key === "Enter") {
-        const nextContainer = document.getElementById("kana-quiz-next-container");
-        if (nextContainer && nextContainer.style.display === "block") {
-          const nextBtn = document.getElementById("kana-quiz-next-btn");
-          if (nextBtn && !nextBtn.disabled) {
+        const bottomSheet = document.getElementById("kana-quiz-bottom-sheet");
+        if (bottomSheet && bottomSheet.classList.contains("active")) {
+          const sheetNextBtn = document.getElementById("kana-quiz-bottom-sheet-next-btn");
+          if (sheetNextBtn && !sheetNextBtn.disabled) {
             e.preventDefault();
-            nextBtn.click();
+            sheetNextBtn.click();
           }
         }
       }
