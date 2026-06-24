@@ -4122,21 +4122,51 @@ function setupKanaCardEvents() {
   prevBtn.onclick = prevKanaCard;
   nextBtn.onclick = nextKanaCard;
 
-  // Bàn phím: Enter để lật, Trái/Phải để chuyển thẻ
+  // Bàn phím: Enter để lật, Trái/Phải để chuyển thẻ, 1-4 để chọn đáp án trắc nghiệm
   window.onkeydown = (e) => {
     if (!document.getElementById("kana-practice-view").classList.contains("active")) return;
+    
     const isCardTab = document.getElementById("sub-tab-card").classList.contains("active-sub-tab");
-    if (!isCardTab) return;
+    const isQuizTab = document.getElementById("sub-tab-quiz").classList.contains("active-sub-tab");
 
-    if (e.key === "Enter") {
-      e.preventDefault();
-      flipKanaCard();
-    } else if (e.key === "ArrowLeft") {
-      e.preventDefault();
-      prevKanaCard();
-    } else if (e.key === "ArrowRight") {
-      e.preventDefault();
-      nextKanaCard();
+    if (isCardTab) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        flipKanaCard();
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        prevKanaCard();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        nextKanaCard();
+      }
+    } else if (isQuizTab) {
+      const mode = document.getElementById("kana-quiz-mode-select")?.value || "quiz_kana_to_romaji";
+      const isMultipleChoice = mode === "quiz_kana_to_romaji" || mode === "quiz_romaji_to_kana";
+      
+      if (isMultipleChoice && ["1", "2", "3", "4"].includes(e.key)) {
+        const optionsContainer = document.getElementById("kana-quiz-options-container");
+        if (optionsContainer && optionsContainer.style.display !== "none") {
+          const buttons = optionsContainer.querySelectorAll("button");
+          const btnIndex = parseInt(e.key, 10) - 1;
+          if (buttons[btnIndex] && !buttons[btnIndex].disabled) {
+            e.preventDefault();
+            buttons[btnIndex].click();
+          }
+        }
+      }
+
+      // Enter để qua câu khi bị tạm dừng do trả lời sai
+      if (e.key === "Enter") {
+        const nextContainer = document.getElementById("kana-quiz-next-container");
+        if (nextContainer && nextContainer.style.display === "block") {
+          const nextBtn = document.getElementById("kana-quiz-next-btn");
+          if (nextBtn && !nextBtn.disabled) {
+            e.preventDefault();
+            nextBtn.click();
+          }
+        }
+      }
     }
   };
 }
