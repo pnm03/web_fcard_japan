@@ -1510,7 +1510,7 @@ function renderCurrentQuestion() {
   inputEl.value = "";
   inputEl.className = "quiz-input";
   inputEl.disabled = false;
-  inputEl.placeholder = question.mode === "jp_to_meaning" ? "Nhập nghĩa tiếng Việt (không dấu)..." : "Nhập cách đọc bằng Romaji...";
+  inputEl.placeholder = (question.mode === "jp_to_meaning" || question.mode === "romaji_to_meaning") ? "Nhập nghĩa tiếng Việt (không dấu)..." : "Nhập cách đọc bằng Romaji...";
   
   setTimeout(() => {
     inputEl.focus({ preventScroll: true });
@@ -1525,10 +1525,10 @@ function renderCurrentQuestion() {
     wordDisplay.textContent = question.vocab.meaning;
     wordDisplay.className = "quiz-question-word meaning-word";
     promptEl.textContent = "Từ này có Romaji là gì?";
-  } else if (question.mode === "jp_to_romaji") {
-    wordDisplay.textContent = cleanToKanaOnly(question.vocab.japanese);
-    wordDisplay.className = "quiz-question-word";
-    promptEl.textContent = "Từ này có Romaji là gì?";
+  } else if (question.mode === "romaji_to_meaning") {
+    wordDisplay.textContent = question.vocab.romaji;
+    wordDisplay.className = "quiz-question-word romaji-word";
+    promptEl.textContent = "Từ này có nghĩa Tiếng Việt là gì?";
   } else if (question.mode === "jp_to_meaning") {
     wordDisplay.textContent = cleanToKanaOnly(question.vocab.japanese);
     wordDisplay.className = "quiz-question-word";
@@ -1537,7 +1537,7 @@ function renderCurrentQuestion() {
 
   // Quản lý hiển thị nút phát âm dựa trên chế độ câu hỏi
   const speakBtn = document.getElementById("quiz-speak-btn");
-  if (question.mode === "jp_to_romaji" || question.mode === "jp_to_meaning") {
+  if (question.mode === "jp_to_meaning" || question.mode === "romaji_to_meaning") {
     speakJapanese(cleanToKanaOnly(question.vocab.japanese));
     speakBtn.style.display = "inline-flex";
   } else {
@@ -1637,7 +1637,7 @@ function handleQuizAnswerSubmit() {
       revealBtn.style.display = "inline-flex";
       revealBtn.onclick = () => {
         let correctAnswer = "";
-        if (question.mode === "jp_to_meaning") {
+        if (question.mode === "jp_to_meaning" || question.mode === "romaji_to_meaning") {
           correctAnswer = question.vocab.meaning;
         } else {
           correctAnswer = question.vocab.romaji;
@@ -1896,7 +1896,7 @@ function renderQuizReport(report) {
           <button class="btn btn-secondary speak-row-btn" data-text="${cleanToKanaOnly(q.japanese)}" style="width:22px; height:22px; font-size:0.65rem; vertical-align:middle; padding:0; border:none; background:transparent; box-shadow:none; cursor:pointer;" title="Nghe phát âm">🔊</button>
         </div>
         <div class="report-detail-meaning">
-          Nghĩa: ${q.meaning} | Chế độ: ${q.mode === "jp_to_meaning" ? "Dịch nghĩa" : "Gõ Romaji"}
+          Nghĩa: ${q.meaning} | Chế độ: ${q.mode === "jp_to_meaning" ? "Nhật ➔ Nghĩa" : (q.mode === "romaji_to_meaning" ? "Romaji ➔ Nghĩa" : "Nghĩa ➔ Romaji")}
         </div>
         <div style="font-size: 0.8rem; color: var(--ink-faint); margin-top:0.2rem; font-family: var(--font-mono);">
           Lịch sử gõ: "${q.userAnswers.join('" ➔ "')}"

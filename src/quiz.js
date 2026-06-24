@@ -209,7 +209,7 @@ export class QuizSession {
       // Xác định chế độ của câu hỏi này
       let activeMode = this.quizMode;
       if (this.quizMode === "mixed") {
-        const modes = ["jp_to_romaji", "meaning_to_romaji", "jp_to_meaning"];
+        const modes = ["meaning_to_romaji", "romaji_to_meaning", "jp_to_meaning"];
         activeMode = modes[Math.floor(Math.random() * modes.length)];
       }
 
@@ -263,11 +263,11 @@ export class QuizSession {
     let correctAnswer = "";
     let isCorrect = false;
 
-    if (question.mode === "jp_to_meaning") {
+    if (question.mode === "jp_to_meaning" || question.mode === "romaji_to_meaning") {
       correctAnswer = question.vocab.meaning;
       isCorrect = isSmartVietnameseMatch(userAnswer, correctAnswer);
     } else {
-      // Nhập Romaji
+      // Nhập Romaji (meaning_to_romaji)
       correctAnswer = question.vocab.romaji;
       isCorrect = normalizeString(userAnswer) === normalizeString(correctAnswer);
     }
