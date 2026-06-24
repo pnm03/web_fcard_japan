@@ -33,6 +33,7 @@ let quizSelectedVocabIds = [];
 let tempSelectedVocabIds = [];
 let isQuizTransitioning = false;
 let answerJustSubmitted = false;
+let quizMultiplier = "custom";
 let quizActiveSettings = {
   hideTimer: false,
   muteSounds: false,
@@ -799,6 +800,42 @@ function updateQuizSelectedSummaryText() {
   if (infoSpan) {
     infoSpan.textContent = `(Hiện tại đang chọn: ${selectedCount} từ)`;
   }
+
+  // Nếu có multiplier khác custom, tự động cập nhật số câu hỏi
+  if (typeof quizMultiplier !== "undefined" && quizMultiplier !== "custom") {
+    const countInput = document.getElementById("quiz-setup-count");
+    if (countInput) {
+      countInput.value = selectedCount * quizMultiplier;
+      saveCurrentQuizConfig();
+    }
+  }
+}
+
+function updateMultiplierButtonsUI() {
+  const buttons = document.querySelectorAll(".quiz-multiplier-buttons .multiplier-btn");
+  buttons.forEach(btn => {
+    const isCustomBtn = btn.id === "multiplier-custom-btn";
+    const mulVal = btn.getAttribute("data-mul");
+    
+    let isActive = false;
+    if (quizMultiplier === "custom" && isCustomBtn) {
+      isActive = true;
+    } else if (quizMultiplier !== "custom" && !isCustomBtn && parseInt(mulVal) === quizMultiplier) {
+      isActive = true;
+    }
+    
+    if (isActive) {
+      btn.style.background = "var(--accent)";
+      btn.style.color = "white";
+      btn.style.borderColor = "var(--accent)";
+      btn.style.fontWeight = "bold";
+    } else {
+      btn.style.background = "var(--field)";
+      btn.style.color = "var(--ink)";
+      btn.style.borderColor = "var(--line-strong)";
+      btn.style.fontWeight = "";
+    }
+  });
 }
 
 function renderPickerProjects() {
@@ -1123,6 +1160,7 @@ function setupQuizConfig(preselectedProjectId = null) {
   let restoredQuizMode = "meaning_to_romaji";
   let restoredOrder = "random";
   let restoredAllowRetry = true;
+  let restoredMultiplier = "custom";
 
   const savedConfigStr = localStorage.getItem("nihongo_quiz_config");
   if (savedConfigStr) {
@@ -1150,6 +1188,9 @@ function setupQuizConfig(preselectedProjectId = null) {
       if (savedConfig.allowRetry !== undefined) {
         restoredAllowRetry = savedConfig.allowRetry;
       }
+      if (savedConfig.multiplier !== undefined) {
+        restoredMultiplier = savedConfig.multiplier;
+      }
     } catch (e) {
       console.error("Lỗi khi khôi phục cấu hình kiểm tra", e);
     }
@@ -1172,7 +1213,9 @@ function setupQuizConfig(preselectedProjectId = null) {
     }
   }
 
+  quizMultiplier = restoredMultiplier;
   updateQuizSelectedSummaryText();
+  updateMultiplierButtonsUI();
 
   const countInput = document.getElementById("quiz-setup-count");
   if (restoredQuestionCount !== null) {
@@ -1207,7 +1250,8 @@ function saveCurrentQuizConfig() {
     questionCount: count,
     quizMode: selectedMode,
     order: selectedOrder,
-    allowRetry: allowRetry
+    allowRetry: allowRetry,
+    multiplier: quizMultiplier
   };
 
   localStorage.setItem("nihongo_quiz_config", JSON.stringify(config));
@@ -1345,6 +1389,8 @@ function setupQuizConfigEvents() {
   const countInput = document.getElementById("quiz-setup-count");
   if (countInput) {
     countInput.addEventListener("input", () => {
+      quizMultiplier = "custom";
+      updateMultiplierButtonsUI();
       saveCurrentQuizConfig();
     });
   }
@@ -1385,7 +1431,9 @@ function setupQuizConfigEvents() {
       updateQuizSelectedSummaryText();
       
       // Chọn bao nhiêu thì số lượng câu hỏi phải phản ánh lại bấy nhiêu
-      document.getElementById("quiz-setup-count").value = quizSelectedVocabIds.length;
+      if (typeof quizMultiplier === "undefined" || quizMultiplier === "custom") {
+        document.getElementById("quiz-setup-count").value = quizSelectedVocabIds.length;
+      }
       
       saveCurrentQuizConfig();
       
@@ -1416,6 +1464,25 @@ function setupQuizConfigEvents() {
       selectWeakInCurrentPickerProject();
     });
   }
+
+  // Các nút nhân số lượng câu hỏi
+  const multiplierBtns = document.querySelectorAll(".quiz-multiplier-buttons .multiplier-btn");
+  multiplierBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const mulVal = btn.getAttribute("data-mul");
+      if (mulVal) {
+        quizMultiplier = parseInt(mulVal);
+        const countInput = document.getElementById("quiz-setup-count");
+        if (countInput) {
+          countInput.value = quizSelectedVocabIds.length * quizMultiplier;
+        }
+      } else {
+        quizMultiplier = "custom";
+      }
+      updateMultiplierButtonsUI();
+      saveCurrentQuizConfig();
+    });
+  });
 
   // Nút bắt đầu kiểm tra
   const startQuizBtn = document.getElementById("start-quiz-session-btn");

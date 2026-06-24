@@ -390,8 +390,17 @@
 
             <div class="form-group">
               <label for="quiz-setup-count">Số lượng câu hỏi</label>
-              <input type="number" class="form-control" id="quiz-setup-count" value="10" min="1" max="100">
-              <p id="quiz-selected-info" style="font-weight: bold; color: var(--accent); font-size: 0.8rem; margin-top: 0.2rem; margin-bottom: 0.1rem;">
+              <input type="number" class="form-control" id="quiz-setup-count" value="10" min="1" max="1000">
+              <div class="quiz-multiplier-buttons" style="display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap;">
+                <button type="button" class="btn btn-secondary multiplier-btn" data-mul="1" style="padding: 2px 8px; font-size: 11px; min-height: 24px; flex: 1; justify-content: center;">x1</button>
+                <button type="button" class="btn btn-secondary multiplier-btn" data-mul="2" style="padding: 2px 8px; font-size: 11px; min-height: 24px; flex: 1; justify-content: center;">x2</button>
+                <button type="button" class="btn btn-secondary multiplier-btn" data-mul="3" style="padding: 2px 8px; font-size: 11px; min-height: 24px; flex: 1; justify-content: center;">x3</button>
+                <button type="button" class="btn btn-secondary multiplier-btn" data-mul="4" style="padding: 2px 8px; font-size: 11px; min-height: 24px; flex: 1; justify-content: center;">x4</button>
+                <button type="button" class="btn btn-secondary multiplier-btn" data-mul="5" style="padding: 2px 8px; font-size: 11px; min-height: 24px; flex: 1; justify-content: center;">x5</button>
+                <button type="button" class="btn btn-secondary multiplier-btn" data-mul="10" style="padding: 2px 8px; font-size: 11px; min-height: 24px; flex: 1; justify-content: center;">x10</button>
+                <button type="button" class="btn btn-secondary multiplier-btn" id="multiplier-custom-btn" style="padding: 2px 8px; font-size: 11px; min-height: 24px; flex: 2; justify-content: center;">Tùy chọn</button>
+              </div>
+              <p id="quiz-selected-info" style="font-weight: bold; color: var(--accent); font-size: 0.8rem; margin-top: 0.4rem; margin-bottom: 0.1rem;">
                 (Hiện tại đang chọn: 0 từ)
               </p>
               <p style="color: var(--ink-faint); font-size: 0.75rem; margin-top: 0.2rem;">
