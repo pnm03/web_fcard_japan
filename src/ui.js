@@ -41,8 +41,11 @@ let quizActiveSettings = {
   disableTts: false,
   disableConfetti: false,
   autoNext: true,
-  autoNextDelay: 1.0
+  autoNextDelay: 1.0,
+  autoRead: false,
+  autoReadDelay: 3.0
 };
+let autoReadTimerId = null;
 
 // Lọc bỏ Kanji, chỉ lấy phần chữ mềm Hiragana/Katakana
 export function cleanToKanaOnly(japaneseText) {
@@ -63,6 +66,21 @@ export function cleanToKanaOnly(japaneseText) {
 }
 
 // Hàm phát âm tiếng Nhật dùng Text-to-Speech của trình duyệt
+// Cache giọng nói tiếng Nhật để phản hồi nhanh hơn khi bấm nút đọc
+let cachedJaVoice = null;
+let voicesCached = false;
+
+function ensureJaVoiceCached() {
+  if (voicesCached) return;
+  if ('speechSynthesis' in window) {
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length > 0) {
+      cachedJaVoice = voices.find(voice => voice.lang.startsWith('ja') || voice.lang === 'ja_JP') || null;
+      voicesCached = true;
+    }
+  }
+}
+
 export function speakJapanese(text, isManual = false) {
   const isQuizActive = document.getElementById("quiz-active-view")?.classList.contains("active");
   if (!isManual && isQuizActive && typeof quizActiveSettings !== "undefined" && quizActiveSettings.disableTts) {
@@ -80,11 +98,10 @@ export function speakJapanese(text, isManual = false) {
     utterance.lang = 'ja-JP';
     utterance.rate = 0.85; // giọng đọc hơi chậm một chút để nghe rõ hơn
     
-    // Tìm giọng đọc tiếng Nhật tốt nhất
-    const voices = window.speechSynthesis.getVoices();
-    const jaVoice = voices.find(voice => voice.lang.startsWith('ja') || voice.lang === 'ja_JP');
-    if (jaVoice) {
-      utterance.voice = jaVoice;
+    // Sử dụng giọng đã cache để phản hồi nhanh hơn
+    ensureJaVoiceCached();
+    if (cachedJaVoice) {
+      utterance.voice = cachedJaVoice;
     }
     
     window.speechSynthesis.speak(utterance);
@@ -107,6 +124,12 @@ export function initUI() {
   // Tải danh sách giọng nói speechSynthesis một cách chủ động (khắc phục lỗi Chrome trả về mảng rỗng lần đầu)
   if ('speechSynthesis' in window) {
     window.speechSynthesis.getVoices();
+    // Cache giọng ngay khi voices sẵn sàng
+    window.speechSynthesis.onvoiceschanged = () => {
+      ensureJaVoiceCached();
+    };
+    // Thử cache ngay (có thể đã sẵn sàng)
+    ensureJaVoiceCached();
   }
   
   // Khởi tạo hiển thị trạng thái đồng bộ đám mây và chạy đồng bộ ngầm lần đầu
@@ -1302,6 +1325,9 @@ function syncActiveSettingsToCheckboxes() {
   const autoNextCb = document.getElementById("quiz-setting-auto-next");
   const autoNextDelayInput = document.getElementById("quiz-setting-auto-next-delay");
   const autoNextDelayGroup = document.getElementById("quiz-setting-auto-next-delay-group");
+  const autoReadCb = document.getElementById("quiz-setting-auto-read");
+  const autoReadDelayInput = document.getElementById("quiz-setting-auto-read-delay");
+  const autoReadDelayGroup = document.getElementById("quiz-setting-auto-read-delay-group");
 
   if (hideTimerCb) hideTimerCb.checked = !!quizActiveSettings.hideTimer;
   if (muteSoundsCb) muteSoundsCb.checked = !!quizActiveSettings.muteSounds;
@@ -1310,6 +1336,9 @@ function syncActiveSettingsToCheckboxes() {
   if (autoNextCb) autoNextCb.checked = !!quizActiveSettings.autoNext;
   if (autoNextDelayInput) autoNextDelayInput.value = quizActiveSettings.autoNextDelay !== undefined ? quizActiveSettings.autoNextDelay : 1.0;
   if (autoNextDelayGroup) autoNextDelayGroup.style.display = quizActiveSettings.autoNext ? "flex" : "none";
+  if (autoReadCb) autoReadCb.checked = !!quizActiveSettings.autoRead;
+  if (autoReadDelayInput) autoReadDelayInput.value = quizActiveSettings.autoReadDelay !== undefined ? quizActiveSettings.autoReadDelay : 3.0;
+  if (autoReadDelayGroup) autoReadDelayGroup.style.display = quizActiveSettings.autoRead ? "flex" : "none";
 }
 
 function setupQuizActiveSettingsEvents() {
@@ -1350,6 +1379,9 @@ function setupQuizActiveSettingsEvents() {
   const autoNextCb = document.getElementById("quiz-setting-auto-next");
   const autoNextDelayInput = document.getElementById("quiz-setting-auto-next-delay");
   const autoNextDelayGroup = document.getElementById("quiz-setting-auto-next-delay-group");
+  const autoReadCb = document.getElementById("quiz-setting-auto-read");
+  const autoReadDelayInput = document.getElementById("quiz-setting-auto-read-delay");
+  const autoReadDelayGroup = document.getElementById("quiz-setting-auto-read-delay-group");
 
   const updateSettings = () => {
     if (hideTimerCb) quizActiveSettings.hideTimer = hideTimerCb.checked;
@@ -1362,9 +1394,18 @@ function setupQuizActiveSettingsEvents() {
       if (isNaN(val) || val < 0) val = 0;
       quizActiveSettings.autoNextDelay = val;
     }
+    if (autoReadCb) quizActiveSettings.autoRead = autoReadCb.checked;
+    if (autoReadDelayInput) {
+      let val = parseFloat(autoReadDelayInput.value);
+      if (isNaN(val) || val < 0) val = 0;
+      quizActiveSettings.autoReadDelay = val;
+    }
 
     if (autoNextDelayGroup) {
       autoNextDelayGroup.style.display = quizActiveSettings.autoNext ? "flex" : "none";
+    }
+    if (autoReadDelayGroup) {
+      autoReadDelayGroup.style.display = quizActiveSettings.autoRead ? "flex" : "none";
     }
     
     saveQuizActiveSettings();
@@ -1377,6 +1418,8 @@ function setupQuizActiveSettingsEvents() {
   if (disableConfettiCb) disableConfettiCb.onchange = updateSettings;
   if (autoNextCb) autoNextCb.onchange = updateSettings;
   if (autoNextDelayInput) autoNextDelayInput.oninput = updateSettings;
+  if (autoReadCb) autoReadCb.onchange = updateSettings;
+  if (autoReadDelayInput) autoReadDelayInput.oninput = updateSettings;
 }
 
 function setupQuizConfigEvents() {
@@ -1622,10 +1665,26 @@ function renderCurrentQuestion() {
     promptEl.textContent = "Từ này có nghĩa Tiếng Việt là gì?";
   }
 
+  // Hủy timer tự động đọc trước đó nếu có
+  if (autoReadTimerId) {
+    clearTimeout(autoReadTimerId);
+    autoReadTimerId = null;
+  }
+
   // Quản lý hiển thị nút phát âm dựa trên chế độ câu hỏi
   const speakBtn = document.getElementById("quiz-speak-btn");
   if (question.mode === "jp_to_meaning" || question.mode === "romaji_to_meaning") {
-    speakJapanese(cleanToKanaOnly(question.vocab.japanese));
+    // Kiểm tra cài đặt tự động đọc sau X giây (chỉ cho jp_to_meaning)
+    if (question.mode === "jp_to_meaning" && quizActiveSettings.autoRead && quizActiveSettings.autoReadDelay > 0) {
+      // Đọc sau X giây thay vì đọc ngay
+      const delayMs = quizActiveSettings.autoReadDelay * 1000;
+      autoReadTimerId = setTimeout(() => {
+        speakJapanese(cleanToKanaOnly(question.vocab.japanese));
+        autoReadTimerId = null;
+      }, delayMs);
+    } else {
+      speakJapanese(cleanToKanaOnly(question.vocab.japanese));
+    }
     speakBtn.style.display = "inline-flex";
   } else {
     // Ẩn nút loa nếu hiển thị nghĩa Tiếng Việt (meaning_to_romaji) để không lộ đáp án
@@ -1634,6 +1693,11 @@ function renderCurrentQuestion() {
 
   // Gắn sự kiện cho nút loa trong Quiz
   speakBtn.onclick = () => {
+    // Hủy timer auto-read nếu đang chờ (người dùng bấm thủ công thì đọc ngay)
+    if (autoReadTimerId) {
+      clearTimeout(autoReadTimerId);
+      autoReadTimerId = null;
+    }
     speakJapanese(cleanToKanaOnly(question.vocab.japanese), true);
   };
 
