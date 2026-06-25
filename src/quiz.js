@@ -174,33 +174,69 @@ export class QuizSession {
     let selectedList = [];
 
     // Luật 1: Đảm bảo toàn bộ từ trong pool được xuất hiện ít nhất một lần
-    // Chúng ta clone toàn bộ pool và trộn ngẫu nhiên để làm phần đầu
     let basePool = [...this.vocabPool];
     
     if (this.order === "random") {
-      // Trộn ngẫu nhiên basePool
-      basePool.sort(() => Math.random() - 0.5);
+      // Fisher-Yates shuffle (đảm bảo random đều)
+      for (let i = basePool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [basePool[i], basePool[j]] = [basePool[j], basePool[i]];
+      }
     }
 
     if (N <= M) {
-      // Nếu số lượng câu hỏi yêu cầu ít hơn hoặc bằng số từ, lấy N từ đầu tiên
       selectedList = basePool.slice(0, N);
     } else {
       // Nếu số câu hỏi N lớn hơn số từ M
-      // Bắt buộc lấy toàn bộ M từ ở lượt đầu
       selectedList = [...basePool];
 
-      // Sau đó bổ sung thêm N - M từ bằng cách lấy random tiếp từ pool (cho phép lặp)
+      // Bổ sung thêm N - M từ
       const remainingCount = N - M;
       for (let i = 0; i < remainingCount; i++) {
         const randomVocab = this.vocabPool[Math.floor(Math.random() * M)];
         selectedList.push(randomVocab);
       }
 
-      // Nếu người dùng chọn thứ tự ngẫu nhiên (random), ta trộn ngẫu nhiên TOÀN BỘ danh sách N câu hỏi này.
-      // Điều này vẫn bảo đảm 100% tất cả M từ gốc xuất hiện ít nhất 1 lần, nhưng ở các vị trí ngẫu nhiên trong bài.
       if (this.order === "random") {
-        selectedList.sort(() => Math.random() - 0.5);
+        // Fisher-Yates shuffle
+        for (let i = selectedList.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [selectedList[i], selectedList[j]] = [selectedList[j], selectedList[i]];
+        }
+      }
+    }
+
+    // === CHỐNG LẶP 2 TỪ LIÊN TIẾP GIỐNG NHAU ===
+    // Dùng thuật toán greedy: duyệt từng vị trí, nếu trùng với phần tử trước đó 
+    // thì tìm phần tử khác phía sau để hoán đổi
+    if (this.order === "random" && selectedList.length > 1) {
+      for (let i = 1; i < selectedList.length; i++) {
+        if (selectedList[i].id === selectedList[i - 1].id) {
+          // Tìm phần tử khác phía sau để swap
+          let swapped = false;
+          for (let j = i + 1; j < selectedList.length; j++) {
+            if (selectedList[j].id !== selectedList[i - 1].id && 
+                (i + 1 >= selectedList.length || selectedList[j].id !== selectedList[i + 1]?.id)) {
+              [selectedList[i], selectedList[j]] = [selectedList[j], selectedList[i]];
+              swapped = true;
+              break;
+            }
+          }
+          // Nếu không tìm được phía sau, tìm phía trước (trước i-1)
+          if (!swapped) {
+            for (let j = 0; j < i - 1; j++) {
+              if (selectedList[j].id !== selectedList[i].id &&
+                  (j === 0 || selectedList[j - 1].id !== selectedList[i].id) &&
+                  selectedList[j + 1].id !== selectedList[i].id) {
+                // Chèn selectedList[i] vào vị trí j+1
+                const item = selectedList.splice(i, 1)[0];
+                selectedList.splice(j + 1, 0, item);
+                swapped = true;
+                break;
+              }
+            }
+          }
+        }
       }
     }
 
