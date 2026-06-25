@@ -161,7 +161,10 @@ export class QuizSession {
     this.vocabPool = selectedVocab;
   }
 
-  // Tạo danh sách câu hỏi
+  // Tạo danh sách câu hỏi (Weighted Spaced Repetition)
+  // - Mỗi từ xuất hiện ít nhất 1 lần (nếu N >= M)
+  // - Các slot thừa (N - M) được phân bổ theo trọng số: từ khó/hay quên ra nhiều hơn
+  // - Không cho phép 2 từ liên tiếp giống nhau
   generateQuestions() {
     const M = this.vocabPool.length;
     const N = this.questionCount;
@@ -171,34 +174,79 @@ export class QuizSession {
       return;
     }
 
+    // === TÍNH TRỌNG SỐ CHO TỪNG TỪ ===
+    // Công thức trọng số: w = base + difficultyBonus + wrongBonus + freshnessBonus
+    const now = Date.now();
+    const weights = this.vocabPool.map(v => {
+      const diff = v.difficultyScore || 0;        // 0-100
+      const wrong = v.wrongCount || 0;
+      const correct = v.correctCount || 0;
+      const lastTested = v.lastTested || 0;
+      const total = correct + wrong;
+
+      // Base weight: mọi từ đều có cơ hội tối thiểu
+      let w = 1;
+
+      // Difficulty bonus: từ có difficultyScore cao → trọng số cao hơn
+      // diff=0 → +0, diff=50 → +2.5, diff=100 → +5
+      w += (diff / 100) * 5;
+
+      // Wrong ratio bonus: tỷ lệ sai cao → ưu tiên hơn
+      if (total > 0) {
+        const wrongRatio = wrong / total; // 0 đến 1
+        w += wrongRatio * 3;
+      } else {
+        // Từ chưa bao giờ test → ưu tiên vừa phải (từ mới)
+        w += 2;
+      }
+
+      // Freshness bonus: từ lâu không test → ưu tiên cao hơn
+      if (lastTested > 0) {
+        const daysSince = (now - lastTested) / (1000 * 60 * 60 * 24);
+        // Từ lâu không test (>7 ngày) → bonus cao hơn, cap tại 3
+        w += Math.min(3, daysSince / 7 * 1.5);
+      } else {
+        // Chưa từng test
+        w += 2;
+      }
+
+      return w;
+    });
+
     let selectedList = [];
 
-    // Luật 1: Đảm bảo toàn bộ từ trong pool được xuất hiện ít nhất một lần
-    let basePool = [...this.vocabPool];
-    
-    if (this.order === "random") {
-      // Fisher-Yates shuffle (đảm bảo random đều)
-      for (let i = basePool.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [basePool[i], basePool[j]] = [basePool[j], basePool[i]];
-      }
-    }
-
     if (N <= M) {
-      selectedList = basePool.slice(0, N);
+      // Số câu hỏi <= số từ: chọn N từ theo weighted sampling (không lặp)
+      if (this.order === "random") {
+        selectedList = this._weightedSampleWithoutReplacement(this.vocabPool, weights, N);
+      } else {
+        selectedList = this.vocabPool.slice(0, N);
+      }
     } else {
-      // Nếu số câu hỏi N lớn hơn số từ M
-      selectedList = [...basePool];
+      // N > M: Đảm bảo mỗi từ xuất hiện ít nhất 1 lần
+      // Bước 1: Lấy toàn bộ M từ (đảm bảo xuất hiện đủ)
+      selectedList = [...this.vocabPool];
 
-      // Bổ sung thêm N - M từ
-      const remainingCount = N - M;
-      for (let i = 0; i < remainingCount; i++) {
-        const randomVocab = this.vocabPool[Math.floor(Math.random() * M)];
-        selectedList.push(randomVocab);
+      // Bước 2: Bổ sung N - M slot bằng weighted random (cho phép lặp theo trọng số)
+      const extraCount = N - M;
+      const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+
+      for (let k = 0; k < extraCount; k++) {
+        // Weighted random pick
+        let r = Math.random() * totalWeight;
+        let chosen = 0;
+        for (let i = 0; i < M; i++) {
+          r -= weights[i];
+          if (r <= 0) {
+            chosen = i;
+            break;
+          }
+        }
+        selectedList.push(this.vocabPool[chosen]);
       }
 
+      // Bước 3: Fisher-Yates shuffle toàn bộ
       if (this.order === "random") {
-        // Fisher-Yates shuffle
         for (let i = selectedList.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [selectedList[i], selectedList[j]] = [selectedList[j], selectedList[i]];
@@ -207,13 +255,11 @@ export class QuizSession {
     }
 
     // === CHỐNG LẶP 2 TỪ LIÊN TIẾP GIỐNG NHAU ===
-    // Dùng thuật toán greedy: duyệt từng vị trí, nếu trùng với phần tử trước đó 
-    // thì tìm phần tử khác phía sau để hoán đổi
     if (this.order === "random" && selectedList.length > 1) {
       for (let i = 1; i < selectedList.length; i++) {
         if (selectedList[i].id === selectedList[i - 1].id) {
-          // Tìm phần tử khác phía sau để swap
           let swapped = false;
+          // Tìm phần tử khác phía sau để swap
           for (let j = i + 1; j < selectedList.length; j++) {
             if (selectedList[j].id !== selectedList[i - 1].id && 
                 (i + 1 >= selectedList.length || selectedList[j].id !== selectedList[i + 1]?.id)) {
@@ -222,13 +268,12 @@ export class QuizSession {
               break;
             }
           }
-          // Nếu không tìm được phía sau, tìm phía trước (trước i-1)
+          // Nếu không tìm được phía sau, chèn vào vị trí hợp lệ phía trước
           if (!swapped) {
             for (let j = 0; j < i - 1; j++) {
               if (selectedList[j].id !== selectedList[i].id &&
                   (j === 0 || selectedList[j - 1].id !== selectedList[i].id) &&
                   selectedList[j + 1].id !== selectedList[i].id) {
-                // Chèn selectedList[i] vào vị trí j+1
                 const item = selectedList.splice(i, 1)[0];
                 selectedList.splice(j + 1, 0, item);
                 swapped = true;
@@ -260,6 +305,33 @@ export class QuizSession {
         hintShown: ""
       };
     });
+  }
+
+  // Chọn N phần tử từ pool theo trọng số, không lặp (weighted sampling without replacement)
+  _weightedSampleWithoutReplacement(pool, weights, n) {
+    const result = [];
+    const remainingWeights = [...weights];
+    const remainingIndices = pool.map((_, i) => i);
+
+    for (let k = 0; k < n && remainingIndices.length > 0; k++) {
+      const totalW = remainingWeights.reduce((sum, w) => sum + w, 0);
+      let r = Math.random() * totalW;
+      let chosenIdx = 0;
+
+      for (let i = 0; i < remainingWeights.length; i++) {
+        r -= remainingWeights[i];
+        if (r <= 0) {
+          chosenIdx = i;
+          break;
+        }
+      }
+
+      result.push(pool[remainingIndices[chosenIdx]]);
+      remainingIndices.splice(chosenIdx, 1);
+      remainingWeights.splice(chosenIdx, 1);
+    }
+
+    return result;
   }
 
   // Bắt đầu tính giờ cho câu hỏi hiện tại
