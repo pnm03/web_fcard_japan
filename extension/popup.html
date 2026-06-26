@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8">
+    <style>
+      body {
+        width: 300px;
+        margin: 0;
+        padding: 14px;
+        font-family: Inter, system-ui, sans-serif;
+        background: #fffdf7;
+        color: #1f2b24;
+      }
+      h1 {
+        font-size: 17px;
+        margin: 0 0 8px;
+      }
+      p {
+        color: #627067;
+        line-height: 1.45;
+      }
+      button {
+        width: 100%;
+        border: 0;
+        border-radius: 6px;
+        padding: 10px 12px;
+        margin-top: 8px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      .primary {
+        background: #1f5f4a;
+        color: white;
+      }
+      .secondary {
+        background: #ece6da;
+        color: #1f2b24;
+      }
+      #status {
+        margin-top: 10px;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Nihongo Review</h1>
+    <p>Kiểm tra nhanh các từ đã đến hạn ôn.</p>
+    <button class="primary" id="review-now">Ôn ngay</button>
+    <button class="secondary" id="open-app">Mở web app</button>
+    <button class="secondary" id="open-options">Cài đặt</button>
+    <div id="status"></div>
+    <script src="scheduler.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

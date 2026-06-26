@@ -183,6 +183,9 @@ export class QuizSession {
       const correct = v.correctCount || 0;
       const lastTested = v.lastTested || 0;
       const total = correct + wrong;
+      const mastery = Number.isFinite(Number(v.masteryScore)) ? Number(v.masteryScore) : 0;
+      const streak = v.streakCorrect || 0;
+      const lastAnswerState = v.lastAnswerState || "unanswered";
 
       // Base weight: mọi từ đều có cơ hội tối thiểu
       let w = 1;
@@ -200,6 +203,16 @@ export class QuizSession {
         w += 2;
       }
 
+      // Mastery bonus: từ có điểm thuộc thấp sẽ được hỏi lại nhiều hơn
+      w += ((100 - mastery) / 100) * 4;
+
+      // Lần gần nhất sai / phải xem đáp án / đúng sau gợi ý thì cần ôn lại sớm hơn
+      if (lastAnswerState === "wrong" || lastAnswerState === "revealed") {
+        w += 4;
+      } else if (lastAnswerState === "correct_retry") {
+        w += 2;
+      }
+
       // Freshness bonus: từ lâu không test → ưu tiên cao hơn
       if (lastTested > 0) {
         const daysSince = (now - lastTested) / (1000 * 60 * 60 * 24);
@@ -208,6 +221,11 @@ export class QuizSession {
       } else {
         // Chưa từng test
         w += 2;
+      }
+
+      // Từ đã thuộc vững vẫn có cơ hội xuất hiện, nhưng giảm tần suất lặp
+      if (mastery >= 80 && streak >= 3 && diff <= 30) {
+        w *= 0.55;
       }
 
       return w;
@@ -390,7 +408,8 @@ export class QuizSession {
         question.vocab.projectId,
         question.vocab.id,
         !wasRetry, // isCorrect
-        question.timeSpent // tổng thời gian qua các lượt thử
+        question.timeSpent, // tổng thời gian qua các lượt thử
+        question.answerState
       );
 
       return {
@@ -424,7 +443,8 @@ export class QuizSession {
           question.vocab.projectId,
           question.vocab.id,
           false, // isCorrect
-          question.timeSpent
+          question.timeSpent,
+          "wrong"
         );
 
         return {

@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Nihongo Review Sentinel",
+  "version": "0.1.0",
+  "description": "Nhắc ôn từ vựng tiếng Nhật theo lịch lặp lại ngắt quãng từ Nihongo Flashcard.",
+  "permissions": [
+    "alarms",
+    "notifications",
+    "storage",
+    "tabs",
+    "windows"
+  ],
+  "host_permissions": [
+    "https://*.supabase.co/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Nihongo Review",
+    "default_popup": "popup.html"
+  },
+  "options_page": "options.html"
+}

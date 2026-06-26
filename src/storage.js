@@ -26,7 +26,7 @@ const DEFAULT_PROJECTS = [
       { id: "n4", japanese: "よん / し (四)", romaji: "yon", meaning: "Số 4", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
       { id: "n5", japanese: "ご (五)", romaji: "go", meaning: "Số 5", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
       { id: "n6", japanese: "ろく (六)", romaji: "roku", meaning: "Số 6", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
-      { id: "n7", japanese: "なな / しch (七)", romaji: "nana", meaning: "Số 7", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
+      { id: "n7", japanese: "なな / しち (七)", romaji: "nana", meaning: "Số 7", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
       { id: "n8", japanese: "はち (八)", romaji: "hachi", meaning: "Số 8", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
       { id: "n9", japanese: "きゅう / く (九)", romaji: "kyuu", meaning: "Số 9", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
       { id: "n10", japanese: "じゅう (十)", romaji: "juu", meaning: "Số 10", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 }
@@ -35,6 +35,38 @@ const DEFAULT_PROJECTS = [
 ];
 
 const STORAGE_KEY = "nihongo_flashcard_projects";
+
+const BASE_VOCAB_COLUMNS = new Set([
+  "id",
+  "project_id",
+  "japanese",
+  "romaji",
+  "meaning",
+  "correct_count",
+  "wrong_count",
+  "difficulty_score"
+]);
+
+const LEARNING_VOCAB_COLUMNS = [
+  "history_times",
+  "last_tested_at",
+  "last_time_spent_sec",
+  "last_answer_state",
+  "times_seen",
+  "streak_correct",
+  "mastery_score",
+  "next_review_at",
+  "review_interval_hours",
+  "review_stage",
+  "lapse_count",
+  "review_reason",
+  "ease_factor",
+  "memory_stability",
+  "memory_difficulty",
+  "updated_at"
+];
+
+let supportedVocabColumns = new Set(BASE_VOCAB_COLUMNS);
 
 // Trạng thái đồng bộ cơ sở dữ liệu
 let onSyncStateChangeCallback = null;
@@ -47,6 +79,285 @@ function updateSyncState(state) {
   if (onSyncStateChangeCallback) {
     onSyncStateChangeCallback(state);
   }
+}
+
+function clampNumber(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function toFiniteNumber(value, fallback = 0) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+}
+
+function toNonNegativeInt(value, fallback = 0) {
+  return Math.max(0, Math.trunc(toFiniteNumber(value, fallback)));
+}
+
+function normalizeHistoryTimes(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map(item => toFiniteNumber(item, NaN))
+      .filter(Number.isFinite)
+      .slice(-20);
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    try {
+      return normalizeHistoryTimes(JSON.parse(value));
+    } catch (e) {
+      return [];
+    }
+  }
+
+  return [];
+}
+
+function normalizeTimestampToMs(value) {
+  if (!value) return 0;
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function normalizeAnswerState(value, fallback = "unanswered") {
+  const allowed = new Set(["unanswered", "correct", "correct_retry", "wrong", "revealed"]);
+  return allowed.has(value) ? value : fallback;
+}
+
+function average(values) {
+  if (!values.length) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function hoursToMs(hours) {
+  return hours * 60 * 60 * 1000;
+}
+
+function formatHoursHuman(hours) {
+  if (!Number.isFinite(hours) || hours <= 0) return "ngay bây giờ";
+  if (hours < 1) return `${Math.round(hours * 60)} phút`;
+  if (hours < 24) return `${Math.round(hours)} giờ`;
+  const days = hours / 24;
+  if (days < 7) return `${Math.round(days)} ngày`;
+  const weeks = days / 7;
+  if (weeks < 8) return `${Math.round(weeks)} tuần`;
+  return `${Math.round(days / 30)} tháng`;
+}
+
+function classifyReviewGrade(vocab, answerState, timeSpentSec) {
+  const normalizedAnswerState = normalizeAnswerState(answerState);
+  const timeSpent = toFiniteNumber(timeSpentSec, 0);
+  const difficultyScore = clampNumber(toFiniteNumber(vocab.difficultyScore, 0), 0, 100);
+
+  if (normalizedAnswerState === "wrong" || normalizedAnswerState === "revealed") return "again";
+  if (normalizedAnswerState === "correct_retry") return "hard";
+  if (timeSpent >= 10 || difficultyScore >= 75) return "hard";
+  if (timeSpent > 0 && timeSpent <= 3.5 && difficultyScore <= 40 && (vocab.streakCorrect || 0) >= 2) return "easy";
+  return "good";
+}
+
+function calculateReviewSchedule(vocab, answerState, timeSpentSec, now = Date.now()) {
+  const grade = classifyReviewGrade(vocab, answerState, timeSpentSec);
+  const currentInterval = toFiniteNumber(vocab.reviewIntervalHours, 0);
+  const currentStage = toNonNegativeInt(vocab.reviewStage, 0);
+  const currentEase = clampNumber(toFiniteNumber(vocab.easeFactor, 2.5), 1.3, 3.2);
+  const lapseCount = toNonNegativeInt(vocab.lapseCount, 0);
+  const difficultyScore = clampNumber(toFiniteNumber(vocab.difficultyScore, 0), 0, 100);
+  const masteryScore = clampNumber(toFiniteNumber(vocab.masteryScore, 0), 0, 100);
+
+  let intervalHours = currentInterval;
+  let reviewStage = currentStage;
+  let easeFactor = currentEase;
+  let nextLapseCount = lapseCount;
+  let reason = "";
+
+  if (grade === "again") {
+    intervalHours = 10 / 60;
+    reviewStage = 0;
+    easeFactor = clampNumber(easeFactor - 0.2, 1.3, 3.2);
+    nextLapseCount += 1;
+    reason = "Sai hoặc phải xem đáp án";
+  } else if (grade === "hard") {
+    intervalHours = currentInterval > 0
+      ? Math.max(12, Math.min(currentInterval * 1.25, 72))
+      : 12;
+    reviewStage = Math.max(1, currentStage);
+    easeFactor = clampNumber(easeFactor - 0.12, 1.3, 3.2);
+    reason = answerState === "correct_retry" ? "Đúng sau gợi ý" : "Đúng nhưng phản xạ còn chậm/khó";
+  } else if (grade === "easy") {
+    if (currentStage <= 0) {
+      intervalHours = 72;
+    } else if (currentInterval <= 0) {
+      intervalHours = 72;
+    } else {
+      intervalHours = currentInterval * (easeFactor + 0.45);
+    }
+    reviewStage = currentStage + 2;
+    easeFactor = clampNumber(easeFactor + 0.08, 1.3, 3.2);
+    reason = "Đúng nhanh, tăng khoảng cách ôn";
+  } else {
+    if (currentStage <= 0) {
+      intervalHours = 24;
+    } else if (currentStage === 1) {
+      intervalHours = 72;
+    } else if (currentInterval <= 0) {
+      intervalHours = 72;
+    } else {
+      intervalHours = currentInterval * easeFactor;
+    }
+    reviewStage = currentStage + 1;
+    reason = "Đúng, cần kiểm tra lại theo đường cong lãng quên";
+  }
+
+  if (answerState === "correct" && difficultyScore >= 60 && intervalHours > 72) {
+    intervalHours = 72;
+    reason = "Từ khó vừa trả lời đúng, kiểm tra lại sớm";
+  }
+
+  if (masteryScore < 60 && intervalHours > 24) {
+    intervalHours = 24;
+    reason = "Điểm thuộc còn thấp";
+  }
+
+  intervalHours = clampNumber(intervalHours, 10 / 60, 24 * 90);
+  const stabilityDays = Math.max(0.1, intervalHours / 24);
+  const memoryDifficulty = clampNumber(
+    5 + (difficultyScore / 20) + nextLapseCount * 0.7 - (vocab.streakCorrect || 0) * 0.25,
+    1,
+    10
+  );
+
+  return {
+    grade,
+    nextReviewAt: now + hoursToMs(intervalHours),
+    reviewIntervalHours: Number(intervalHours.toFixed(2)),
+    reviewStage,
+    lapseCount: nextLapseCount,
+    reviewReason: reason,
+    easeFactor: Number(easeFactor.toFixed(2)),
+    memoryStability: Number(stabilityDays.toFixed(2)),
+    memoryDifficulty: Number(memoryDifficulty.toFixed(2))
+  };
+}
+
+function calculateMasteryScore(vocab) {
+  const correctCount = toNonNegativeInt(vocab.correctCount ?? vocab.correct_count);
+  const wrongCount = toNonNegativeInt(vocab.wrongCount ?? vocab.wrong_count);
+  const totalAnswers = correctCount + wrongCount;
+  if (totalAnswers === 0) return 0;
+
+  const historyTimes = normalizeHistoryTimes(vocab.historyTimes ?? vocab.history_times);
+  const avgTime = historyTimes.length
+    ? average(historyTimes)
+    : toFiniteNumber(vocab.lastTimeSpent ?? vocab.last_time_spent_sec, 0);
+  const difficultyScore = clampNumber(toFiniteNumber(vocab.difficultyScore ?? vocab.difficulty_score, 0), 0, 100);
+  const streakCorrect = toNonNegativeInt(vocab.streakCorrect ?? vocab.streak_correct);
+  const lastAnswerState = normalizeAnswerState(vocab.lastAnswerState ?? vocab.last_answer_state);
+
+  const accuracyScore = (correctCount / totalAnswers) * 45;
+  const exposureScore = Math.min(totalAnswers, 5) * 2;
+  const streakScore = Math.min(streakCorrect, 5) * 5;
+  const speedScore = avgTime <= 0 ? 0 : avgTime <= 3.5 ? 20 : avgTime <= 7 ? 14 : avgTime <= 10 ? 7 : 0;
+  const difficultyPenalty = difficultyScore * 0.3;
+  const lastPenalty = lastAnswerState === "wrong" ? 10 : lastAnswerState === "revealed" ? 18 : lastAnswerState === "correct_retry" ? 6 : 0;
+
+  let score = accuracyScore + exposureScore + streakScore + speedScore - difficultyPenalty - lastPenalty;
+
+  if (totalAnswers < 2) score = Math.min(score, 55);
+  if (streakCorrect < 2) score = Math.min(score, 72);
+
+  return Math.round(clampNumber(score, 0, 100));
+}
+
+function normalizeVocab(vocab) {
+  const correctCount = toNonNegativeInt(vocab.correctCount ?? vocab.correct_count);
+  const wrongCount = toNonNegativeInt(vocab.wrongCount ?? vocab.wrong_count);
+  const historyTimes = normalizeHistoryTimes(vocab.historyTimes ?? vocab.history_times);
+  const lastTimeSpent = toFiniteNumber(vocab.lastTimeSpent ?? vocab.last_time_spent_sec, 0);
+  const lastAnswerState = normalizeAnswerState(vocab.lastAnswerState ?? vocab.last_answer_state);
+  const normalized = {
+    ...vocab,
+    correctCount,
+    wrongCount,
+    historyTimes,
+    difficultyScore: Math.round(clampNumber(toFiniteNumber(vocab.difficultyScore ?? vocab.difficulty_score, 0), 0, 100)),
+    lastTested: normalizeTimestampToMs(vocab.lastTested ?? vocab.last_tested_at),
+    lastTimeSpent,
+    lastAnswerState,
+    timesSeen: toNonNegativeInt(vocab.timesSeen ?? vocab.times_seen, correctCount + wrongCount),
+    streakCorrect: toNonNegativeInt(vocab.streakCorrect ?? vocab.streak_correct),
+    nextReviewAt: normalizeTimestampToMs(vocab.nextReviewAt ?? vocab.next_review_at),
+    reviewIntervalHours: toFiniteNumber(vocab.reviewIntervalHours ?? vocab.review_interval_hours, 0),
+    reviewStage: toNonNegativeInt(vocab.reviewStage ?? vocab.review_stage, 0),
+    lapseCount: toNonNegativeInt(vocab.lapseCount ?? vocab.lapse_count, 0),
+    reviewReason: typeof (vocab.reviewReason ?? vocab.review_reason) === "string" ? (vocab.reviewReason ?? vocab.review_reason) : "",
+    easeFactor: clampNumber(toFiniteNumber(vocab.easeFactor ?? vocab.ease_factor, 2.5), 1.3, 3.2),
+    memoryStability: toFiniteNumber(vocab.memoryStability ?? vocab.memory_stability, 0),
+    memoryDifficulty: clampNumber(toFiniteNumber(vocab.memoryDifficulty ?? vocab.memory_difficulty, 5), 1, 10)
+  };
+
+  normalized.masteryScore = Math.round(clampNumber(
+    toFiniteNumber(vocab.masteryScore ?? vocab.mastery_score, calculateMasteryScore(normalized)),
+    0,
+    100
+  ));
+
+  return normalized;
+}
+
+function rememberVocabColumns(rows = []) {
+  if (!rows.length) return;
+  supportedVocabColumns = new Set([...BASE_VOCAB_COLUMNS, ...Object.keys(rows[0])]);
+}
+
+function supportsVocabColumn(column) {
+  return supportedVocabColumns.has(column);
+}
+
+function toDbTimestamp(ms) {
+  return ms ? new Date(ms).toISOString() : null;
+}
+
+function buildVocabUpsertPayload(vocab, projectId) {
+  const normalized = normalizeVocab(vocab);
+  const payload = {
+    id: normalized.id,
+    project_id: projectId,
+    japanese: normalized.japanese,
+    romaji: normalized.romaji,
+    meaning: normalized.meaning,
+    correct_count: normalized.correctCount,
+    wrong_count: normalized.wrongCount,
+    difficulty_score: normalized.difficultyScore
+  };
+
+  const learningPayload = {
+    history_times: normalized.historyTimes,
+    last_tested_at: toDbTimestamp(normalized.lastTested),
+    last_time_spent_sec: normalized.lastTimeSpent,
+    last_answer_state: normalized.lastAnswerState,
+    times_seen: normalized.timesSeen,
+    streak_correct: normalized.streakCorrect,
+    mastery_score: normalized.masteryScore,
+    next_review_at: toDbTimestamp(normalized.nextReviewAt),
+    review_interval_hours: normalized.reviewIntervalHours,
+    review_stage: normalized.reviewStage,
+    lapse_count: normalized.lapseCount,
+    review_reason: normalized.reviewReason,
+    ease_factor: normalized.easeFactor,
+    memory_stability: normalized.memoryStability,
+    memory_difficulty: normalized.memoryDifficulty,
+    updated_at: new Date().toISOString()
+  };
+
+  LEARNING_VOCAB_COLUMNS.forEach(column => {
+    if (supportsVocabColumn(column)) {
+      payload[column] = learningPayload[column];
+    }
+  });
+
+  return payload;
 }
 
 // Bọc tác vụ đồng bộ để báo trạng thái lên giao diện và xử lý ngoại lệ
@@ -70,7 +381,11 @@ export function initializeStorage() {
 export function getProjects() {
   initializeStorage();
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    const projects = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    return projects.map(project => ({
+      ...project,
+      vocab: (project.vocab || []).map(normalizeVocab)
+    }));
   } catch (e) {
     console.error("Lỗi khi đọc localStorage", e);
     return DEFAULT_PROJECTS;
@@ -166,7 +481,21 @@ export function addVocabToProject(projectId, vocabData) {
     correctCount: 0,
     wrongCount: 0,
     historyTimes: [],
-    difficultyScore: 0
+    difficultyScore: 0,
+    lastTested: 0,
+    lastTimeSpent: 0,
+    lastAnswerState: "unanswered",
+    timesSeen: 0,
+    streakCorrect: 0,
+    masteryScore: 0,
+    nextReviewAt: 0,
+    reviewIntervalHours: 0,
+    reviewStage: 0,
+    lapseCount: 0,
+    reviewReason: "",
+    easeFactor: 2.5,
+    memoryStability: 0,
+    memoryDifficulty: 5
   };
 
   projects[projectIndex].vocab.push(newVocab);
@@ -176,16 +505,7 @@ export function addVocabToProject(projectId, vocabData) {
   safeSync(async () => {
     const { error } = await supabase
       .from("vocab")
-      .upsert({
-        id: newVocab.id,
-        project_id: projectId,
-        japanese: newVocab.japanese,
-        romaji: newVocab.romaji,
-        meaning: newVocab.meaning,
-        correct_count: newVocab.correctCount,
-        wrong_count: newVocab.wrongCount,
-        difficulty_score: newVocab.difficultyScore
-      });
+      .upsert(buildVocabUpsertPayload(newVocab, projectId));
     if (error) throw error;
   });
 
@@ -201,11 +521,17 @@ export function updateVocabInProject(projectId, vocabId, updatedData) {
   if (vocabIndex === -1) return false;
 
   const currentVocab = projects[projectIndex].vocab[vocabIndex];
+  const nextTextValue = (key, transform = value => value) => {
+    const value = updatedData[key];
+    if (typeof value !== "string") return currentVocab[key];
+    return transform(value.trim());
+  };
+
   const updated = {
     ...currentVocab,
-    japanese: updatedData.japanese.trim(),
-    romaji: updatedData.romaji.trim().toLowerCase(),
-    meaning: updatedData.meaning.trim()
+    japanese: nextTextValue("japanese"),
+    romaji: nextTextValue("romaji", value => value.toLowerCase()),
+    meaning: nextTextValue("meaning")
   };
   projects[projectIndex].vocab[vocabIndex] = updated;
 
@@ -215,16 +541,7 @@ export function updateVocabInProject(projectId, vocabId, updatedData) {
   safeSync(async () => {
     const { error } = await supabase
       .from("vocab")
-      .upsert({
-        id: updated.id,
-        project_id: projectId,
-        japanese: updated.japanese,
-        romaji: updated.romaji,
-        meaning: updated.meaning,
-        correct_count: updated.correctCount,
-        wrong_count: updated.wrongCount,
-        difficulty_score: updated.difficultyScore
-      });
+      .upsert(buildVocabUpsertPayload(updated, projectId));
     if (error) throw error;
   });
 
@@ -251,7 +568,7 @@ export function deleteVocabFromProject(projectId, vocabId) {
   return true;
 }
 
-export function updateVocabStats(projectId, vocabId, isCorrect, timeSpentSec) {
+export function updateVocabStats(projectId, vocabId, isCorrect, timeSpentSec, answerState = null) {
   const projects = getProjects();
   const projectIndex = projects.findIndex(p => p.id === projectId);
   if (projectIndex === -1) return null;
@@ -259,33 +576,57 @@ export function updateVocabStats(projectId, vocabId, isCorrect, timeSpentSec) {
   const vocabIndex = projects[projectIndex].vocab.findIndex(v => v.id === vocabId);
   if (vocabIndex === -1) return null;
 
-  const vocab = projects[projectIndex].vocab[vocabIndex];
+  const vocab = normalizeVocab(projects[projectIndex].vocab[vocabIndex]);
+  const normalizedTimeSpent = Math.max(0, toFiniteNumber(timeSpentSec, 0));
+  const normalizedAnswerState = normalizeAnswerState(
+    answerState || (isCorrect ? "correct" : "wrong"),
+    isCorrect ? "correct" : "wrong"
+  );
 
-  if (isCorrect) {
-    vocab.correctCount += 1;
-    vocab.historyTimes.push(timeSpentSec);
-    if (vocab.historyTimes.length > 10) {
-      vocab.historyTimes.shift();
+  vocab.timesSeen = (vocab.timesSeen || 0) + 1;
+  vocab.lastTested = Date.now();
+  vocab.lastTimeSpent = normalizedTimeSpent;
+  vocab.lastAnswerState = normalizedAnswerState;
+
+  if (normalizedTimeSpent > 0) {
+    vocab.historyTimes.push(normalizedTimeSpent);
+    if (vocab.historyTimes.length > 20) {
+      vocab.historyTimes = vocab.historyTimes.slice(-20);
     }
+  }
+
+  if (normalizedAnswerState === "correct") {
+    vocab.correctCount += 1;
+    vocab.streakCorrect = (vocab.streakCorrect || 0) + 1;
   } else {
     vocab.wrongCount += 1;
+    vocab.streakCorrect = 0;
   }
 
   let currentDifficulty = vocab.difficultyScore || 0;
-  if (!isCorrect) {
-    currentDifficulty = Math.min(100, currentDifficulty + 25);
-  } else {
-    if (timeSpentSec <= 3.5) {
-      currentDifficulty = Math.max(0, currentDifficulty - 15);
-    } else if (timeSpentSec <= 7.0) {
-      currentDifficulty = Math.max(0, currentDifficulty - 5);
+  if (normalizedAnswerState === "correct") {
+    if (normalizedTimeSpent <= 3.5) {
+      currentDifficulty = Math.max(0, currentDifficulty - 18);
+    } else if (normalizedTimeSpent <= 7.0) {
+      currentDifficulty = Math.max(0, currentDifficulty - 10);
+    } else if (normalizedTimeSpent <= 10.0) {
+      currentDifficulty = Math.max(0, currentDifficulty - 2);
     } else {
-      currentDifficulty = Math.min(100, currentDifficulty + 10);
+      currentDifficulty = Math.min(100, currentDifficulty + 8);
     }
+    currentDifficulty = Math.max(0, currentDifficulty - Math.min(10, vocab.streakCorrect * 2));
+  } else if (normalizedAnswerState === "correct_retry") {
+    currentDifficulty = Math.min(100, currentDifficulty + 15);
+  } else if (normalizedAnswerState === "revealed") {
+    currentDifficulty = Math.min(100, currentDifficulty + 40);
+  } else {
+    currentDifficulty = Math.min(100, currentDifficulty + 28);
   }
 
-  vocab.difficultyScore = currentDifficulty;
-  vocab.lastTested = Date.now();
+  vocab.difficultyScore = Math.round(clampNumber(currentDifficulty, 0, 100));
+  vocab.masteryScore = calculateMasteryScore(vocab);
+  Object.assign(vocab, calculateReviewSchedule(vocab, normalizedAnswerState, normalizedTimeSpent, vocab.lastTested));
+  projects[projectIndex].vocab[vocabIndex] = vocab;
 
   saveProjects(projects);
   
@@ -293,23 +634,14 @@ export function updateVocabStats(projectId, vocabId, isCorrect, timeSpentSec) {
   safeSync(async () => {
     const { error } = await supabase
       .from("vocab")
-      .upsert({
-        id: vocab.id,
-        project_id: projectId,
-        japanese: vocab.japanese,
-        romaji: vocab.romaji,
-        meaning: vocab.meaning,
-        correct_count: vocab.correctCount,
-        wrong_count: vocab.wrongCount,
-        difficulty_score: vocab.difficultyScore
-      });
+      .upsert(buildVocabUpsertPayload(vocab, projectId));
     if (error) throw error;
   });
 
   return vocab;
 }
 
-export function markVocabAsMaxDifficulty(projectId, vocabId) {
+export function markVocabAsMaxDifficulty(projectId, vocabId, timeSpentSec = 0) {
   const projects = getProjects();
   const projectIndex = projects.findIndex(p => p.id === projectId);
   if (projectIndex === -1) return null;
@@ -317,10 +649,23 @@ export function markVocabAsMaxDifficulty(projectId, vocabId) {
   const vocabIndex = projects[projectIndex].vocab.findIndex(v => v.id === vocabId);
   if (vocabIndex === -1) return null;
 
-  const vocab = projects[projectIndex].vocab[vocabIndex];
+  const vocab = normalizeVocab(projects[projectIndex].vocab[vocabIndex]);
   vocab.wrongCount = (vocab.wrongCount || 0) + 2;
+  vocab.timesSeen = (vocab.timesSeen || 0) + 1;
   vocab.difficultyScore = 100;
   vocab.lastTested = Date.now();
+  vocab.lastTimeSpent = Math.max(0, toFiniteNumber(timeSpentSec, 0));
+  vocab.lastAnswerState = "revealed";
+  vocab.streakCorrect = 0;
+  if (vocab.lastTimeSpent > 0) {
+    vocab.historyTimes.push(vocab.lastTimeSpent);
+    if (vocab.historyTimes.length > 20) {
+      vocab.historyTimes = vocab.historyTimes.slice(-20);
+    }
+  }
+  vocab.masteryScore = calculateMasteryScore(vocab);
+  Object.assign(vocab, calculateReviewSchedule(vocab, "revealed", vocab.lastTimeSpent, vocab.lastTested));
+  projects[projectIndex].vocab[vocabIndex] = vocab;
 
   saveProjects(projects);
   
@@ -328,16 +673,7 @@ export function markVocabAsMaxDifficulty(projectId, vocabId) {
   safeSync(async () => {
     const { error } = await supabase
       .from("vocab")
-      .upsert({
-        id: vocab.id,
-        project_id: projectId,
-        japanese: vocab.japanese,
-        romaji: vocab.romaji,
-        meaning: vocab.meaning,
-        correct_count: vocab.correctCount,
-        wrong_count: vocab.wrongCount,
-        difficulty_score: vocab.difficultyScore
-      });
+      .upsert(buildVocabUpsertPayload(vocab, projectId));
     if (error) throw error;
   });
 
@@ -357,6 +693,7 @@ export async function fetchAndSyncFromSupabase() {
       .from("vocab")
       .select("*");
     if (vocabError) throw vocabError;
+    rememberVocabColumns(dbVocab || []);
 
     // Nếu cơ sở dữ liệu trên mây trống trơn, tự động đẩy toàn bộ LocalStorage lên làm bản sao lưu gốc (Backup)
     if ((!dbProjects || dbProjects.length === 0) && (!dbVocab || dbVocab.length === 0)) {
@@ -375,16 +712,7 @@ export async function fetchAndSyncFromSupabase() {
         const vocabToUpload = [];
         localProjects.forEach(p => {
           p.vocab.forEach(v => {
-            vocabToUpload.push({
-              id: v.id,
-              project_id: p.id,
-              japanese: v.japanese,
-              romaji: v.romaji,
-              meaning: v.meaning,
-              correct_count: v.correctCount || 0,
-              wrong_count: v.wrongCount || 0,
-              difficulty_score: v.difficultyScore || 0
-            });
+            vocabToUpload.push(buildVocabUpsertPayload(v, p.id));
           });
         });
 
@@ -401,15 +729,29 @@ export async function fetchAndSyncFromSupabase() {
     const mergedProjects = (dbProjects || []).map(p => {
       const projectVocab = (dbVocab || [])
         .filter(v => v.project_id === p.id)
-        .map(v => ({
+        .map(v => normalizeVocab({
           id: v.id,
           japanese: v.japanese,
           romaji: v.romaji,
           meaning: v.meaning,
-          correctCount: v.correct_count || 0,
-          wrongCount: v.wrong_count || 0,
-          difficultyScore: v.difficulty_score || 0,
-          historyTimes: []
+          correct_count: v.correct_count,
+          wrong_count: v.wrong_count,
+          difficulty_score: v.difficulty_score,
+          history_times: v.history_times,
+          last_tested_at: v.last_tested_at,
+          last_time_spent_sec: v.last_time_spent_sec,
+          last_answer_state: v.last_answer_state,
+          times_seen: v.times_seen,
+          streak_correct: v.streak_correct,
+          mastery_score: v.mastery_score,
+          next_review_at: v.next_review_at,
+          review_interval_hours: v.review_interval_hours,
+          review_stage: v.review_stage,
+          lapse_count: v.lapse_count,
+          review_reason: v.review_reason,
+          ease_factor: v.ease_factor,
+          memory_stability: v.memory_stability,
+          memory_difficulty: v.memory_difficulty
         }));
       return {
         id: p.id,
@@ -425,6 +767,146 @@ export async function fetchAndSyncFromSupabase() {
     console.error("Lỗi khi kéo dữ liệu từ Supabase:", e);
     updateSyncState("error");
   }
+}
+
+export function isVocabWeak(vocab) {
+  const v = normalizeVocab(vocab);
+  const totalTests = v.correctCount + v.wrongCount;
+  if (totalTests === 0) return false;
+
+  const errorRate = v.wrongCount / totalTests;
+  const avgTime = v.historyTimes.length ? average(v.historyTimes) : v.lastTimeSpent;
+  const masteryScore = typeof v.masteryScore === "number" ? v.masteryScore : calculateMasteryScore(v);
+
+  return (
+    v.lastAnswerState === "wrong" ||
+    v.lastAnswerState === "revealed" ||
+    v.lastAnswerState === "correct_retry" ||
+    v.difficultyScore > 40 ||
+    errorRate > 0.25 ||
+    avgTime > 7.0 ||
+    masteryScore < 60
+  );
+}
+
+export function getReviewStatus(vocab, now = Date.now()) {
+  const v = normalizeVocab(vocab);
+  const totalTests = v.correctCount + v.wrongCount;
+  const nextReviewAt = v.nextReviewAt || 0;
+  const lastTested = v.lastTested || 0;
+  const msUntilDue = nextReviewAt ? nextReviewAt - now : 0;
+  const hoursUntilDue = msUntilDue / (60 * 60 * 1000);
+  const daysSinceLast = lastTested ? (now - lastTested) / (24 * 60 * 60 * 1000) : null;
+  const isOverdue = nextReviewAt > 0 && msUntilDue <= 0;
+  const isDueSoon = nextReviewAt > 0 && msUntilDue > 0 && msUntilDue <= hoursToMs(12);
+  const isStale = totalTests > 0 && daysSinceLast !== null && daysSinceLast >= 7 && v.masteryScore < 85;
+  const isHardRecentCorrect = v.lastAnswerState === "correct" && v.difficultyScore >= 55 && nextReviewAt > 0 && msUntilDue <= hoursToMs(72);
+  const needsReview = isOverdue || isDueSoon || isStale || isHardRecentCorrect;
+
+  let label = "Chưa có lịch ôn";
+  let reason = v.reviewReason || "";
+  let urgency = "none";
+
+  if (isOverdue) {
+    label = `Quá hạn ${formatHoursHuman(Math.abs(hoursUntilDue))}`;
+    urgency = "overdue";
+  } else if (isDueSoon) {
+    label = `Sắp đến hạn trong ${formatHoursHuman(hoursUntilDue)}`;
+    urgency = "soon";
+  } else if (isStale) {
+    label = `Lâu chưa học ${Math.round(daysSinceLast)} ngày`;
+    reason = reason || "Lâu chưa kiểm tra lại";
+    urgency = "stale";
+  } else if (isHardRecentCorrect) {
+    label = "Từ khó vừa đúng";
+    reason = reason || "Cần xác nhận lại để chắc đã thuộc";
+    urgency = "hard_correct";
+  } else if (nextReviewAt > 0) {
+    label = `Ôn lại sau ${formatHoursHuman(hoursUntilDue)}`;
+    urgency = "scheduled";
+  } else if (totalTests === 0) {
+    label = "Từ mới";
+    urgency = "new";
+  }
+
+  return {
+    ...v,
+    needsReview,
+    isOverdue,
+    isDueSoon,
+    isStale,
+    isHardRecentCorrect,
+    daysSinceLast,
+    hoursUntilDue,
+    label,
+    reason,
+    urgency
+  };
+}
+
+function collectAllVocabWithProject() {
+  const projects = getProjects();
+  const allVocab = [];
+
+  projects.forEach(p => {
+    p.vocab.forEach(v => {
+      allVocab.push({
+        ...v,
+        projectId: p.id,
+        projectName: p.name
+      });
+    });
+  });
+
+  return allVocab;
+}
+
+export function getReviewDueVocab(limit = 30, filter = "due") {
+  const now = Date.now();
+  const enriched = collectAllVocabWithProject().map(v => getReviewStatus(v, now));
+  const filtered = enriched.filter(v => {
+    if (filter === "overdue") return v.isOverdue;
+    if (filter === "soon") return v.isDueSoon;
+    if (filter === "stale") return v.isStale;
+    if (filter === "hard_correct") return v.isHardRecentCorrect;
+    return v.needsReview;
+  });
+
+  const urgencyRank = {
+    overdue: 0,
+    hard_correct: 1,
+    stale: 2,
+    soon: 3,
+    scheduled: 4,
+    new: 5,
+    none: 6
+  };
+
+  filtered.sort((a, b) => {
+    const rankDiff = (urgencyRank[a.urgency] ?? 9) - (urgencyRank[b.urgency] ?? 9);
+    if (rankDiff !== 0) return rankDiff;
+    const aDue = a.nextReviewAt || Number.MAX_SAFE_INTEGER;
+    const bDue = b.nextReviewAt || Number.MAX_SAFE_INTEGER;
+    if (aDue !== bDue) return aDue - bDue;
+    return (a.masteryScore || 0) - (b.masteryScore || 0);
+  });
+
+  return filtered.slice(0, limit);
+}
+
+export function getReviewOverview() {
+  const now = Date.now();
+  const all = collectAllVocabWithProject().map(v => getReviewStatus(v, now));
+  return {
+    total: all.length,
+    due: all.filter(v => v.needsReview).length,
+    overdue: all.filter(v => v.isOverdue).length,
+    soon: all.filter(v => v.isDueSoon).length,
+    stale: all.filter(v => v.isStale).length,
+    hardCorrect: all.filter(v => v.isHardRecentCorrect).length,
+    scheduled: all.filter(v => v.nextReviewAt > 0).length,
+    newWords: all.filter(v => (v.correctCount + v.wrongCount) === 0).length
+  };
 }
 
 // Lấy danh sách các từ vựng yếu / chưa nhớ trên toàn hệ thống hoặc theo dự án
@@ -445,18 +927,11 @@ export function getWeakVocab(projectId = null, limit = 20) {
     }
   });
 
-  const weakList = allVocab.filter(v => {
-    const totalTests = v.correctCount + v.wrongCount;
-    const errorRate = totalTests > 0 ? (v.wrongCount / totalTests) : 0;
-    
-    const avgTime = v.historyTimes && v.historyTimes.length > 0
-      ? (v.historyTimes.reduce((a, b) => a + b, 0) / v.historyTimes.length)
-      : 0;
-
-    return v.difficultyScore > 40 || errorRate > 0.25 || avgTime > 7.0;
-  });
+  const weakList = allVocab.filter(isVocabWeak);
 
   weakList.sort((a, b) => {
+    const masteryDiff = (a.masteryScore || 0) - (b.masteryScore || 0);
+    if (masteryDiff !== 0) return masteryDiff;
     if (b.difficultyScore !== a.difficultyScore) {
       return b.difficultyScore - a.difficultyScore;
     }
@@ -648,7 +1123,7 @@ const DICTIONARY_DB = [
   { japanese: "行く (いく)", romaji: "iku", meaning: "đi" },
   { japanese: "書く (かく)", romaji: "kaku", meaning: "viết" },
   { japanese: "池 (いけ)", romaji: "ike", meaning: "cái ao" },
-  { japanese: "ここ", romaji: "koko", meaning: "cái môi" },
+  { japanese: "ここ", romaji: "koko", meaning: "ở đây" },
   { japanese: "声 (こえ)", romaji: "koe", meaning: "giọng" },
   { japanese: "傘 (かさ)", romaji: "kasa", meaning: "cái ô" },
   { japanese: "坂 (さか)", romaji: "saka", meaning: "con dốc" },
@@ -673,7 +1148,7 @@ export function searchDictionary(query) {
   const uniqueDb = [];
   const seen = new Set();
   for (const item of mergedDb) {
-    const key = item.japanese.toLowerCase() + "|" + item.meaning.toLowerCase();
+    const key = item.japanese.toLowerCase() + "|" + (item.romaji || "").toLowerCase();
     if (!seen.has(key)) {
       seen.add(key);
       uniqueDb.push(item);

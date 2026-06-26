@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8">
+    <title>Nihongo Review Sentinel</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #f5f2ea;
+        color: #1f2b24;
+      }
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 32px 20px 48px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 28px;
+      }
+      p {
+        color: #627067;
+        line-height: 1.55;
+      }
+      .panel {
+        margin-top: 20px;
+        border: 1px solid #d7d0c3;
+        background: #fffdf7;
+        border-radius: 8px;
+        padding: 20px;
+      }
+      label {
+        display: block;
+        font-weight: 700;
+        margin: 14px 0 6px;
+      }
+      input[type="text"],
+      input[type="password"],
+      input[type="number"] {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #c9c0b3;
+        border-radius: 6px;
+        padding: 10px 12px;
+        font-size: 14px;
+        background: #fff;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .check {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 14px;
+      }
+      .check label {
+        margin: 0;
+      }
+      button {
+        border: 0;
+        border-radius: 6px;
+        background: #1f5f4a;
+        color: white;
+        font-weight: 800;
+        padding: 11px 16px;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: #ece6da;
+        color: #1f2b24;
+      }
+      .actions {
+        margin-top: 20px;
+        display: flex;
+        gap: 10px;
+      }
+      #status {
+        margin-top: 14px;
+        font-weight: 700;
+      }
+      .note {
+        font-size: 13px;
+        color: #766b5f;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Nihongo Review Sentinel</h1>
+      <p>Extension sẽ kiểm tra Supabase định kỳ và nhắc bạn ôn các từ đã tới hạn theo lịch lặp lại ngắt quãng.</p>
+
+      <section class="panel">
+        <label for="supabase-url">Supabase URL</label>
+        <input id="supabase-url" type="text" placeholder="https://xxxx.supabase.co">
+
+        <label for="supabase-key">Supabase anon key</label>
+        <input id="supabase-key" type="password" placeholder="eyJ...">
+        <p class="note">Dùng anon key giống app web. Không dùng service role key trong extension.</p>
+
+        <label for="app-url">Web app URL</label>
+        <input id="app-url" type="text" placeholder="https://web-fcard-japan.vercel.app/">
+
+        <div class="row">
+          <div>
+            <label for="check-interval">Chu kỳ kiểm tra (phút)</label>
+            <input id="check-interval" type="number" min="5" max="240" value="15">
+          </div>
+          <div>
+            <label for="max-words">Số từ tối đa mỗi phiên</label>
+            <input id="max-words" type="number" min="1" max="50" value="10">
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="cooldown">Giãn cách mở popup (phút)</label>
+            <input id="cooldown" type="number" min="5" max="1440" value="60">
+          </div>
+        </div>
+
+        <div class="check">
+          <input id="auto-open" type="checkbox">
+          <label for="auto-open">Tự mở cửa sổ ôn khi có từ đến hạn</label>
+        </div>
+
+        <div class="check">
+          <input id="strict-mode" type="checkbox">
+          <label for="strict-mode">Strict session: chỉ hoàn tất phiên khi trả lời đúng hết từ</label>
+        </div>
+
+        <div class="actions">
+          <button id="save-btn">Lưu cấu hình</button>
+          <button class="secondary" id="test-btn">Kiểm tra ngay</button>
+        </div>
+        <div id="status"></div>
+      </section>
+    </main>
+    <script src="scheduler.js"></script>
+    <script src="options.js"></script>
+  </body>
+</html>

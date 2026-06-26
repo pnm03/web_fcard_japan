@@ -71,6 +71,21 @@
             </div>
           </div>
 
+          <!-- Section: Smart Review Schedule -->
+          <div class="glass-panel" style="margin-top: 2rem;">
+            <div class="project-list-header">
+              <div>
+                <h2>Lịch Ôn Thông Minh</h2>
+                <p style="color: var(--text-muted); margin-top: 0.2rem;">Theo dõi các từ đang đến hạn ôn dựa trên lịch lặp lại ngắt quãng.</p>
+              </div>
+              <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button class="btn btn-primary" id="dashboard-start-due-btn">Kiểm tra từ đến hạn</button>
+                <button class="btn btn-secondary" id="dashboard-start-stale-btn">Kiểm tra từ lâu chưa học</button>
+              </div>
+            </div>
+            <div id="dashboard-review-overview"></div>
+          </div>
+
           <!-- Section: Quick Actions / Weak Words Summary -->
           <div class="glass-panel" style="margin-top: 2rem;">
             <div class="project-list-header">
@@ -789,6 +804,10 @@
                   <button class="btn btn-secondary" id="picker-select-all-btn" style="padding: 2px 8px; font-size: 11px; min-height: 24px;">Chọn tất cả</button>
                   <button class="btn btn-secondary" id="picker-select-none-btn" style="padding: 2px 8px; font-size: 11px; min-height: 24px;">Bỏ chọn hết</button>
                   <button class="btn btn-secondary" id="picker-select-weak-btn" style="padding: 2px 8px; font-size: 11px; min-height: 24px; color: var(--warning-strong); border-color: var(--warning);">Chọn từ yếu</button>
+                  <button class="btn btn-secondary" id="picker-select-due-btn" style="padding: 2px 8px; font-size: 11px; min-height: 24px; color: var(--accent); border-color: var(--accent);">Đến hạn ôn</button>
+                  <button class="btn btn-secondary" id="picker-select-overdue-btn" style="padding: 2px 8px; font-size: 11px; min-height: 24px; color: var(--error); border-color: var(--error);">Quá hạn</button>
+                  <button class="btn btn-secondary" id="picker-select-stale-btn" style="padding: 2px 8px; font-size: 11px; min-height: 24px;">Lâu chưa học</button>
+                  <button class="btn btn-secondary" id="picker-select-hard-correct-btn" style="padding: 2px 8px; font-size: 11px; min-height: 24px;">Khó vừa đúng</button>
                 </div>
               </div>
               

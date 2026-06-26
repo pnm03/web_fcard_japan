@@ -8,6 +8,11 @@ import {
   updateVocabInProject, 
   deleteVocabFromProject,
   getWeakVocab,
+  getReviewDueVocab,
+  getReviewOverview,
+  getReviewStatus,
+  isVocabWeak,
+  removeVietnameseTones,
   searchDictionary,
   saveToDictionaryCache,
   fetchAndSyncFromSupabase,
@@ -102,6 +107,51 @@ export function speakJapanese(text, isManual = false) {
     }
     
     window.speechSynthesis.speak(utterance);
+  }
+}
+
+function getReviewBadgeHtml(vocab) {
+  const status = getReviewStatus(vocab);
+  const styles = {
+    overdue: "background: var(--error-soft, #ffe8e8); color: var(--error); border-color: var(--error);",
+    soon: "background: var(--accent-soft); color: var(--accent); border-color: var(--accent);",
+    stale: "background: var(--warning-soft, #fff3d6); color: var(--warning-strong, #8a5a00); border-color: var(--warning, #d49b00);",
+    hard_correct: "background: var(--field); color: var(--ink); border-color: var(--line-strong);",
+    scheduled: "background: var(--good-soft); color: var(--good); border-color: var(--good);",
+    new: "background: var(--field); color: var(--ink-soft); border-color: var(--line);",
+    none: "background: var(--field); color: var(--ink-faint); border-color: var(--line);"
+  };
+  return `<span class="vocab-badge" title="${status.reason || status.label}" style="${styles[status.urgency] || styles.none}">${status.label}</span>`;
+}
+
+function startQuizWithVocabIds(vocabIds, message = "") {
+  if (!vocabIds || vocabIds.length === 0) {
+    alert("Chưa có từ phù hợp để kiểm tra.");
+    return;
+  }
+
+  const savedConfigStr = localStorage.getItem("nihongo_quiz_config");
+  let savedConfig = {};
+  if (savedConfigStr) {
+    try {
+      savedConfig = JSON.parse(savedConfigStr) || {};
+    } catch (e) {
+      savedConfig = {};
+    }
+  }
+
+  savedConfig.vocabIds = vocabIds;
+  savedConfig.questionCount = vocabIds.length;
+  savedConfig.quizMode = savedConfig.quizMode || "meaning_to_romaji";
+  savedConfig.order = savedConfig.order || "random";
+  savedConfig.allowRetry = savedConfig.allowRetry !== undefined ? savedConfig.allowRetry : true;
+  savedConfig.multiplier = "custom";
+  savedConfig.answerSource = savedConfig.answerSource || "all";
+  localStorage.setItem("nihongo_quiz_config", JSON.stringify(savedConfig));
+
+  switchView("quiz-setup-view");
+  if (message) {
+    setTimeout(() => alert(message), 100);
   }
 }
 
@@ -289,6 +339,8 @@ function renderDashboard() {
   const accuracy = totalTests > 0 ? Math.round((totalCorrect / totalTests) * 100) : 0;
   document.getElementById("stat-accuracy").textContent = accuracy + "%";
 
+  renderDashboardReviewSchedule();
+
   // Hiển thị danh sách từ yếu xem trước (Weak Vocab Preview)
   const weakVocab = getWeakVocab(null, 5); // Lấy tối đa 5 từ yếu nhất
   const previewContainer = document.getElementById("dashboard-weak-vocab-preview");
@@ -361,6 +413,116 @@ function renderDashboard() {
   document.getElementById("dashboard-start-weak-btn").onclick = () => {
     switchView("weak-vocab-view");
   };
+}
+
+function renderDashboardReviewSchedule() {
+  const container = document.getElementById("dashboard-review-overview");
+  if (!container) return;
+
+  const overview = getReviewOverview();
+  const dueVocab = getReviewDueVocab(5, "due");
+  const dueBtn = document.getElementById("dashboard-start-due-btn");
+  const staleBtn = document.getElementById("dashboard-start-stale-btn");
+
+  if (dueBtn) {
+    dueBtn.style.display = dueVocab.length > 0 ? "inline-flex" : "none";
+    dueBtn.onclick = () => {
+      const vocab = getReviewDueVocab(30, "due");
+      startQuizWithVocabIds(vocab.map(v => v.id), `Đã chọn ${vocab.length} từ đến hạn ôn.`);
+    };
+  }
+
+  if (staleBtn) {
+    staleBtn.style.display = overview.stale > 0 ? "inline-flex" : "none";
+    staleBtn.onclick = () => {
+      const vocab = getReviewDueVocab(30, "stale");
+      startQuizWithVocabIds(vocab.map(v => v.id), `Đã chọn ${vocab.length} từ lâu chưa học.`);
+    };
+  }
+
+  const cardsHtml = `
+    <div class="dashboard-grid" style="margin-bottom: 1rem;">
+      <div class="stats-card" style="border: 1px solid var(--line-strong); background: var(--field);">
+        <div class="stats-info">
+          <h3>Đến hạn</h3>
+          <p>${overview.due}</p>
+        </div>
+      </div>
+      <div class="stats-card" style="border: 1px solid var(--line-strong); background: var(--field);">
+        <div class="stats-info">
+          <h3>Quá hạn</h3>
+          <p>${overview.overdue}</p>
+        </div>
+      </div>
+      <div class="stats-card" style="border: 1px solid var(--line-strong); background: var(--field);">
+        <div class="stats-info">
+          <h3>Lâu chưa học</h3>
+          <p>${overview.stale}</p>
+        </div>
+      </div>
+      <div class="stats-card" style="border: 1px solid var(--line-strong); background: var(--field);">
+        <div class="stats-info">
+          <h3>Khó vừa đúng</h3>
+          <p>${overview.hardCorrect}</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  if (dueVocab.length === 0) {
+    container.innerHTML = cardsHtml + `
+      <div style="text-align: center; padding: 1.5rem; color: var(--ink-faint); font-family: var(--font-serif); font-size: 15px;">
+        Chưa có từ nào đến hạn ôn. Sau khi bạn làm bài kiểm tra, lịch ôn sẽ tự động xuất hiện ở đây.
+      </div>
+    `;
+    return;
+  }
+
+  let tableHtml = `
+    <div class="vocab-table-container">
+      <table class="vocab-table">
+        <thead>
+          <tr>
+            <th>Tiếng Nhật</th>
+            <th>Romaji</th>
+            <th>Nghĩa</th>
+            <th>Dự án</th>
+            <th style="text-align: center;">Mastery</th>
+            <th style="text-align: center;">Lịch ôn</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  dueVocab.forEach(v => {
+    tableHtml += `
+      <tr>
+        <td data-label="Tiếng Nhật" class="vocab-jp-cell">
+          ${cleanToKanaOnly(v.japanese)}
+          <button class="btn btn-secondary speak-row-btn" data-text="${cleanToKanaOnly(v.japanese)}" style="width:24px; height:24px; font-size:0.7rem; vertical-align:middle; padding:0; border:none; background:transparent; box-shadow:none; cursor:pointer;" title="Nghe phát âm">🔊</button>
+        </td>
+        <td data-label="Romaji" style="font-family: var(--font-mono); font-size: 0.95rem; color: var(--ink-soft);">${v.romaji}</td>
+        <td data-label="Ý nghĩa">${v.meaning}</td>
+        <td data-label="Dự án" style="color: var(--ink-faint); font-family: var(--font-mono); font-size: 11px;">${v.projectName}</td>
+        <td data-label="Mastery" style="text-align: center; font-family: var(--font-mono);">${v.masteryScore || 0}%</td>
+        <td data-label="Lịch ôn" style="text-align: center;">${getReviewBadgeHtml(v)}</td>
+      </tr>
+    `;
+  });
+
+  tableHtml += `
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  container.innerHTML = cardsHtml + tableHtml;
+  container.querySelectorAll(".speak-row-btn").forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      speakJapanese(btn.getAttribute("data-text"));
+    };
+  });
 }
 
 // 3. Quản lý Dự án (Projects List)
@@ -957,6 +1119,14 @@ function createWordCard(v, displayIndex, projectName) {
   wordInfo.appendChild(textSpan);
   wordInfo.appendChild(meaningSpan);
 
+  const reviewStatus = getReviewStatus(v);
+  if (reviewStatus.needsReview || reviewStatus.nextReviewAt > 0) {
+    const reviewSpan = document.createElement("span");
+    reviewSpan.style.marginTop = "3px";
+    reviewSpan.innerHTML = getReviewBadgeHtml(v);
+    wordInfo.appendChild(reviewSpan);
+  }
+
   itemDiv.appendChild(wordInfo);
 
   if (currentPickerProjectId === "all") {
@@ -1129,15 +1299,7 @@ function selectWeakInCurrentPickerProject() {
   }
 
   // Lọc ra các từ yếu trong danh sách từ đang hiển thị
-  const weakWords = allWords.filter(v => {
-    const totalTests = v.correctCount + v.wrongCount;
-    const errorRate = totalTests > 0 ? (v.wrongCount / totalTests) : 0;
-    const avgTime = v.historyTimes && v.historyTimes.length > 0
-      ? (v.historyTimes.reduce((a, b) => a + b, 0) / v.historyTimes.length)
-      : 0;
-
-    return v.difficultyScore > 40 || errorRate > 0.25 || avgTime > 7.0;
-  });
+  const weakWords = allWords.filter(isVocabWeak);
 
   if (weakWords.length === 0) {
     alert("Không tìm thấy từ vựng yếu nào cần ôn luyện trong dự án này!");
@@ -1152,6 +1314,48 @@ function selectWeakInCurrentPickerProject() {
 
   // Tick chọn các từ yếu
   weakWordIds.forEach(id => {
+    if (!tempSelectedVocabIds.includes(id)) {
+      tempSelectedVocabIds.push(id);
+    }
+  });
+
+  renderPickerWords();
+  updateTempSelectedCount();
+}
+
+function selectReviewInCurrentPickerProject(filter, label) {
+  const projects = getProjects();
+  let allWords = [];
+  if (currentPickerProjectId === "all") {
+    projects.forEach(p => {
+      if (p.vocab) {
+        p.vocab.forEach(v => allWords.push(v));
+      }
+    });
+  } else {
+    const p = projects.find(proj => proj.id === currentPickerProjectId);
+    if (p && p.vocab) {
+      p.vocab.forEach(v => allWords.push(v));
+    }
+  }
+
+  const reviewWords = allWords.filter(v => {
+    const status = getReviewStatus(v);
+    if (filter === "overdue") return status.isOverdue;
+    if (filter === "stale") return status.isStale;
+    if (filter === "hard_correct") return status.isHardRecentCorrect;
+    return status.needsReview;
+  });
+
+  if (reviewWords.length === 0) {
+    alert(`Không tìm thấy từ nào thuộc nhóm "${label}" trong phạm vi đang chọn.`);
+    return;
+  }
+
+  const allWordIds = allWords.map(v => v.id);
+  const reviewWordIds = reviewWords.map(v => v.id);
+  tempSelectedVocabIds = tempSelectedVocabIds.filter(id => !allWordIds.includes(id) || reviewWordIds.includes(id));
+  reviewWordIds.forEach(id => {
     if (!tempSelectedVocabIds.includes(id)) {
       tempSelectedVocabIds.push(id);
     }
@@ -1496,6 +1700,34 @@ function setupQuizConfigEvents() {
     });
   }
 
+  const selectDueBtn = document.getElementById("picker-select-due-btn");
+  if (selectDueBtn) {
+    selectDueBtn.addEventListener("click", () => {
+      selectReviewInCurrentPickerProject("due", "Đến hạn ôn");
+    });
+  }
+
+  const selectOverdueBtn = document.getElementById("picker-select-overdue-btn");
+  if (selectOverdueBtn) {
+    selectOverdueBtn.addEventListener("click", () => {
+      selectReviewInCurrentPickerProject("overdue", "Quá hạn");
+    });
+  }
+
+  const selectStaleBtn = document.getElementById("picker-select-stale-btn");
+  if (selectStaleBtn) {
+    selectStaleBtn.addEventListener("click", () => {
+      selectReviewInCurrentPickerProject("stale", "Lâu chưa học");
+    });
+  }
+
+  const selectHardCorrectBtn = document.getElementById("picker-select-hard-correct-btn");
+  if (selectHardCorrectBtn) {
+    selectHardCorrectBtn.addEventListener("click", () => {
+      selectReviewInCurrentPickerProject("hard_correct", "Từ khó vừa đúng");
+    });
+  }
+
   // Các nút nhân số lượng câu hỏi
   const multiplierBtns = document.querySelectorAll(".quiz-multiplier-buttons .multiplier-btn");
   multiplierBtns.forEach(btn => {
@@ -1757,7 +1989,7 @@ function handleQuizAnswerSubmit() {
         inputEl.disabled = true;
 
         // Đánh dấu từ này là độ khó tối đa (100) và tăng wrongCount thêm 2
-        markVocabAsMaxDifficulty(question.vocab.projectId, question.vocab.id);
+        markVocabAsMaxDifficulty(question.vocab.projectId, question.vocab.id, question.timeSpent);
 
         // Thiết lập trạng thái sai trong QuizSession
         question.answerState = "wrong";
@@ -2463,11 +2695,28 @@ function convertKanaToRomaji(kanaStr) {
     .replace(/tu/g, "tsu");
 }
 
+const ONLINE_DICTIONARY_CACHE = new Map();
+const ONLINE_LOOKUP_TIMEOUT_MS = 4500;
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = ONLINE_LOOKUP_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 // Dịch thuật thông qua Google Translate API (có dự phòng MyMemory)
 async function translateText(text, fromLang, toLang) {
   try {
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${fromLang}&tl=${toLang}&dt=t&q=${encodeURIComponent(text)}`;
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url, {}, 5000);
     if (!res.ok) throw new Error("Google translation failed");
     const data = await res.json();
     if (data && data[0] && data[0][0]) {
@@ -2478,7 +2727,7 @@ async function translateText(text, fromLang, toLang) {
     console.warn("Lỗi dịch thuật Google, thử MyMemory...", e);
     try {
       const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${fromLang}|${toLang}`;
-      const res = await fetch(url);
+      const res = await fetchWithTimeout(url, {}, 5000);
       if (!res.ok) throw new Error("MyMemory translation failed");
       const data = await res.json();
       return data.responseData?.translatedText || text;
@@ -2493,7 +2742,7 @@ async function translateText(text, fromLang, toLang) {
 async function translateTextAndRomaji(text, fromLang, toLang) {
   try {
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${fromLang}&tl=${toLang}&dt=t&dt=rm&q=${encodeURIComponent(text)}`;
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url, {}, 5000);
     if (!res.ok) throw new Error("Google translation failed");
     const data = await res.json();
     
@@ -2608,35 +2857,42 @@ function convertRomajiToHiragana(romajiStr) {
 // Tra cứu Jisho API thông qua CORS Proxy (có cơ chế dự phòng tự động)
 async function fetchJishoData(keyword) {
   const proxies = [
-    url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-    url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-    url => `https://cors-anywhere.azm.workers.dev/${url}`
+    { name: "corsproxy.io", url: url => `https://corsproxy.io/?${encodeURIComponent(url)}` },
+    { name: "allorigins", url: url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}` },
+    { name: "azm-workers", url: url => `https://cors-anywhere.azm.workers.dev/${url}` }
   ];
 
   const targetUrl = `https://jisho.org/api/v1/search/words?keyword=${encodeURIComponent(keyword)}`;
-
-  for (const getProxyUrl of proxies) {
-    try {
-      const proxyUrl = getProxyUrl(targetUrl);
-      const res = await fetch(proxyUrl);
-      if (!res.ok) continue;
-      const data = await res.json();
-      if (data && data.data) {
-        return data.data;
-      }
-    } catch (e) {
-      console.warn("Proxy CORS gặp lỗi, đang thử proxy tiếp theo...", e);
+  const attempts = proxies.map(async proxy => {
+    const proxyUrl = proxy.url(targetUrl);
+    const res = await fetchWithTimeout(proxyUrl, {}, ONLINE_LOOKUP_TIMEOUT_MS);
+    if (!res.ok) {
+      throw new Error(`${proxy.name} returned ${res.status}`);
     }
+
+    const data = await res.json();
+    if (!data || !Array.isArray(data.data)) {
+      throw new Error(`${proxy.name} returned invalid Jisho payload`);
+    }
+    return data.data;
+  });
+
+  try {
+    return await Promise.any(attempts);
+  } catch (e) {
+    console.warn("Tất cả proxy Jisho đều thất bại cho keyword:", keyword, e);
+    return [];
   }
-  
-  console.error("Tất cả các proxy CORS đều thất bại cho keyword:", keyword);
-  return [];
 }
 
 // Hàm điều phối tìm kiếm online (tích hợp dịch Việt-Nhật trực tiếp, đã tối ưu song song hóa API)
 async function searchOnlineDictionary(query) {
   const trimmed = query.trim();
   if (!trimmed) return [];
+  const cacheKey = trimmed.toLowerCase();
+  if (ONLINE_DICTIONARY_CACHE.has(cacheKey)) {
+    return ONLINE_DICTIONARY_CACHE.get(cacheKey);
+  }
 
   const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(trimmed);
   const hasVietnamese = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ]/.test(trimmed);
@@ -2782,7 +3038,9 @@ async function searchOnlineDictionary(query) {
     }
   }
 
-  return finalResults.slice(0, 5);
+  const limitedResults = finalResults.slice(0, 5);
+  ONLINE_DICTIONARY_CACHE.set(cacheKey, limitedResults);
+  return limitedResults;
 }
 
 function convertKatakanaToHiragana(text) {
@@ -2791,6 +3049,47 @@ function convertKatakanaToHiragana(text) {
     var chr = match.charCodeAt(0) - 0x60;
     return String.fromCharCode(chr);
   });
+}
+
+function normalizeDictionaryText(text) {
+  return removeVietnameseTones(String(text || "").toLowerCase().trim()).replace(/\s+/g, "");
+}
+
+function hasExactOfflineDictionaryMatch(results, query) {
+  const normalizedQuery = normalizeDictionaryText(query);
+  if (!normalizedQuery) return false;
+
+  return results.some(item => {
+    const variants = [
+      item.japanese,
+      cleanToKanaOnly(item.japanese),
+      item.romaji,
+      item.meaning
+    ];
+
+    return variants.some(value => normalizeDictionaryText(value) === normalizedQuery);
+  });
+}
+
+function findExistingVocabMatch(japanese, romaji, projects = getProjects()) {
+  const cleanJp = normalizeDictionaryText(cleanToKanaOnly(japanese));
+  const cleanRomaji = normalizeDictionaryText(romaji);
+
+  for (const project of projects) {
+    for (const vocab of project.vocab || []) {
+      const vocabJp = normalizeDictionaryText(cleanToKanaOnly(vocab.japanese));
+      const vocabRomaji = normalizeDictionaryText(vocab.romaji);
+      if ((cleanRomaji && cleanRomaji === vocabRomaji) || (cleanJp && cleanJp === vocabJp)) {
+        return {
+          ...vocab,
+          projectId: project.id,
+          projectName: project.name
+        };
+      }
+    }
+  }
+
+  return null;
 }
 
 function setupDictionaryEvents() {
@@ -2817,9 +3116,14 @@ function setupDictionaryEvents() {
 
     // 1. Tìm kiếm offline và hiển thị lập tức (đã gộp các kết quả tìm thấy trước đó)
     const offlineResults = searchDictionary(query);
+    const hasExactOfflineMatch = hasExactOfflineDictionaryMatch(offlineResults, query);
     
     // Hiển thị trạng thái loading online
-    renderDictionaryResultsCombined(offlineResults, [], true, query);
+    renderDictionaryResultsCombined(offlineResults, [], !hasExactOfflineMatch, query);
+
+    if (hasExactOfflineMatch) {
+      return;
+    }
 
     // 2. Tra cứu online bất đồng bộ
     try {
@@ -3002,6 +3306,10 @@ function renderDictionaryResultsCombined(offlineResults, onlineResults, isOnline
     if (isHiraganaOnly) {
       displayJp = convertKatakanaToHiragana(displayJp);
     }
+    const existingVocab = findExistingVocabMatch(displayJp, item.romaji, projects);
+    const learningBadge = existingVocab
+      ? `<div style="margin-top: 4px;">${getReviewBadgeHtml(existingVocab)} <span style="font-size: 11px; color: var(--ink-faint);">trong ${existingVocab.projectName}</span></div>`
+      : "";
 
     html += `
       <tr style="background: rgba(79, 122, 74, 0.04);">
@@ -3010,7 +3318,7 @@ function renderDictionaryResultsCombined(offlineResults, onlineResults, isOnline
           <button class="btn btn-secondary speak-row-btn" data-text="${displayJp}" style="width:24px; height:24px; font-size:0.7rem; vertical-align:middle; padding:0; border:none; background:transparent; box-shadow:none; cursor:pointer;" title="Nghe phát âm">🔊</button>
         </td>
         <td data-label="Romaji" style="font-family: var(--font-mono); font-size: 0.95rem; color: var(--ink-soft);">${item.romaji}</td>
-        <td data-label="Ý nghĩa">${item.meaning}</td>
+        <td data-label="Ý nghĩa">${item.meaning}${learningBadge}</td>
         <td data-label="Nguồn"><span class="vocab-badge" style="background: var(--good-soft); color: var(--good); font-weight: bold;">Offline</span></td>
         <td data-label="Thao tác" style="text-align: center;">
           <div style="display: flex; gap: 0.4rem; justify-content: center; align-items: center;">
@@ -3040,6 +3348,10 @@ function renderDictionaryResultsCombined(offlineResults, onlineResults, isOnline
     if (isHiraganaOnly) {
       displayJp = convertKatakanaToHiragana(displayJp);
     }
+    const existingVocab = findExistingVocabMatch(displayJp, item.romaji, projects);
+    const learningBadge = existingVocab
+      ? `<div style="margin-top: 4px;">${getReviewBadgeHtml(existingVocab)} <span style="font-size: 11px; color: var(--ink-faint);">trong ${existingVocab.projectName}</span></div>`
+      : "";
 
     html += `
       <tr>
@@ -3048,7 +3360,7 @@ function renderDictionaryResultsCombined(offlineResults, onlineResults, isOnline
           <button class="btn btn-secondary speak-row-btn" data-text="${displayJp}" style="width:24px; height:24px; font-size:0.7rem; vertical-align:middle; padding:0; border:none; background:transparent; box-shadow:none; cursor:pointer;" title="Nghe phát âm">🔊</button>
         </td>
         <td data-label="Romaji" style="font-family: var(--font-mono); font-size: 0.95rem; color: var(--ink-soft);">${item.romaji}</td>
-        <td data-label="Ý nghĩa">${item.meaning}</td>
+        <td data-label="Ý nghĩa">${item.meaning}${learningBadge}</td>
         <td data-label="Nguồn"><span class="vocab-badge" style="background: var(--accent-soft); color: var(--accent); font-weight: bold;">Online</span></td>
         <td data-label="Thao tác" style="text-align: center;">
           <div style="display: flex; gap: 0.4rem; justify-content: center; align-items: center;">
@@ -4470,5 +4782,3 @@ function checkKanaDrawing() {
 
   box.style.display = "block";
 }
-
-

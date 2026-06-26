@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8">
+    <title>Nihongo Focus Review</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #111f1a;
+        color: #f8f4ea;
+      }
+      .shell {
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+      }
+      header,
+      footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 24px;
+        background: rgba(255, 255, 255, 0.06);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      }
+      footer {
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+        border-bottom: 0;
+      }
+      h1 {
+        margin: 0;
+        font-size: 20px;
+      }
+      main {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px 18px;
+      }
+      .card {
+        width: min(760px, 100%);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        background: #fffdf7;
+        color: #1f2b24;
+        border-radius: 8px;
+        padding: 32px;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
+      }
+      .meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        color: #627067;
+        font-size: 13px;
+        margin-bottom: 22px;
+      }
+      .prompt-label {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0;
+        color: #627067;
+        font-weight: 800;
+      }
+      .meaning {
+        font-size: clamp(34px, 6vw, 58px);
+        line-height: 1.1;
+        margin: 12px 0 26px;
+        font-weight: 900;
+      }
+      input {
+        width: 100%;
+        border: 2px solid #c9c0b3;
+        border-radius: 8px;
+        padding: 16px 18px;
+        font-size: 26px;
+        font-weight: 800;
+        outline: none;
+      }
+      input:focus {
+        border-color: #1f5f4a;
+      }
+      .feedback {
+        min-height: 28px;
+        margin-top: 14px;
+        font-weight: 800;
+      }
+      .feedback.good {
+        color: #1f7a4d;
+      }
+      .feedback.bad {
+        color: #b42318;
+      }
+      .actions {
+        margin-top: 22px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      button {
+        border: 0;
+        border-radius: 6px;
+        padding: 12px 16px;
+        font-weight: 900;
+        cursor: pointer;
+      }
+      .primary {
+        background: #1f5f4a;
+        color: #fff;
+      }
+      .secondary {
+        background: #ece6da;
+        color: #1f2b24;
+      }
+      .danger {
+        background: #ffe8e8;
+        color: #b42318;
+      }
+      .pill {
+        border: 1px solid #d7d0c3;
+        border-radius: 999px;
+        padding: 4px 10px;
+        color: #627067;
+        font-size: 12px;
+        font-weight: 800;
+      }
+      #empty-state {
+        text-align: center;
+      }
+      #empty-state h2 {
+        font-size: 30px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <h1>Nihongo Focus Review</h1>
+        <div id="progress">Đang tải...</div>
+      </header>
+      <main>
+        <section class="card" id="review-card" style="display: none;">
+          <div class="meta">
+            <span id="project-name"></span>
+            <span class="pill" id="review-reason"></span>
+          </div>
+          <div class="prompt-label">Gõ romaji cho nghĩa này</div>
+          <div class="meaning" id="meaning"></div>
+          <input id="answer" autocomplete="off" spellcheck="false" placeholder="Nhập romaji...">
+          <div class="feedback" id="feedback"></div>
+          <div class="actions">
+            <button class="primary" id="submit-answer">Trả lời</button>
+            <button class="secondary" id="speak-btn">Nghe phát âm</button>
+            <button class="secondary" id="snooze-btn">Hoãn 15 phút</button>
+            <button class="danger" id="escape-btn">Thoát khẩn cấp</button>
+          </div>
+        </section>
+        <section class="card" id="empty-state" style="display: none;">
+          <h2>Không có từ đến hạn</h2>
+          <p>Bạn đang ổn. Extension sẽ tiếp tục kiểm tra theo lịch.</p>
+          <button class="primary" id="close-empty">Đóng</button>
+        </section>
+      </main>
+      <footer>
+        <span>Strict session giữ phiên học cho tới khi bạn trả lời đúng các từ trong danh sách.</span>
+        <span id="strict-label"></span>
+      </footer>
+    </div>
+    <script src="scheduler.js"></script>
+    <script src="review.js"></script>
+  </body>
+</html>
