@@ -40,6 +40,10 @@ let isQuizTransitioning = false;
 let answerJustSubmitted = false;
 let quizMultiplier = "custom";
 let isScanningMeanings = false;
+let currentSmartReviewFilter = "due";
+let currentSmartReviewSelectedId = null;
+const MS_PER_HOUR = 60 * 60 * 1000;
+const MS_PER_DAY = 24 * MS_PER_HOUR;
 let quizActiveSettings = {
   hideTimer: false,
   muteSounds: false,
@@ -222,6 +226,8 @@ function setupCloudSyncUI() {
       renderProjectDetail();
     } else if (activeView === "weak-vocab-view") {
       renderWeakVocabView();
+    } else if (activeView === "smart-review-view") {
+      renderSmartReviewView();
     }
   });
 }
@@ -301,6 +307,8 @@ export function switchView(viewId) {
     renderProjectList();
   } else if (viewId === "weak-vocab-view") {
     renderWeakVocabView();
+  } else if (viewId === "smart-review-view") {
+    renderSmartReviewView();
   } else if (viewId === "quiz-setup-view") {
     setupQuizConfig();
   } else if (viewId === "dictionary-view") {
@@ -523,6 +531,592 @@ function renderDashboardReviewSchedule() {
       speakJapanese(btn.getAttribute("data-text"));
     };
   });
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function clampUiNumber(value, min, max) {
+  return Math.min(max, Math.max(min, Number(value) || 0));
+}
+
+function formatSmartDateTime(timestamp) {
+  if (!timestamp) return "Chưa có";
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date(timestamp));
+}
+
+function formatSmartRelativeTime(timestamp, now = Date.now(), mode = "due") {
+  if (!timestamp) return "Chưa có dữ liệu";
+
+  const diffMs = timestamp - now;
+  const absHours = Math.abs(diffMs) / MS_PER_HOUR;
+  let text = "";
+
+  if (absHours < 1) {
+    text = `${Math.max(1, Math.round(absHours * 60))} phút`;
+  } else if (absHours < 24) {
+    text = `${Math.round(absHours)} giờ`;
+  } else if (absHours < 24 * 7) {
+    text = `${Math.round(absHours / 24)} ngày`;
+  } else if (absHours < 24 * 60) {
+    text = `${Math.round(absHours / (24 * 7))} tuần`;
+  } else {
+    text = `${Math.round(absHours / (24 * 30))} tháng`;
+  }
+
+  if (Math.abs(diffMs) < 60 * 1000) return "ngay bây giờ";
+  if (mode === "since") {
+    return diffMs < 0 ? `cách đây ${text}` : `sau ${text}`;
+  }
+  return diffMs < 0 ? `trễ ${text}` : `còn ${text}`;
+}
+
+function formatReviewInterval(hours) {
+  if (!hours || hours <= 0) return "Chưa có";
+  if (hours < 1) return `${Math.round(hours * 60)} phút`;
+  if (hours < 24) return `${Number(hours.toFixed(1))} giờ`;
+  if (hours < 24 * 14) return `${Number((hours / 24).toFixed(1))} ngày`;
+  return `${Number((hours / (24 * 7)).toFixed(1))} tuần`;
+}
+
+function getAllSmartReviewItems() {
+  const projects = getProjects();
+  const items = [];
+
+  projects.forEach(project => {
+    (project.vocab || []).forEach(vocab => {
+      items.push(getReviewStatus({
+        ...vocab,
+        projectId: project.id,
+        projectName: project.name
+      }));
+    });
+  });
+
+  return items.sort(compareSmartReviewItems);
+}
+
+function compareSmartReviewItems(a, b) {
+  const urgencyRank = {
+    overdue: 0,
+    hard_correct: 1,
+    stale: 2,
+    soon: 3,
+    scheduled: 4,
+    new: 5,
+    none: 6
+  };
+
+  const rankDiff = (urgencyRank[a.urgency] ?? 9) - (urgencyRank[b.urgency] ?? 9);
+  if (rankDiff !== 0) return rankDiff;
+
+  const aDue = a.nextReviewAt || Number.MAX_SAFE_INTEGER;
+  const bDue = b.nextReviewAt || Number.MAX_SAFE_INTEGER;
+  if (aDue !== bDue) return aDue - bDue;
+
+  const masteryDiff = (a.masteryScore || 0) - (b.masteryScore || 0);
+  if (masteryDiff !== 0) return masteryDiff;
+
+  return (b.difficultyScore || 0) - (a.difficultyScore || 0);
+}
+
+function getSmartReviewCounts(items) {
+  return {
+    all: items.length,
+    due: items.filter(item => item.needsReview).length,
+    overdue: items.filter(item => item.isOverdue).length,
+    soon: items.filter(item => item.isDueSoon).length,
+    stale: items.filter(item => item.isStale).length,
+    hard_correct: items.filter(item => item.isHardRecentCorrect).length,
+    scheduled: items.filter(item => item.nextReviewAt > 0 && !item.needsReview).length,
+    new: items.filter(item => (item.correctCount + item.wrongCount) === 0).length
+  };
+}
+
+function getSmartFilterDefs(counts) {
+  return [
+    { id: "due", label: "Cần ôn", count: counts.due },
+    { id: "overdue", label: "Quá hạn", count: counts.overdue },
+    { id: "soon", label: "12h tới", count: counts.soon },
+    { id: "stale", label: "Lâu chưa học", count: counts.stale },
+    { id: "hard_correct", label: "Khó vừa đúng", count: counts.hard_correct },
+    { id: "scheduled", label: "Đang chờ", count: counts.scheduled },
+    { id: "all", label: "Tất cả", count: counts.all },
+    { id: "new", label: "Từ mới", count: counts.new }
+  ];
+}
+
+function filterSmartReviewItems(items, filterId) {
+  const filtered = items.filter(item => {
+    if (filterId === "overdue") return item.isOverdue;
+    if (filterId === "soon") return item.isDueSoon;
+    if (filterId === "stale") return item.isStale;
+    if (filterId === "hard_correct") return item.isHardRecentCorrect;
+    if (filterId === "scheduled") return item.nextReviewAt > 0 && !item.needsReview;
+    if (filterId === "new") return (item.correctCount + item.wrongCount) === 0;
+    if (filterId === "all") return true;
+    return item.needsReview;
+  });
+
+  return filtered.sort(compareSmartReviewItems);
+}
+
+function getSmartFilterLabel(filterId) {
+  const labels = {
+    due: "từ cần ôn",
+    overdue: "từ quá hạn",
+    soon: "từ đến hạn trong 12h",
+    stale: "từ lâu chưa học",
+    hard_correct: "từ khó vừa trả lời đúng",
+    scheduled: "từ đang chờ lịch",
+    all: "toàn bộ từ",
+    new: "từ mới"
+  };
+  return labels[filterId] || "từ cần ôn";
+}
+
+function getMemoryStabilityDays(item) {
+  if (item.memoryStability > 0) return Math.max(0.1, item.memoryStability);
+  if (item.reviewIntervalHours > 0) return Math.max(0.1, item.reviewIntervalHours / 24);
+  if (item.masteryScore > 0) return Math.max(0.15, item.masteryScore / 28);
+  return 0.2;
+}
+
+function getRetentionPercentAt(item, timestamp) {
+  const totalTests = (item.correctCount || 0) + (item.wrongCount || 0);
+  if (!item.lastTested || totalTests === 0) return 0;
+
+  const elapsedDays = Math.max(0, (timestamp - item.lastTested) / MS_PER_DAY);
+  const stabilityDays = getMemoryStabilityDays(item);
+  const baseRetention = Math.exp(-elapsedDays / stabilityDays);
+  const masteryFactor = clampUiNumber(item.masteryScore || 50, 20, 100) / 100;
+  const difficultyPenalty = clampUiNumber((item.memoryDifficulty || 5) / 100, 0.02, 0.14);
+  const calibratedRetention = baseRetention * (0.72 + masteryFactor * 0.28) - difficultyPenalty;
+
+  return Math.round(clampUiNumber(calibratedRetention * 100, 0, 100));
+}
+
+function averageSmartRetention(items, timestamp) {
+  const learnedItems = items.filter(item => item.lastTested && ((item.correctCount || 0) + (item.wrongCount || 0)) > 0);
+  if (!learnedItems.length) return 0;
+
+  const total = learnedItems.reduce((sum, item) => sum + getRetentionPercentAt(item, timestamp), 0);
+  return Math.round(total / learnedItems.length);
+}
+
+function buildForgettingCurveSvg(items, selectedItem) {
+  const now = Date.now();
+  const chartItems = selectedItem ? [selectedItem] : items.filter(item => item.lastTested).slice(0, 12);
+  const left = 62;
+  const right = 730;
+  const top = 24;
+  const bottom = 226;
+  const width = right - left;
+  const height = bottom - top;
+  const totalDays = 30;
+  const sampleDays = Array.from({ length: 61 }, (_, index) => index * 0.5);
+
+  const points = sampleDays.map(day => {
+    const timestamp = now + day * MS_PER_DAY;
+    const retention = selectedItem
+      ? getRetentionPercentAt(selectedItem, timestamp)
+      : averageSmartRetention(chartItems, timestamp);
+    const x = left + (day / totalDays) * width;
+    const y = bottom - (retention / 100) * height;
+    return { day, retention, x, y };
+  });
+
+  const path = points.map((point, index) => {
+    const command = index === 0 ? "M" : "L";
+    return `${command} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`;
+  }).join(" ");
+  const areaPath = `${path} L ${right} ${bottom} L ${left} ${bottom} Z`;
+  const dayTicks = [0, 1, 3, 7, 14, 30];
+  const yTicks = [100, 70, 50, 25, 0];
+  const currentRetention = selectedItem
+    ? getRetentionPercentAt(selectedItem, now)
+    : averageSmartRetention(chartItems, now);
+  const currentY = bottom - (currentRetention / 100) * height;
+
+  let dueMarker = "";
+  if (selectedItem?.nextReviewAt) {
+    const dueDay = clampUiNumber((selectedItem.nextReviewAt - now) / MS_PER_DAY, 0, totalDays);
+    const dueX = left + (dueDay / totalDays) * width;
+    const dueRetention = getRetentionPercentAt(selectedItem, Math.max(now, selectedItem.nextReviewAt));
+    const dueY = bottom - (dueRetention / 100) * height;
+    dueMarker = `
+      <line x1="${dueX.toFixed(1)}" y1="${top}" x2="${dueX.toFixed(1)}" y2="${bottom}" class="smart-curve-due-line" />
+      <circle cx="${dueX.toFixed(1)}" cy="${dueY.toFixed(1)}" r="5.5" class="smart-curve-due-dot" />
+      <text x="${Math.min(dueX + 8, right - 86).toFixed(1)}" y="${Math.max(dueY - 10, top + 14).toFixed(1)}" class="smart-curve-label">Lịch ôn</text>
+    `;
+  }
+
+  const sampleDots = dayTicks.map(day => {
+    const timestamp = now + day * MS_PER_DAY;
+    const retention = selectedItem
+      ? getRetentionPercentAt(selectedItem, timestamp)
+      : averageSmartRetention(chartItems, timestamp);
+    const x = left + (day / totalDays) * width;
+    const y = bottom - (retention / 100) * height;
+    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.5" class="smart-curve-sample-dot" />`;
+  }).join("");
+
+  return `
+    <svg class="smart-curve-svg" viewBox="0 0 760 260" role="img" aria-label="Biểu đồ đường cong lãng quên">
+      <defs>
+        <linearGradient id="smartCurveFill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.22" />
+          <stop offset="100%" stop-color="var(--accent)" stop-opacity="0.02" />
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="760" height="260" rx="8" class="smart-curve-bg" />
+      ${yTicks.map(tick => {
+        const y = bottom - (tick / 100) * height;
+        const isThreshold = tick === 70;
+        return `
+          <line x1="${left}" y1="${y.toFixed(1)}" x2="${right}" y2="${y.toFixed(1)}" class="${isThreshold ? "smart-curve-threshold" : "smart-curve-grid"}" />
+          <text x="18" y="${(y + 4).toFixed(1)}" class="smart-curve-axis">${tick}%</text>
+        `;
+      }).join("")}
+      ${dayTicks.map(day => {
+        const x = left + (day / totalDays) * width;
+        return `
+          <line x1="${x.toFixed(1)}" y1="${top}" x2="${x.toFixed(1)}" y2="${bottom}" class="smart-curve-grid vertical" />
+          <text x="${x.toFixed(1)}" y="248" text-anchor="middle" class="smart-curve-axis">${day === 0 ? "nay" : `${day}d`}</text>
+        `;
+      }).join("")}
+      <path d="${areaPath}" fill="url(#smartCurveFill)" />
+      <path d="${path}" class="smart-curve-line" />
+      ${sampleDots}
+      <circle cx="${left}" cy="${currentY.toFixed(1)}" r="6" class="smart-curve-now-dot" />
+      <text x="${left + 12}" y="${Math.max(currentY - 10, top + 14).toFixed(1)}" class="smart-curve-label">Hiện tại ${currentRetention}%</text>
+      ${dueMarker}
+    </svg>
+  `;
+}
+
+function getSmartReviewEmptyHtml(filterId) {
+  const message = filterId === "due"
+    ? "Hiện chưa có từ nào cần ôn ngay. Sau khi kiểm tra thêm, hệ thống sẽ tự xếp lịch ở đây."
+    : `Không có ${getSmartFilterLabel(filterId)} trong nhóm này.`;
+
+  return `
+    <div class="smart-review-empty">
+      <div class="smart-review-empty-title">Lịch đang sạch</div>
+      <p>${escapeHtml(message)}</p>
+    </div>
+  `;
+}
+
+function getSmartReviewRowsHtml(items, selectedId) {
+  if (!items.length) {
+    return getSmartReviewEmptyHtml(currentSmartReviewFilter);
+  }
+
+  return `
+    <div class="smart-review-timeline">
+      ${items.slice(0, 80).map((item, index) => {
+        const retention = getRetentionPercentAt(item, Date.now());
+        const isSelected = item.id === selectedId;
+        const lastTestedText = item.lastTested
+          ? `${formatSmartDateTime(item.lastTested)} · ${formatSmartRelativeTime(item.lastTested, Date.now(), "since")}`
+          : "Chưa kiểm tra";
+        const nextReviewText = item.nextReviewAt
+          ? `${formatSmartDateTime(item.nextReviewAt)} · ${formatSmartRelativeTime(item.nextReviewAt)}`
+          : "Chưa có lịch";
+
+        return `
+          <div class="smart-review-row ${isSelected ? "selected" : ""}" data-smart-select="${escapeHtml(item.id)}">
+            <div class="smart-review-rank">${index + 1}</div>
+            <div class="smart-review-word-block">
+              <div class="smart-review-jp">${escapeHtml(cleanToKanaOnly(item.japanese))}</div>
+              <div class="smart-review-meaning">${escapeHtml(item.romaji)} · ${escapeHtml(item.meaning)}</div>
+              <div class="smart-review-project">${escapeHtml(item.projectName || "Không rõ dự án")}</div>
+            </div>
+            <div class="smart-review-time-block">
+              <span>Lần cuối</span>
+              <strong>${escapeHtml(lastTestedText)}</strong>
+            </div>
+            <div class="smart-review-time-block">
+              <span>Lịch tiếp</span>
+              <strong>${escapeHtml(nextReviewText)}</strong>
+            </div>
+            <div class="smart-review-memory-block">
+              <span>${retention}% nhớ</span>
+              <div class="smart-review-meter" aria-hidden="true">
+                <i style="width: ${retention}%;"></i>
+              </div>
+              <small>Mastery ${item.masteryScore || 0}% · Khó ${item.difficultyScore || 0}</small>
+            </div>
+            <div class="smart-review-status-block">
+              ${getReviewBadgeHtml(item)}
+              <small>${escapeHtml(item.reason || "Theo lịch lặp lại ngắt quãng")}</small>
+            </div>
+            <div class="smart-review-actions">
+              <button class="btn btn-secondary smart-review-speak-btn" data-smart-speak="${escapeHtml(cleanToKanaOnly(item.japanese))}" title="Nghe phát âm">🔊</button>
+              <button class="btn btn-primary smart-review-one-btn" data-smart-quiz-one="${escapeHtml(item.id)}">Kiểm tra</button>
+            </div>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function getSmartDetailHtml(selectedItem) {
+  if (!selectedItem) {
+    return `
+      <aside class="smart-review-detail-panel">
+        <div class="smart-review-empty compact">
+          <div class="smart-review-empty-title">Chưa có từ để phân tích</div>
+          <p>Làm một bài kiểm tra bất kỳ để hệ thống có dữ liệu phản xạ và lịch ôn.</p>
+        </div>
+      </aside>
+    `;
+  }
+
+  const retention = getRetentionPercentAt(selectedItem, Date.now());
+  const nextRetention = selectedItem.nextReviewAt
+    ? getRetentionPercentAt(selectedItem, Math.max(Date.now(), selectedItem.nextReviewAt))
+    : 0;
+  const threeDayRetention = getRetentionPercentAt(selectedItem, Date.now() + 3 * MS_PER_DAY);
+  const historyTimes = Array.isArray(selectedItem.historyTimes) ? selectedItem.historyTimes.slice(-10) : [];
+  const maxTime = Math.max(3, ...historyTimes, selectedItem.lastTimeSpent || 0);
+  const avgTime = historyTimes.length
+    ? historyTimes.reduce((sum, value) => sum + value, 0) / historyTimes.length
+    : selectedItem.lastTimeSpent || 0;
+  const totalTests = (selectedItem.correctCount || 0) + (selectedItem.wrongCount || 0);
+  const accuracy = totalTests > 0 ? Math.round(((selectedItem.correctCount || 0) / totalTests) * 100) : 0;
+
+  return `
+    <aside class="smart-review-detail-panel">
+      <div class="smart-review-detail-head">
+        <span>Đang phân tích</span>
+        ${getReviewBadgeHtml(selectedItem)}
+      </div>
+      <div class="smart-review-focus-word">
+        <div class="smart-review-focus-jp">${escapeHtml(cleanToKanaOnly(selectedItem.japanese))}</div>
+        <div>${escapeHtml(selectedItem.romaji)} · ${escapeHtml(selectedItem.meaning)}</div>
+      </div>
+
+      <div class="smart-review-big-meter">
+        <div>
+          <strong>${retention}%</strong>
+          <span>khả năng còn nhớ hiện tại</span>
+        </div>
+        <div class="smart-review-ring" style="--memory: ${retention};"></div>
+      </div>
+
+      <div class="smart-review-detail-grid">
+        <div>
+          <span>Lần cuối</span>
+          <strong>${escapeHtml(formatSmartDateTime(selectedItem.lastTested))}</strong>
+          <small>${escapeHtml(formatSmartRelativeTime(selectedItem.lastTested, Date.now(), "since"))}</small>
+        </div>
+        <div>
+          <span>Lịch tiếp</span>
+          <strong>${escapeHtml(formatSmartDateTime(selectedItem.nextReviewAt))}</strong>
+          <small>${escapeHtml(formatSmartRelativeTime(selectedItem.nextReviewAt))}</small>
+        </div>
+        <div>
+          <span>Khoảng ôn</span>
+          <strong>${escapeHtml(formatReviewInterval(selectedItem.reviewIntervalHours))}</strong>
+          <small>stage ${selectedItem.reviewStage || 0}, lapse ${selectedItem.lapseCount || 0}</small>
+        </div>
+        <div>
+          <span>Dự báo 3 ngày</span>
+          <strong>${threeDayRetention}%</strong>
+          <small>tại lịch ôn: ${nextRetention}%</small>
+        </div>
+        <div>
+          <span>Độ chính xác</span>
+          <strong>${accuracy}%</strong>
+          <small>${selectedItem.correctCount || 0} đúng / ${selectedItem.wrongCount || 0} sai</small>
+        </div>
+        <div>
+          <span>Phản xạ TB</span>
+          <strong>${avgTime ? `${avgTime.toFixed(1)}s` : "Chưa có"}</strong>
+          <small>lần gần nhất ${selectedItem.lastTimeSpent ? `${Number(selectedItem.lastTimeSpent).toFixed(1)}s` : "chưa có"}</small>
+        </div>
+      </div>
+
+      <div class="smart-review-response-panel">
+        <div class="smart-review-response-title">Lịch sử phản xạ</div>
+        ${historyTimes.length ? `
+          <div class="smart-review-response-bars">
+            ${historyTimes.map(time => `
+              <i style="height: ${clampUiNumber((time / maxTime) * 100, 12, 100)}%;" title="${Number(time).toFixed(1)} giây"></i>
+            `).join("")}
+          </div>
+        ` : `<p>Chưa đủ dữ liệu thời gian phản xạ.</p>`}
+      </div>
+    </aside>
+  `;
+}
+
+function renderSmartReviewView() {
+  const container = document.getElementById("smart-review-root");
+  if (!container) return;
+
+  const allItems = getAllSmartReviewItems();
+  const counts = getSmartReviewCounts(allItems);
+  const filteredItems = filterSmartReviewItems(allItems, currentSmartReviewFilter);
+  const selectedStillVisible = allItems.some(item => item.id === currentSmartReviewSelectedId);
+  if (!selectedStillVisible) {
+    currentSmartReviewSelectedId = filteredItems[0]?.id || allItems[0]?.id || null;
+  }
+  const selectedItem = allItems.find(item => item.id === currentSmartReviewSelectedId) || filteredItems[0] || allItems[0] || null;
+  const chartItems = filteredItems.length ? filteredItems : allItems;
+  const dueBtn = document.getElementById("smart-review-start-due-btn");
+  const overdueBtn = document.getElementById("smart-review-start-overdue-btn");
+  const overview = getReviewOverview();
+
+  if (dueBtn) {
+    dueBtn.disabled = counts.due === 0;
+    dueBtn.onclick = () => {
+      const vocab = getReviewDueVocab(50, "due");
+      startQuizWithVocabIds(vocab.map(item => item.id), `Đã chọn ${vocab.length} từ cần ôn.`);
+    };
+  }
+
+  if (overdueBtn) {
+    overdueBtn.disabled = counts.overdue === 0;
+    overdueBtn.onclick = () => {
+      const vocab = getReviewDueVocab(50, "overdue");
+      startQuizWithVocabIds(vocab.map(item => item.id), `Đã chọn ${vocab.length} từ quá hạn.`);
+    };
+  }
+
+  const filterHtml = getSmartFilterDefs(counts).map(filter => `
+    <button class="smart-filter-btn ${currentSmartReviewFilter === filter.id ? "active" : ""}" data-smart-filter="${filter.id}">
+      <span>${escapeHtml(filter.label)}</span>
+      <strong>${filter.count}</strong>
+    </button>
+  `).join("");
+
+  const currentRetention = selectedItem ? getRetentionPercentAt(selectedItem, Date.now()) : 0;
+  const selectedDueText = selectedItem?.nextReviewAt
+    ? `${formatSmartDateTime(selectedItem.nextReviewAt)} · ${formatSmartRelativeTime(selectedItem.nextReviewAt)}`
+    : "Chưa có lịch tiếp theo";
+  const filteredLabel = getSmartFilterLabel(currentSmartReviewFilter);
+
+  container.innerHTML = `
+    <div class="smart-review-shell">
+      <section class="smart-review-overview">
+        <div class="smart-review-overview-main">
+          <span class="smart-review-kicker">Trung tâm ôn tập</span>
+          <h2>${counts.due} từ đang cần kiểm tra</h2>
+          <p>Ưu tiên hiện tại: ${counts.overdue} quá hạn, ${counts.soon} trong 12 giờ tới, ${counts.stale} lâu chưa học, ${counts.hard_correct} từ khó vừa đúng.</p>
+        </div>
+        <div class="smart-review-stat-grid">
+          <div class="smart-review-stat urgent">
+            <span>Cần ôn</span>
+            <strong>${overview.due}</strong>
+          </div>
+          <div class="smart-review-stat">
+            <span>Đã có lịch</span>
+            <strong>${overview.scheduled}</strong>
+          </div>
+          <div class="smart-review-stat">
+            <span>Từ mới</span>
+            <strong>${overview.newWords}</strong>
+          </div>
+          <div class="smart-review-stat">
+            <span>Đang xem</span>
+            <strong>${currentRetention}%</strong>
+          </div>
+        </div>
+      </section>
+
+      <div class="smart-review-filter-bar">
+        ${filterHtml}
+      </div>
+
+      <section class="smart-review-curve-panel">
+        <div class="smart-review-curve-head">
+          <div>
+            <span class="smart-review-kicker">Đường cong lãng quên</span>
+            <h2>${selectedItem ? escapeHtml(cleanToKanaOnly(selectedItem.japanese)) : "Đường cong ghi nhớ"}</h2>
+            <p>${escapeHtml(selectedItem ? `Lịch tiếp: ${selectedDueText}` : "Chưa có dữ liệu kiểm tra để vẽ đường cong.")}</p>
+          </div>
+          <div class="smart-review-legend">
+            <span><i class="line"></i>Khả năng còn nhớ</span>
+            <span><i class="threshold"></i>Ngưỡng 70%</span>
+          </div>
+        </div>
+        ${buildForgettingCurveSvg(chartItems, selectedItem)}
+      </section>
+
+      <div class="smart-review-workspace">
+        <section class="smart-review-list-panel">
+          <div class="smart-review-list-head">
+            <div>
+              <span class="smart-review-kicker">Hàng đợi ưu tiên</span>
+              <h2>${filteredItems.length} ${escapeHtml(filteredLabel)}</h2>
+            </div>
+            <button class="btn btn-primary" id="smart-review-start-filter-btn" ${filteredItems.length ? "" : "disabled"}>
+              Kiểm tra nhóm này
+            </button>
+          </div>
+          ${getSmartReviewRowsHtml(filteredItems, selectedItem?.id)}
+        </section>
+        ${getSmartDetailHtml(selectedItem)}
+      </div>
+    </div>
+  `;
+
+  container.querySelectorAll("[data-smart-filter]").forEach(button => {
+    button.onclick = () => {
+      currentSmartReviewFilter = button.getAttribute("data-smart-filter") || "due";
+      const nextFilteredItems = filterSmartReviewItems(getAllSmartReviewItems(), currentSmartReviewFilter);
+      currentSmartReviewSelectedId = nextFilteredItems[0]?.id || currentSmartReviewSelectedId;
+      renderSmartReviewView();
+    };
+  });
+
+  container.querySelectorAll("[data-smart-select]").forEach(row => {
+    row.onclick = () => {
+      currentSmartReviewSelectedId = row.getAttribute("data-smart-select");
+      renderSmartReviewView();
+    };
+  });
+
+  container.querySelectorAll("[data-smart-speak]").forEach(button => {
+    button.onclick = (e) => {
+      e.stopPropagation();
+      speakJapanese(button.getAttribute("data-smart-speak") || "");
+    };
+  });
+
+  container.querySelectorAll("[data-smart-quiz-one]").forEach(button => {
+    button.onclick = (e) => {
+      e.stopPropagation();
+      const vocabId = button.getAttribute("data-smart-quiz-one");
+      if (vocabId) startQuizWithVocabIds([vocabId], "Đã chọn 1 từ để kiểm tra nhanh.");
+    };
+  });
+
+  const startFilterBtn = document.getElementById("smart-review-start-filter-btn");
+  if (startFilterBtn) {
+    startFilterBtn.onclick = () => {
+      const vocabIds = filterSmartReviewItems(getAllSmartReviewItems(), currentSmartReviewFilter)
+        .slice(0, 50)
+        .map(item => item.id);
+      startQuizWithVocabIds(vocabIds, `Đã chọn ${vocabIds.length} ${getSmartFilterLabel(currentSmartReviewFilter)}.`);
+    };
+  }
 }
 
 // 3. Quản lý Dự án (Projects List)

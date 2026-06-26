@@ -9,6 +9,7 @@
   --ink: #1c1a17;
   --ink-soft: #56514a;
   --ink-faint: #928b80;
+  --text-muted: var(--ink-soft);
   
   --accent: #b5482e;
   --accent-hover: #9f3d27;
@@ -26,6 +27,7 @@
   
   --line: #e2ddd2;
   --line-strong: #d2ccbe;
+  --line-light: var(--line);
   
   /* Fonts from Web Note style */
   --font-serif: "Newsreader", Georgia, serif;
@@ -38,6 +40,7 @@
   
   --shadow: 0 1px 2px rgba(28, 26, 23, 0.04),
     0 8px 24px -12px rgba(28, 26, 23, 0.12);
+  --shadow-sm: 0 1px 2px rgba(28, 26, 23, 0.06);
   --shadow-hover: 0 4px 8px rgba(28, 26, 23, 0.06),
     0 16px 32px -8px rgba(28, 26, 23, 0.16);
     
@@ -293,6 +296,558 @@ button, input, select, textarea {
   line-height: 1.1;
 }
 
+/* Smart Review Schedule */
+.smart-review-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.smart-review-overview,
+.smart-review-curve-panel,
+.smart-review-list-panel,
+.smart-review-detail-panel {
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.smart-review-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(360px, 0.9fr);
+  gap: 22px;
+  align-items: stretch;
+  padding: 24px;
+  border-left: 5px solid var(--accent);
+}
+
+.smart-review-overview h2,
+.smart-review-curve-head h2,
+.smart-review-list-head h2 {
+  margin: 2px 0 4px;
+  letter-spacing: -0.3px;
+}
+
+.smart-review-overview p,
+.smart-review-curve-head p {
+  color: var(--ink-soft);
+  font-size: 15px;
+  max-width: 680px;
+}
+
+.smart-review-kicker {
+  display: inline-flex;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.smart-review-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.smart-review-stat {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 96px;
+  padding: 14px;
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.smart-review-stat span {
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.smart-review-stat strong {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 30px;
+  line-height: 1;
+}
+
+.smart-review-stat.urgent {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.smart-review-filter-bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.smart-filter-btn {
+  min-width: 118px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.smart-filter-btn strong {
+  min-width: 25px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--field);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  text-align: center;
+}
+
+.smart-filter-btn:hover,
+.smart-filter-btn.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.smart-review-curve-panel {
+  padding: 20px;
+}
+
+.smart-review-curve-head,
+.smart-review-list-head,
+.smart-review-detail-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.smart-review-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.smart-review-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.smart-review-legend i {
+  width: 24px;
+  height: 0;
+  border-top: 2px solid var(--accent);
+}
+
+.smart-review-legend i.threshold {
+  border-top-style: dashed;
+  border-color: var(--warning);
+}
+
+.smart-curve-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 16px;
+}
+
+.smart-curve-bg {
+  fill: var(--field);
+  stroke: var(--line);
+}
+
+.smart-curve-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.smart-curve-grid.vertical {
+  stroke-dasharray: 3 7;
+}
+
+.smart-curve-threshold {
+  stroke: var(--warning);
+  stroke-width: 1.5;
+  stroke-dasharray: 8 7;
+}
+
+.smart-curve-axis,
+.smart-curve-label {
+  fill: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.smart-curve-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.smart-curve-sample-dot {
+  fill: var(--paper);
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.smart-curve-now-dot {
+  fill: var(--accent);
+  stroke: var(--paper);
+  stroke-width: 2;
+}
+
+.smart-curve-due-line {
+  stroke: var(--good);
+  stroke-width: 1.6;
+  stroke-dasharray: 5 6;
+}
+
+.smart-curve-due-dot {
+  fill: var(--good);
+  stroke: var(--paper);
+  stroke-width: 2;
+}
+
+.smart-review-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.7fr);
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.smart-review-list-panel {
+  padding: 18px;
+  min-width: 0;
+}
+
+.smart-review-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.smart-review-row {
+  min-width: 920px;
+  display: grid;
+  grid-template-columns: 38px minmax(160px, 1.25fr) minmax(145px, 0.9fr) minmax(145px, 0.9fr) minmax(130px, 0.8fr) minmax(130px, 0.8fr) 102px;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--field);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.smart-review-row:hover,
+.smart-review-row.selected {
+  border-color: var(--accent);
+  background: var(--paper);
+}
+
+.smart-review-row.selected {
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+
+.smart-review-rank {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.smart-review-word-block,
+.smart-review-time-block,
+.smart-review-memory-block,
+.smart-review-status-block {
+  min-width: 0;
+}
+
+.smart-review-jp {
+  color: var(--accent);
+  font-family: var(--font-jp);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.smart-review-meaning {
+  color: var(--ink);
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.smart-review-project {
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.smart-review-time-block span,
+.smart-review-memory-block span,
+.smart-review-status-block small,
+.smart-review-detail-grid span,
+.smart-review-detail-grid small {
+  display: block;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.smart-review-time-block strong {
+  display: block;
+  color: var(--ink-soft);
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.smart-review-meter {
+  height: 7px;
+  margin: 6px 0 4px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.smart-review-meter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--error), var(--warning), var(--good));
+}
+
+.smart-review-memory-block small {
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.smart-review-status-block {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.smart-review-status-block .vocab-badge,
+.smart-review-detail-head .vocab-badge {
+  width: fit-content;
+  border: 1px solid currentColor;
+}
+
+.smart-review-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.smart-review-speak-btn {
+  width: 34px;
+  padding: 0;
+}
+
+.smart-review-one-btn {
+  padding-inline: 10px;
+}
+
+.smart-review-detail-panel {
+  position: sticky;
+  top: 78px;
+  padding: 18px;
+}
+
+.smart-review-detail-head {
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.smart-review-detail-head > span {
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.smart-review-focus-word {
+  padding: 14px 0;
+  border-block: 1px dashed var(--line);
+}
+
+.smart-review-focus-jp {
+  color: var(--accent);
+  font-family: var(--font-jp);
+  font-size: 34px;
+  font-weight: 900;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.smart-review-big-meter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+}
+
+.smart-review-big-meter strong {
+  display: block;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 42px;
+  line-height: 1;
+}
+
+.smart-review-big-meter span {
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.smart-review-ring {
+  width: 72px;
+  height: 72px;
+  flex: 0 0 72px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, var(--paper) 0 56%, transparent 57%),
+    conic-gradient(var(--accent) calc(var(--memory) * 1%), var(--line) 0);
+  border: 1px solid var(--line-strong);
+}
+
+.smart-review-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.smart-review-detail-grid > div {
+  min-height: 86px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--field);
+}
+
+.smart-review-detail-grid strong {
+  display: block;
+  margin: 3px 0;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.smart-review-response-panel {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--field);
+}
+
+.smart-review-response-title {
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.smart-review-response-bars {
+  height: 74px;
+  display: flex;
+  align-items: end;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.smart-review-response-bars i {
+  flex: 1;
+  min-width: 8px;
+  border-radius: 5px 5px 0 0;
+  background: var(--accent);
+  opacity: 0.82;
+}
+
+.smart-review-response-panel p {
+  color: var(--ink-faint);
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.smart-review-empty {
+  padding: 36px 18px;
+  text-align: center;
+  color: var(--ink-faint);
+  border: 1px dashed var(--line-strong);
+  border-radius: 8px;
+  background: var(--field);
+}
+
+.smart-review-empty.compact {
+  padding: 24px 14px;
+}
+
+.smart-review-empty-title {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 650;
+}
+
+.smart-review-empty p {
+  margin: 6px auto 0;
+  max-width: 460px;
+  font-size: 14px;
+}
+
 /* Common Section Headers */
 h1, h2, h3, h4 {
   font-family: var(--font-display);
@@ -336,6 +891,18 @@ h2 {
 
 .btn:active {
   transform: translateY(0);
+}
+
+.btn:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn:disabled:hover {
+  border-color: var(--line-strong);
+  transform: none;
 }
 
 .btn-primary {
@@ -1170,6 +1737,30 @@ select.form-control {
 }
 
 @media (max-width: 600px) {
+  .smart-review-overview,
+  .smart-review-curve-panel,
+  .smart-review-list-panel,
+  .smart-review-detail-panel {
+    padding: 16px;
+  }
+
+  .smart-review-stat-grid,
+  .smart-review-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .smart-review-stat {
+    min-height: 74px;
+  }
+
+  .smart-review-big-meter {
+    align-items: flex-start;
+  }
+
+  .smart-review-focus-jp {
+    font-size: 28px;
+  }
+
   .kana-draw-layout {
     grid-template-columns: 1fr;
     gap: 15px;
@@ -1225,6 +1816,47 @@ select.form-control {
 
 /* Responsive Table as Cards for Mobile Devices */
 @media (max-width: 768px) {
+  .smart-review-overview,
+  .smart-review-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .smart-review-stat-grid,
+  .smart-review-detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .smart-review-curve-head,
+  .smart-review-list-head {
+    flex-direction: column;
+  }
+
+  .smart-review-detail-panel {
+    position: static;
+  }
+
+  .smart-review-row {
+    min-width: 0;
+    grid-template-columns: 34px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .smart-review-time-block,
+  .smart-review-memory-block,
+  .smart-review-status-block,
+  .smart-review-actions {
+    grid-column: 2;
+  }
+
+  .smart-review-actions {
+    justify-content: flex-start;
+  }
+
+  .smart-review-meaning,
+  .smart-review-project {
+    white-space: normal;
+  }
+
   .vocab-table-container {
     border: none;
     background: transparent;
@@ -1398,7 +2030,3 @@ select.form-control {
   color: var(--accent) !important;
   box-shadow: 0 0 0 1px var(--accent);
 }
-
-
-
-

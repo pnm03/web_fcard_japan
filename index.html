@@ -28,6 +28,9 @@
           <button class="nav-btn" data-target="dictionary-view" id="nav-dictionary">
             Tra từ
           </button>
+          <button class="nav-btn" data-target="smart-review-view" id="nav-smart-review">
+            Lịch ôn
+          </button>
           <button class="nav-btn" data-target="kana-setup-view" id="nav-kana">
             Luyện chữ cái
           </button>
@@ -95,6 +98,24 @@
             <div id="dashboard-weak-vocab-preview">
               <!-- Bảng tóm tắt từ yếu sẽ được render tại đây -->
             </div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 11: SMART REVIEW SCHEDULE ================= -->
+        <section id="smart-review-view" class="view-section">
+          <div class="project-list-header">
+            <div>
+              <h1>Lịch Ôn Thông Minh</h1>
+              <p style="color: var(--text-muted); margin-top: 0.2rem;">Đường cong lãng quên, lịch đến hạn và độ bền trí nhớ của từng từ.</p>
+            </div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <button class="btn btn-primary" id="smart-review-start-due-btn">Kiểm tra từ đến hạn</button>
+              <button class="btn btn-secondary" id="smart-review-start-overdue-btn">Kiểm tra quá hạn</button>
+            </div>
+          </div>
+
+          <div id="smart-review-root">
+            <!-- Smart review dashboard sẽ được render tại đây -->
           </div>
         </section>
 
