@@ -49,6 +49,7 @@ const BASE_VOCAB_COLUMNS = new Set([
 
 const LEARNING_VOCAB_COLUMNS = [
   "history_times",
+  "answer_history",
   "last_tested_at",
   "last_time_spent_sec",
   "last_answer_state",
@@ -125,9 +126,54 @@ function normalizeAnswerState(value, fallback = "unanswered") {
   return allowed.has(value) ? value : fallback;
 }
 
+function normalizeAnswerHistory(value) {
+  let parsed = value;
+  if (typeof value === "string" && value.trim()) {
+    try {
+      parsed = JSON.parse(value);
+    } catch (e) {
+      parsed = [];
+    }
+  }
+
+  if (!Array.isArray(parsed)) return [];
+
+  return parsed
+    .map(item => ({
+      at: normalizeTimestampToMs(item.at ?? item.timestamp ?? item.time),
+      state: normalizeAnswerState(item.state ?? item.answerState, "unanswered"),
+      timeSpentSec: Math.max(0, toFiniteNumber(item.timeSpentSec ?? item.time_spent_sec ?? item.timeSpent, 0)),
+      mode: typeof item.mode === "string" ? item.mode : "",
+      userAnswer: typeof item.userAnswer === "string" ? item.userAnswer : ""
+    }))
+    .filter(item => item.at > 0 && item.state !== "unanswered")
+    .sort((a, b) => a.at - b.at)
+    .slice(-50);
+}
+
+function appendAnswerHistory(vocab, answerState, timeSpentSec, at = Date.now()) {
+  const history = normalizeAnswerHistory(vocab.answerHistory ?? vocab.answer_history);
+  history.push({
+    at,
+    state: normalizeAnswerState(answerState),
+    timeSpentSec: Math.max(0, toFiniteNumber(timeSpentSec, 0))
+  });
+  return history.slice(-50);
+}
+
 function average(values) {
   if (!values.length) return 0;
   return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function weightedRecentAverage(values, recentCount = 5, recentWeight = 0.6) {
+  const cleanValues = values.map(value => toFiniteNumber(value, NaN)).filter(Number.isFinite);
+  if (!cleanValues.length) return 0;
+  const recent = cleanValues.slice(-recentCount);
+  const older = cleanValues.slice(0, -recentCount);
+  const recentAvg = average(recent);
+  if (!older.length) return recentAvg;
+  return recentAvg * recentWeight + average(older) * (1 - recentWeight);
 }
 
 function hoursToMs(hours) {
@@ -274,6 +320,7 @@ function normalizeVocab(vocab) {
   const correctCount = toNonNegativeInt(vocab.correctCount ?? vocab.correct_count);
   const wrongCount = toNonNegativeInt(vocab.wrongCount ?? vocab.wrong_count);
   const historyTimes = normalizeHistoryTimes(vocab.historyTimes ?? vocab.history_times);
+  const answerHistory = normalizeAnswerHistory(vocab.answerHistory ?? vocab.answer_history);
   const lastTimeSpent = toFiniteNumber(vocab.lastTimeSpent ?? vocab.last_time_spent_sec, 0);
   const lastAnswerState = normalizeAnswerState(vocab.lastAnswerState ?? vocab.last_answer_state);
   const normalized = {
@@ -281,6 +328,7 @@ function normalizeVocab(vocab) {
     correctCount,
     wrongCount,
     historyTimes,
+    answerHistory,
     difficultyScore: Math.round(clampNumber(toFiniteNumber(vocab.difficultyScore ?? vocab.difficulty_score, 0), 0, 100)),
     lastTested: normalizeTimestampToMs(vocab.lastTested ?? vocab.last_tested_at),
     lastTimeSpent,
@@ -334,6 +382,7 @@ function buildVocabUpsertPayload(vocab, projectId) {
 
   const learningPayload = {
     history_times: normalized.historyTimes,
+    answer_history: normalized.answerHistory,
     last_tested_at: toDbTimestamp(normalized.lastTested),
     last_time_spent_sec: normalized.lastTimeSpent,
     last_answer_state: normalized.lastAnswerState,
@@ -481,6 +530,7 @@ export function addVocabToProject(projectId, vocabData) {
     correctCount: 0,
     wrongCount: 0,
     historyTimes: [],
+    answerHistory: [],
     difficultyScore: 0,
     lastTested: 0,
     lastTimeSpent: 0,
@@ -594,6 +644,7 @@ export function updateVocabStats(projectId, vocabId, isCorrect, timeSpentSec, an
       vocab.historyTimes = vocab.historyTimes.slice(-20);
     }
   }
+  vocab.answerHistory = appendAnswerHistory(vocab, normalizedAnswerState, normalizedTimeSpent, vocab.lastTested);
 
   if (normalizedAnswerState === "correct") {
     vocab.correctCount += 1;
@@ -663,6 +714,7 @@ export function markVocabAsMaxDifficulty(projectId, vocabId, timeSpentSec = 0) {
       vocab.historyTimes = vocab.historyTimes.slice(-20);
     }
   }
+  vocab.answerHistory = appendAnswerHistory(vocab, "revealed", vocab.lastTimeSpent, vocab.lastTested);
   vocab.masteryScore = calculateMasteryScore(vocab);
   Object.assign(vocab, calculateReviewSchedule(vocab, "revealed", vocab.lastTimeSpent, vocab.lastTested));
   projects[projectIndex].vocab[vocabIndex] = vocab;
@@ -738,6 +790,7 @@ export async function fetchAndSyncFromSupabase() {
           wrong_count: v.wrong_count,
           difficulty_score: v.difficulty_score,
           history_times: v.history_times,
+          answer_history: v.answer_history,
           last_tested_at: v.last_tested_at,
           last_time_spent_sec: v.last_time_spent_sec,
           last_answer_state: v.last_answer_state,
@@ -769,24 +822,215 @@ export async function fetchAndSyncFromSupabase() {
   }
 }
 
-export function isVocabWeak(vocab) {
+function isWeakWrongState(state) {
+  return state === "wrong" || state === "revealed" || state === "correct_retry";
+}
+
+function getRapidRelapseSignal(answerHistory) {
+  if (!answerHistory.length) return null;
+  const buckets = [
+    { maxMinutes: 5, points: 45, label: "quên lại trong 5 phút" },
+    { maxMinutes: 10, points: 40, label: "quên lại trong 10 phút" },
+    { maxMinutes: 30, points: 34, label: "quên lại trong 30 phút" },
+    { maxMinutes: 60, points: 28, label: "quên lại trong 1 giờ" },
+    { maxMinutes: 300, points: 20, label: "quên lại trong 5 giờ" }
+  ];
+
+  for (let i = answerHistory.length - 1; i > 0; i--) {
+    const previous = answerHistory[i - 1];
+    const current = answerHistory[i];
+    if (previous.state !== "correct" || !isWeakWrongState(current.state)) continue;
+
+    const deltaMinutes = (current.at - previous.at) / (60 * 1000);
+    const bucket = buckets.find(item => deltaMinutes > 0 && deltaMinutes <= item.maxMinutes);
+    if (bucket) {
+      return {
+        ...bucket,
+        deltaMinutes,
+        at: current.at
+      };
+    }
+  }
+
+  return null;
+}
+
+function getFastCorrectStreak(answerHistory, fallbackStreak = 0, fallbackTime = 0) {
+  if (!answerHistory.length) {
+    return fallbackStreak > 0 && fallbackTime > 0 && fallbackTime <= 3.5 ? fallbackStreak : 0;
+  }
+
+  let streak = 0;
+  for (let i = answerHistory.length - 1; i >= 0; i--) {
+    const item = answerHistory[i];
+    if (item.state === "correct" && item.timeSpentSec > 0 && item.timeSpentSec <= 3.5) {
+      streak += 1;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+function getWeakLevel(score) {
+  if (score >= 80) return { id: "very_weak", label: "Rất yếu" };
+  if (score >= 60) return { id: "weak", label: "Yếu" };
+  if (score >= 30) return { id: "watch", label: "Cần theo dõi" };
+  return { id: "stable", label: "Ổn" };
+}
+
+export function getWeakAnalysis(vocab, now = Date.now()) {
   const v = normalizeVocab(vocab);
   const totalTests = v.correctCount + v.wrongCount;
-  if (totalTests === 0) return false;
+  const reasons = [];
+  const addReason = (code, label, detail, points) => {
+    if (!Number.isFinite(points) || Math.abs(points) < 1) return;
+    reasons.push({
+      code,
+      label,
+      detail,
+      points: Math.round(points)
+    });
+  };
+
+  if (totalTests === 0) {
+    return {
+      weaknessScore: 0,
+      weakLevel: { id: "new", label: "Từ mới" },
+      isWeak: false,
+      reasons: [],
+      primaryReason: "Chưa kiểm tra",
+      metrics: {
+        totalTests: 0,
+        errorRate: 0,
+        weightedErrorRate: 0,
+        weightedAvgTime: 0,
+        masteryScore: 0,
+        overdueHours: 0,
+        fastCorrectStreak: 0
+      }
+    };
+  }
 
   const errorRate = v.wrongCount / totalTests;
+  const answerHistory = normalizeAnswerHistory(v.answerHistory);
+  const recentHistory = answerHistory.slice(-5);
+  const recentWrongRate = recentHistory.length
+    ? recentHistory.filter(item => isWeakWrongState(item.state)).length / recentHistory.length
+    : errorRate;
+  const weightedErrorRate = recentHistory.length ? recentWrongRate * 0.6 + errorRate * 0.4 : errorRate;
+  const timeSamples = answerHistory.length
+    ? answerHistory.map(item => item.timeSpentSec).filter(value => value > 0)
+    : v.historyTimes;
   const avgTime = v.historyTimes.length ? average(v.historyTimes) : v.lastTimeSpent;
+  const weightedAvgTime = timeSamples.length
+    ? weightedRecentAverage(timeSamples, 5, 0.6)
+    : avgTime;
   const masteryScore = typeof v.masteryScore === "number" ? v.masteryScore : calculateMasteryScore(v);
+  const overdueHours = v.nextReviewAt > 0 && now > v.nextReviewAt ? (now - v.nextReviewAt) / (60 * 60 * 1000) : 0;
+  const relapseSignal = getRapidRelapseSignal(answerHistory);
+  const fastCorrectStreak = getFastCorrectStreak(answerHistory, v.streakCorrect, v.lastTimeSpent);
 
-  return (
-    v.lastAnswerState === "wrong" ||
-    v.lastAnswerState === "revealed" ||
-    v.lastAnswerState === "correct_retry" ||
-    v.difficultyScore > 40 ||
-    errorRate > 0.25 ||
-    avgTime > 7.0 ||
-    masteryScore < 60
+  let score = 0;
+
+  if (v.lastAnswerState === "wrong") {
+    score += 50;
+    addReason("last_wrong", "Sai gần nhất", "Lần kiểm tra gần nhất trả lời sai.", 50);
+  } else if (v.lastAnswerState === "revealed") {
+    score += 50;
+    addReason("revealed", "Đã xem đáp án", "Bạn phải mở đáp án nên từ này được coi là rủi ro cao.", 50);
+  } else if (v.lastAnswerState === "correct_retry") {
+    score += 35;
+    addReason("correct_retry", "Đúng sau gợi ý", "Sai lần đầu rồi mới đúng, nghĩa là chưa nhớ chắc.", 35);
+  }
+
+  if (relapseSignal) {
+    score += relapseSignal.points;
+    addReason(
+      "rapid_relapse",
+      "Vừa nhớ đã quên",
+      `Lần trước đúng nhưng lần sau lại sai sau khoảng ${Math.max(1, Math.round(relapseSignal.deltaMinutes))} phút (${relapseSignal.label}).`,
+      relapseSignal.points
+    );
+  }
+
+  const errorRatePoints = clampNumber(((weightedErrorRate - 0.15) / 0.45) * 25, 0, 25);
+  score += errorRatePoints;
+  addReason(
+    "high_error_rate",
+    "Tỷ lệ sai cao",
+    `Tỷ lệ sai có trọng số gần đây là ${Math.round(weightedErrorRate * 100)}%.`,
+    errorRatePoints
   );
+
+  const slowTimePoints = clampNumber(((weightedAvgTime - 4) / 8) * 20, 0, 20);
+  score += slowTimePoints;
+  addReason(
+    "slow_response",
+    "Phản xạ chậm",
+    `Thời gian phản xạ có trọng số gần đây khoảng ${weightedAvgTime.toFixed(1)} giây.`,
+    slowTimePoints
+  );
+
+  const masteryPoints = clampNumber(((70 - masteryScore) / 70) * 25, 0, 25);
+  score += masteryPoints;
+  addReason(
+    "low_mastery",
+    "Mastery thấp",
+    `Điểm thuộc hiện tại là ${Math.round(masteryScore)}%.`,
+    masteryPoints
+  );
+
+  const overduePoints = clampNumber((overdueHours / 48) * 20, 0, 20);
+  score += overduePoints;
+  addReason(
+    "overdue_review",
+    "Quá hạn ôn",
+    `Lịch ôn đã quá hạn khoảng ${Math.round(overdueHours)} giờ.`,
+    overduePoints
+  );
+
+  let fastCorrectDiscount = 0;
+  if (fastCorrectStreak >= 3) {
+    fastCorrectDiscount = 40;
+  } else if (fastCorrectStreak >= 2) {
+    fastCorrectDiscount = 25;
+  }
+  if (fastCorrectDiscount > 0) {
+    score -= fastCorrectDiscount;
+    addReason(
+      "fast_correct_streak",
+      "Đúng nhanh liên tiếp",
+      `Có ${fastCorrectStreak} lần đúng nhanh liên tiếp gần nhất, giảm điểm yếu.`,
+      -fastCorrectDiscount
+    );
+  }
+
+  const weaknessScore = Math.round(clampNumber(score, 0, 100));
+  const weakLevel = getWeakLevel(weaknessScore);
+  const sortedReasons = reasons.sort((a, b) => b.points - a.points);
+
+  return {
+    weaknessScore,
+    weakLevel,
+    isWeak: weaknessScore >= 30,
+    reasons: sortedReasons,
+    primaryReason: sortedReasons.find(reason => reason.points > 0)?.label || weakLevel.label,
+    metrics: {
+      totalTests,
+      errorRate,
+      weightedErrorRate,
+      avgTime,
+      weightedAvgTime,
+      masteryScore,
+      overdueHours,
+      fastCorrectStreak
+    }
+  };
+}
+
+export function isVocabWeak(vocab) {
+  return getWeakAnalysis(vocab).isWeak;
 }
 
 export function getReviewStatus(vocab, now = Date.now()) {
@@ -927,9 +1171,16 @@ export function getWeakVocab(projectId = null, limit = 20) {
     }
   });
 
-  const weakList = allVocab.filter(isVocabWeak);
+  const weakList = allVocab
+    .map(v => ({
+      ...v,
+      weakAnalysis: getWeakAnalysis(v)
+    }))
+    .filter(v => v.weakAnalysis.isWeak);
 
   weakList.sort((a, b) => {
+    const scoreDiff = (b.weakAnalysis?.weaknessScore || 0) - (a.weakAnalysis?.weaknessScore || 0);
+    if (scoreDiff !== 0) return scoreDiff;
     const masteryDiff = (a.masteryScore || 0) - (b.masteryScore || 0);
     if (masteryDiff !== 0) return masteryDiff;
     if (b.difficultyScore !== a.difficultyScore) {

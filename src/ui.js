@@ -11,6 +11,7 @@ import {
   getReviewDueVocab,
   getReviewOverview,
   getReviewStatus,
+  getWeakAnalysis,
   isVocabWeak,
   removeVietnameseTones,
   searchDictionary,
@@ -126,6 +127,24 @@ function getReviewBadgeHtml(vocab) {
     none: "background: var(--field); color: var(--ink-faint); border-color: var(--line);"
   };
   return `<span class="vocab-badge" title="${status.reason || status.label}" style="${styles[status.urgency] || styles.none}">${status.label}</span>`;
+}
+
+function getWeakLevelBadgeHtml(analysis) {
+  const level = analysis?.weakLevel || { id: "stable", label: "Ổn" };
+  const styles = {
+    very_weak: "background: var(--error-soft); color: var(--error); border-color: var(--error);",
+    weak: "background: var(--warning-soft); color: var(--warning); border-color: var(--warning);",
+    watch: "background: var(--accent-soft); color: var(--accent); border-color: var(--accent);",
+    stable: "background: var(--good-soft); color: var(--good); border-color: var(--good);",
+    new: "background: var(--field); color: var(--ink-soft); border-color: var(--line);"
+  };
+  return `<span class="vocab-badge weak-level-badge" style="${styles[level.id] || styles.stable}">${level.label} · ${analysis?.weaknessScore ?? 0}</span>`;
+}
+
+function getWeakReasonSummary(analysis, maxItems = 2) {
+  const positiveReasons = (analysis?.reasons || []).filter(reason => reason.points > 0);
+  if (!positiveReasons.length) return analysis?.primaryReason || "Ổn định";
+  return positiveReasons.slice(0, maxItems).map(reason => reason.label).join(", ");
 }
 
 function startQuizWithVocabIds(vocabIds, message = "") {
@@ -372,20 +391,15 @@ function renderDashboard() {
               <th>Romaji</th>
               <th>Nghĩa</th>
               <th>Dự án</th>
-              <th style="text-align: center;">Độ Khó</th>
+              <th style="text-align: center;">Mức yếu</th>
+              <th>Lý do</th>
             </tr>
           </thead>
           <tbody>
     `;
 
     weakVocab.forEach(v => {
-      // Xác định độ khó badge
-      let difficultyBadge = `<span class="vocab-badge badge-easy">${v.difficultyScore} (Dễ)</span>`;
-      if (v.difficultyScore > 70) {
-        difficultyBadge = `<span class="vocab-badge badge-hard">${v.difficultyScore} (Quên nặng)</span>`;
-      } else if (v.difficultyScore > 40) {
-        difficultyBadge = `<span class="vocab-badge badge-medium">${v.difficultyScore} (Trung bình)</span>`;
-      }
+      const analysis = v.weakAnalysis || getWeakAnalysis(v);
 
       tableHtml += `
         <tr>
@@ -396,7 +410,8 @@ function renderDashboard() {
           <td data-label="Romaji" style="font-family: var(--font-mono); font-size: 0.95rem; color: var(--ink-soft);">${v.romaji}</td>
           <td data-label="Ý nghĩa">${v.meaning}</td>
           <td data-label="Dự án" style="color: var(--ink-faint); font-family: var(--font-mono); font-size: 11px;">${v.projectName}</td>
-          <td data-label="Độ khó" style="text-align: center;">${difficultyBadge}</td>
+          <td data-label="Mức yếu" style="text-align: center;">${getWeakLevelBadgeHtml(analysis)}</td>
+          <td data-label="Lý do" style="color: var(--ink-soft); font-size: 13px;">${getWeakReasonSummary(analysis)}</td>
         </tr>
       `;
     });
@@ -1493,22 +1508,18 @@ function renderWeakVocabView() {
             <th>Nghĩa Tiếng Việt</th>
             <th>Dự án nguồn</th>
             <th style="text-align: center;">Tỉ lệ Đúng / Sai</th>
-            <th style="text-align: center;">Độ Khó</th>
+            <th style="text-align: center;">Mức yếu</th>
+            <th>Lý do chính</th>
           </tr>
         </thead>
         <tbody>
   `;
 
   weakVocab.forEach((v, index) => {
-    let difficultyBadge = `<span class="vocab-badge badge-easy">${v.difficultyScore} (Dễ)</span>`;
-    if (v.difficultyScore > 70) {
-      difficultyBadge = `<span class="vocab-badge badge-hard">${v.difficultyScore} (Quên nặng)</span>`;
-    } else if (v.difficultyScore > 40) {
-      difficultyBadge = `<span class="vocab-badge badge-medium">${v.difficultyScore} (Vừa)</span>`;
-    }
+    const analysis = v.weakAnalysis || getWeakAnalysis(v);
 
     tableHtml += `
-      <tr>
+      <tr class="weak-vocab-row" data-weak-vocab-id="${v.id}" title="Bấm để xem phân tích chi tiết">
         <td data-label="STT" style="text-align: center; font-family: var(--font-mono); font-size: 0.95rem; color: var(--ink-soft);">${index + 1}</td>
         <td data-label="Tiếng Nhật" class="vocab-jp-cell">
           ${cleanToKanaOnly(v.japanese)}
@@ -1521,7 +1532,8 @@ function renderWeakVocabView() {
           <span style="color: var(--good); font-weight: bold;">✔️ ${v.correctCount}</span> / 
           <span style="color: var(--error); font-weight: bold;">❌ ${v.wrongCount}</span>
         </td>
-        <td data-label="Độ khó" style="text-align: center;">${difficultyBadge}</td>
+        <td data-label="Mức yếu" style="text-align: center;">${getWeakLevelBadgeHtml(analysis)}</td>
+        <td data-label="Lý do" style="color: var(--ink-soft); font-size: 13px;">${getWeakReasonSummary(analysis, 3)}</td>
       </tr>
     `;
   });
@@ -1540,10 +1552,258 @@ function renderWeakVocabView() {
     };
   });
 
+  document.querySelectorAll(".weak-vocab-row").forEach(row => {
+    row.onclick = () => {
+      openWeakVocabDetailModal(row.getAttribute("data-weak-vocab-id"));
+    };
+  });
+
   startBtn.onclick = () => {
-    switchView("quiz-setup-view");
-    alert("Hệ thống đã tự thiết lập bài kiểm tra từ yếu. Bạn chỉ cần chọn cấu hình và bấm Bắt đầu!");
+    const vocabIds = weakVocab.map(v => v.id);
+    startQuizWithVocabIds(vocabIds, `Đã chọn ${vocabIds.length} từ yếu/cần theo dõi để kiểm tra.`);
   };
+}
+
+function getVocabWithProjectById(vocabId) {
+  const projects = getProjects();
+  for (const project of projects) {
+    const vocab = (project.vocab || []).find(v => v.id === vocabId);
+    if (vocab) {
+      return {
+        ...vocab,
+        projectId: project.id,
+        projectName: project.name
+      };
+    }
+  }
+  return null;
+}
+
+function getAnswerStateLabel(state) {
+  const labels = {
+    correct: "Đúng",
+    correct_retry: "Đúng sau gợi ý",
+    wrong: "Sai",
+    revealed: "Xem đáp án",
+    unanswered: "Chưa trả lời"
+  };
+  return labels[state] || state || "Không rõ";
+}
+
+function getWeakHistoryForDisplay(vocab) {
+  const answerHistory = Array.isArray(vocab.answerHistory) ? vocab.answerHistory : [];
+  if (answerHistory.length > 0) {
+    return answerHistory.slice(-20);
+  }
+
+  const times = Array.isArray(vocab.historyTimes) ? vocab.historyTimes : [];
+  return times.slice(-20).map((timeSpentSec, index) => ({
+    at: vocab.lastTested || 0,
+    state: index === times.length - 1 ? vocab.lastAnswerState : "unanswered",
+    timeSpentSec
+  }));
+}
+
+function buildWeakTimeTrendSvg(history) {
+  if (!history.length) {
+    return `
+      <div class="weak-detail-empty-chart">
+        Chưa có đủ lịch sử từng lần trả lời để vẽ biểu đồ.
+      </div>
+    `;
+  }
+
+  const width = 640;
+  const height = 210;
+  const left = 42;
+  const right = 610;
+  const top = 24;
+  const bottom = 176;
+  const chartWidth = right - left;
+  const chartHeight = bottom - top;
+  const maxTime = Math.max(3, ...history.map(item => item.timeSpentSec || 0));
+  const points = history.map((item, index) => {
+    const x = history.length === 1 ? left + chartWidth / 2 : left + (index / (history.length - 1)) * chartWidth;
+    const y = bottom - ((item.timeSpentSec || 0) / maxTime) * chartHeight;
+    return { x, y, item, index };
+  });
+  const path = points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(" ");
+  const colorByState = {
+    correct: "var(--good)",
+    correct_retry: "var(--warning)",
+    wrong: "var(--error)",
+    revealed: "var(--error)",
+    unanswered: "var(--ink-faint)"
+  };
+
+  return `
+    <svg class="weak-detail-line-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Biểu đồ thời gian phản xạ">
+      <rect x="0" y="0" width="${width}" height="${height}" rx="8" class="weak-chart-bg" />
+      ${[0, 0.5, 1].map(tick => {
+        const y = bottom - tick * chartHeight;
+        const label = `${Math.round(maxTime * tick)}s`;
+        return `
+          <line x1="${left}" y1="${y.toFixed(1)}" x2="${right}" y2="${y.toFixed(1)}" class="weak-chart-grid" />
+          <text x="12" y="${(y + 4).toFixed(1)}" class="weak-chart-axis">${label}</text>
+        `;
+      }).join("")}
+      <path d="${path}" class="weak-chart-line" />
+      ${points.map(point => `
+        <circle cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="5" fill="${colorByState[point.item.state] || "var(--ink-faint)"}" />
+        <text x="${point.x.toFixed(1)}" y="198" text-anchor="middle" class="weak-chart-axis">${point.index + 1}</text>
+      `).join("")}
+    </svg>
+  `;
+}
+
+function buildWeakResponseBars(history) {
+  if (!history.length) {
+    return `<div class="weak-detail-empty-chart">Chưa có dữ liệu phản xạ.</div>`;
+  }
+
+  const maxTime = Math.max(3, ...history.map(item => item.timeSpentSec || 0));
+  return `
+    <div class="weak-detail-bars">
+      ${history.map(item => {
+        const height = clampUiNumber(((item.timeSpentSec || 0) / maxTime) * 100, 8, 100);
+        const stateClass = item.state === "correct" ? "correct" : item.state === "correct_retry" ? "retry" : "wrong";
+        return `<i class="${stateClass}" style="height: ${height}%;" title="${getAnswerStateLabel(item.state)} · ${(item.timeSpentSec || 0).toFixed(1)}s"></i>`;
+      }).join("")}
+    </div>
+  `;
+}
+
+function openWeakVocabDetailModal(vocabId) {
+  const modal = document.getElementById("weak-vocab-detail-modal");
+  const body = document.getElementById("weak-vocab-detail-body");
+  if (!modal || !body) return;
+
+  const vocab = getVocabWithProjectById(vocabId);
+  if (!vocab) return;
+
+  const analysis = getWeakAnalysis(vocab);
+  const history = getWeakHistoryForDisplay(vocab);
+  const correctEvents = history.length ? history.filter(item => item.state === "correct").length : (vocab.correctCount || 0);
+  const retryCount = history.filter(item => item.state === "correct_retry").length;
+  const wrongEvents = history.length
+    ? history.filter(item => item.state === "wrong" || item.state === "revealed").length
+    : (vocab.wrongCount || 0);
+  const eventTotal = Math.max(1, correctEvents + retryCount + wrongEvents);
+  const correctPercent = Math.round((correctEvents / eventTotal) * 100);
+  const retryPercent = Math.round((retryCount / eventTotal) * 100);
+  const wrongPercent = Math.max(0, 100 - correctPercent - retryPercent);
+  const positiveReasons = analysis.reasons.filter(reason => reason.points > 0);
+  const discountReasons = analysis.reasons.filter(reason => reason.points < 0);
+
+  body.innerHTML = `
+    <div class="weak-detail-header">
+      <div>
+        <span class="smart-review-kicker">${escapeHtml(vocab.projectName || "Không rõ dự án")}</span>
+        <h2>${escapeHtml(cleanToKanaOnly(vocab.japanese))}</h2>
+        <p>${escapeHtml(vocab.romaji)} · ${escapeHtml(vocab.meaning)}</p>
+      </div>
+      <div class="weak-detail-score">
+        ${getWeakLevelBadgeHtml(analysis)}
+        <strong>${analysis.weaknessScore}</strong>
+        <span>điểm yếu</span>
+      </div>
+    </div>
+
+    <div class="weak-detail-grid">
+      <div class="weak-detail-metric">
+        <span>Mastery</span>
+        <strong>${Math.round(analysis.metrics.masteryScore || 0)}%</strong>
+        <small>Điểm thuộc hiện tại</small>
+      </div>
+      <div class="weak-detail-metric">
+        <span>Độ khó</span>
+        <strong>${vocab.difficultyScore || 0}</strong>
+        <small>Difficulty score</small>
+      </div>
+      <div class="weak-detail-metric">
+        <span>Tỷ lệ sai 60/40</span>
+        <strong>${Math.round((analysis.metrics.weightedErrorRate || 0) * 100)}%</strong>
+        <small>60% gần đây, 40% tổng thể</small>
+      </div>
+      <div class="weak-detail-metric">
+        <span>Phản xạ 60/40</span>
+        <strong>${analysis.metrics.weightedAvgTime ? analysis.metrics.weightedAvgTime.toFixed(1) + "s" : "0s"}</strong>
+        <small>Thời gian có trọng số</small>
+      </div>
+    </div>
+
+    <div class="weak-detail-layout">
+      <section class="weak-detail-panel">
+        <div class="weak-detail-panel-head">
+          <h3>Lý do xếp nhóm</h3>
+        </div>
+        <div class="weak-reason-list">
+          ${positiveReasons.length ? positiveReasons.map(reason => `
+            <div class="weak-reason-item">
+              <strong>+${reason.points} · ${escapeHtml(reason.label)}</strong>
+              <span>${escapeHtml(reason.detail)}</span>
+            </div>
+          `).join("") : `<div class="weak-reason-item muted"><span>Không có lý do rủi ro lớn.</span></div>`}
+          ${discountReasons.map(reason => `
+            <div class="weak-reason-item discount">
+              <strong>${reason.points} · ${escapeHtml(reason.label)}</strong>
+              <span>${escapeHtml(reason.detail)}</span>
+            </div>
+          `).join("")}
+        </div>
+      </section>
+
+      <section class="weak-detail-panel">
+        <div class="weak-detail-panel-head">
+          <h3>Tỷ lệ trả lời</h3>
+        </div>
+        <div class="weak-donut-row">
+          <div class="weak-donut" style="--correct: ${correctPercent}; --retry: ${retryPercent};"></div>
+          <div class="weak-donut-legend">
+            <span><i class="correct"></i>Đúng: ${vocab.correctCount || 0}</span>
+            <span><i class="retry"></i>Đúng sau gợi ý: ${retryCount}</span>
+            <span><i class="wrong"></i>Sai/xem đáp án: ${wrongEvents}</span>
+            <small>Sai còn lại: ${wrongPercent}%</small>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="weak-detail-panel">
+      <div class="weak-detail-panel-head">
+        <h3>Đường phản xạ</h3>
+        <span>Lần gần đây nhất nằm bên phải</span>
+      </div>
+      ${buildWeakTimeTrendSvg(history)}
+    </section>
+
+    <section class="weak-detail-panel">
+      <div class="weak-detail-panel-head">
+        <h3>Cột thời gian</h3>
+      </div>
+      ${buildWeakResponseBars(history)}
+    </section>
+
+    <section class="weak-detail-panel">
+      <div class="weak-detail-panel-head">
+        <h3>Lịch sử trả lời</h3>
+      </div>
+      <div class="weak-history-list">
+        ${history.length ? history.slice().reverse().map((item, index) => `
+          <div class="weak-history-item ${item.state}">
+            <span>#${history.length - index}</span>
+            <strong>${escapeHtml(getAnswerStateLabel(item.state))}</strong>
+            <small>${item.at ? escapeHtml(formatSmartDateTime(item.at)) : "Chưa có thời gian"} · ${(item.timeSpentSec || 0).toFixed(1)}s</small>
+          </div>
+        `).join("") : `<div class="weak-detail-empty-chart">Chưa có lịch sử trả lời chi tiết.</div>`}
+      </div>
+    </section>
+  `;
+
+  document.getElementById("close-weak-detail-modal-btn").onclick = () => {
+    modal.classList.remove("active");
+  };
+  modal.classList.add("active");
 }
 
 // 6. Cấu hình bài kiểm tra (Quiz Setup View)
@@ -2911,7 +3171,22 @@ function setupJsonImportExport() {
             correctCount: 0,
             wrongCount: 0,
             historyTimes: [],
-            difficultyScore: 0
+            answerHistory: [],
+            difficultyScore: 0,
+            lastTested: 0,
+            lastTimeSpent: 0,
+            lastAnswerState: "unanswered",
+            timesSeen: 0,
+            streakCorrect: 0,
+            masteryScore: 0,
+            nextReviewAt: 0,
+            reviewIntervalHours: 0,
+            reviewStage: 0,
+            lapseCount: 0,
+            reviewReason: "",
+            easeFactor: 2.5,
+            memoryStability: 0,
+            memoryDifficulty: 5
           }));
 
           const newProject = {
