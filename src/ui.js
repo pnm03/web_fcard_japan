@@ -1509,7 +1509,7 @@ function renderWeakVocabView() {
             <th>Dự án nguồn</th>
             <th style="text-align: center;">Tỉ lệ Đúng / Sai</th>
             <th style="text-align: center;">Mức yếu</th>
-            <th>Lý do chính</th>
+            <th style="text-align: center;">Lý do</th>
           </tr>
         </thead>
         <tbody>
@@ -1533,7 +1533,9 @@ function renderWeakVocabView() {
           <span style="color: var(--error); font-weight: bold;">❌ ${v.wrongCount}</span>
         </td>
         <td data-label="Mức yếu" style="text-align: center;">${getWeakLevelBadgeHtml(analysis)}</td>
-        <td data-label="Lý do" style="color: var(--ink-soft); font-size: 13px;">${getWeakReasonSummary(analysis, 3)}</td>
+        <td data-label="Lý do" style="text-align: center;">
+          <button type="button" class="weak-reason-view-btn" data-weak-detail-id="${v.id}" title="${escapeHtml(getWeakReasonSummary(analysis, 3))}">Xem</button>
+        </td>
       </tr>
     `;
   });
@@ -1555,6 +1557,13 @@ function renderWeakVocabView() {
   document.querySelectorAll(".weak-vocab-row").forEach(row => {
     row.onclick = () => {
       openWeakVocabDetailModal(row.getAttribute("data-weak-vocab-id"));
+    };
+  });
+
+  document.querySelectorAll(".weak-reason-view-btn").forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      openWeakVocabDetailModal(btn.getAttribute("data-weak-detail-id"));
     };
   });
 
@@ -1733,7 +1742,7 @@ function openWeakVocabDetailModal(vocabId) {
     </div>
 
     <div class="weak-detail-layout">
-      <section class="weak-detail-panel">
+      <section class="weak-detail-panel weak-reasons-panel">
         <div class="weak-detail-panel-head">
           <h3>Lý do xếp nhóm</h3>
         </div>
@@ -1753,7 +1762,7 @@ function openWeakVocabDetailModal(vocabId) {
         </div>
       </section>
 
-      <section class="weak-detail-panel">
+      <section class="weak-detail-panel weak-ratio-panel">
         <div class="weak-detail-panel-head">
           <h3>Tỷ lệ trả lời</h3>
         </div>
@@ -1800,8 +1809,15 @@ function openWeakVocabDetailModal(vocabId) {
     </section>
   `;
 
-  document.getElementById("close-weak-detail-modal-btn").onclick = () => {
+  const closeWeakDetailModal = () => {
     modal.classList.remove("active");
+  };
+
+  document.getElementById("close-weak-detail-modal-btn").onclick = closeWeakDetailModal;
+  modal.onclick = (e) => {
+    if (e.target === modal) {
+      closeWeakDetailModal();
+    }
   };
   modal.classList.add("active");
 }
