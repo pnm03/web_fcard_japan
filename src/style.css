@@ -2447,18 +2447,22 @@ select.form-control {
 }
 
 .picker-right-head {
-  display: grid;
-  grid-template-columns: minmax(130px, 1fr) auto;
-  align-items: start;
-  gap: 10px;
-  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .picker-control-stack {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
+  align-items: stretch;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.34);
 }
 
 .picker-main-actions-row,
@@ -2469,7 +2473,17 @@ select.form-control {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+}
+
+.picker-main-actions-row {
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.picker-review-actions-row,
+.picker-review-extra-row {
+  justify-content: flex-start;
 }
 
 .picker-review-extra-row {
@@ -2484,11 +2498,23 @@ select.form-control {
 }
 
 .picker-range-control {
+  flex: 1 1 330px;
+  min-width: min(100%, 330px);
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
   color: var(--ink-soft);
   font-family: var(--font-mono);
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.picker-range-title {
+  color: var(--accent);
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .picker-range-control input {
@@ -2504,11 +2530,19 @@ select.form-control {
   text-align: center;
 }
 
+.picker-basic-actions {
+  flex: 0 0 auto;
+}
+
 .picker-mini-btn {
   min-height: 24px;
   padding: 2px 8px;
   font-size: 11px;
   white-space: nowrap;
+}
+
+.picker-review-actions-row .picker-mini-btn {
+  min-width: 92px;
 }
 
 .picker-warning-btn {
