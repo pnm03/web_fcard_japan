@@ -1566,7 +1566,7 @@ select.form-control {
 
 /* Quiz Setup View */
 .quiz-setup-card {
-  max-width: 600px;
+  max-width: 720px;
   margin: 10px auto;
   border: 2px solid var(--ink);
 }
@@ -1622,11 +1622,56 @@ select.form-control {
   font-weight: 600;
   font-size: 15px;
   color: var(--ink);
+  padding-right: 24px;
 }
 
 .radio-card-desc {
   font-size: 12px;
   color: var(--ink-soft);
+}
+
+.radio-card-example {
+  display: block;
+  margin-top: 5px;
+  color: var(--ink-soft);
+  font-family: var(--font-serif);
+  font-size: 11px;
+  font-style: italic;
+  line-height: 1.3;
+}
+
+.radio-card-example strong {
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-style: normal;
+  letter-spacing: 0.04em;
+}
+
+.radio-card-example .jp-example {
+  color: var(--ink-soft);
+  font-family: var(--font-jp);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.radio-card-example .example-answer {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--warning-soft);
+  color: var(--warning-strong, #8a5a00);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.radio-card-example strong.example-answer {
+  color: var(--warning-strong, #8a5a00);
+}
+
+.radio-card-example .example-answer.jp-example {
+  color: var(--warning-strong, #8a5a00);
 }
 
 .checkbox-control-group {
@@ -1769,6 +1814,39 @@ select.form-control {
   font-size: 34px;
   font-weight: 600;
   color: var(--accent);
+}
+
+.quiz-question-word.audio-hidden-word {
+  cursor: pointer;
+  user-select: none;
+  filter: blur(9px);
+  opacity: 0.48;
+  transform: translateZ(0);
+}
+
+.quiz-question-word.audio-hidden-word:hover {
+  opacity: 0.62;
+}
+
+.quiz-question-word.audio-hidden-word:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 6px;
+  border-radius: 8px;
+}
+
+.quiz-question-word.audio-revealed-word {
+  color: var(--accent);
+}
+
+.quiz-reveal-word-btn {
+  width: 42px;
+  height: 42px;
+  min-height: 42px;
+  padding: 0;
+  font-size: 1rem;
+  display: none;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Input (Web Note style) */
@@ -2347,6 +2425,17 @@ select.form-control {
   display: block;
   width: 100%;
 }
+
+.picker-project-item.has-selection {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid rgba(188, 74, 50, 0.22);
+}
+
+.picker-project-item.has-selection:not(.active) {
+  opacity: 0.78;
+}
+
 .picker-project-item:hover {
   background: var(--bg) !important;
   color: var(--accent) !important;
@@ -2355,6 +2444,86 @@ select.form-control {
   background: var(--accent) !important;
   color: var(--paper) !important;
   font-weight: 600;
+}
+
+.picker-right-head {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.picker-control-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.picker-main-actions-row,
+.picker-review-actions-row,
+.picker-review-extra-row,
+.picker-range-control,
+.picker-basic-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.picker-review-extra-row {
+  opacity: 0.86;
+}
+
+.picker-control-divider {
+  width: 1px;
+  height: 24px;
+  margin: 0 2px;
+  background: var(--line-strong);
+}
+
+.picker-range-control {
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.picker-range-control input {
+  width: 54px;
+  height: 24px;
+  padding: 2px 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-align: center;
+}
+
+.picker-mini-btn {
+  min-height: 24px;
+  padding: 2px 8px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.picker-warning-btn {
+  color: var(--warning-strong);
+  border-color: var(--warning);
+}
+
+.picker-accent-btn {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.picker-error-btn {
+  color: var(--error);
+  border-color: var(--error);
 }
 
 /* Responsive Vocab Picker Modal Layout */
@@ -2375,6 +2544,24 @@ select.form-control {
   #picker-words-list {
     grid-template-columns: 1fr !important;
     gap: 4px 0 !important;
+  }
+
+  .picker-right-head {
+    grid-template-columns: 1fr;
+  }
+
+  .picker-control-stack {
+    align-items: stretch;
+  }
+
+  .picker-main-actions-row,
+  .picker-review-actions-row,
+  .picker-review-extra-row {
+    flex-wrap: wrap;
+  }
+
+  .picker-control-divider {
+    display: none;
   }
 }
 

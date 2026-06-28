@@ -435,26 +435,42 @@
 
             <div class="form-group">
               <label>Chế độ Kiểm tra</label>
-              <div class="radio-card-grid">
+              <div class="radio-card-grid quiz-mode-grid">
                 <div class="radio-card selected" data-value="meaning_to_romaji">
                   <input type="radio" name="quiz-mode" value="meaning_to_romaji" checked>
                   <span class="radio-card-title">Nghĩa ➔ Romaji</span>
                   <span class="radio-card-desc">Hiển thị nghĩa Tiếng Việt, gõ phiên âm Romaji tiếng Nhật</span>
+                  <span class="radio-card-example">(Mặt trăng ➔ <strong class="example-answer">TSUKI</strong>)</span>
                 </div>
                 <div class="radio-card" data-value="romaji_to_meaning">
                   <input type="radio" name="quiz-mode" value="romaji_to_meaning">
                   <span class="radio-card-title">Romaji ➔ Nghĩa</span>
                   <span class="radio-card-desc">Hiển thị phiên âm Romaji, gõ nghĩa Tiếng Việt</span>
+                  <span class="radio-card-example">(<strong>TSUKI</strong> ➔ <span class="example-answer">mặt trăng</span>)</span>
                 </div>
                 <div class="radio-card" data-value="jp_to_meaning">
                   <input type="radio" name="quiz-mode" value="jp_to_meaning">
                   <span class="radio-card-title">Tiếng Nhật ➔ Nghĩa</span>
                   <span class="radio-card-desc">Hiển thị Kanji/Kana, gõ nghĩa Tiếng Việt</span>
+                  <span class="radio-card-example">(<span class="jp-example">つき</span> ➔ <span class="example-answer">mặt trăng</span>)</span>
+                </div>
+                <div class="radio-card" data-value="meaning_to_japanese">
+                  <input type="radio" name="quiz-mode" value="meaning_to_japanese">
+                  <span class="radio-card-title">Nghĩa ➔ Tiếng Nhật</span>
+                  <span class="radio-card-desc">Hiển thị nghĩa Tiếng Việt, gõ chữ Nhật tương ứng</span>
+                  <span class="radio-card-example">(Mặt trăng ➔ <span class="example-answer jp-example">つき</span>)</span>
+                </div>
+                <div class="radio-card" data-value="audio_to_meaning">
+                  <input type="radio" name="quiz-mode" value="audio_to_meaning">
+                  <span class="radio-card-title">Âm thanh ➔ Nghĩa</span>
+                  <span class="radio-card-desc">Nghe phát âm, gõ nghĩa Tiếng Việt; chữ Nhật được làm mờ</span>
+                  <span class="radio-card-example">(🔊 <span class="jp-example">つき</span> ➔ <span class="example-answer">mặt trăng</span>)</span>
                 </div>
                 <div class="radio-card" data-value="mixed">
                   <input type="radio" name="quiz-mode" value="mixed">
                   <span class="radio-card-title">Xáo trộn (Mixed)</span>
-                  <span class="radio-card-desc">Trộn ngẫu nhiên cả 3 chế độ kiểm tra trên</span>
+                  <span class="radio-card-desc">Trộn ngẫu nhiên các chế độ kiểm tra trên</span>
+                  <span class="radio-card-example">(Mặt trăng, <strong>TSUKI</strong>, <span class="jp-example">つき</span> thay phiên)</span>
                 </div>
               </div>
             </div>
@@ -540,6 +556,7 @@
               <p class="quiz-question-prompt" id="quiz-question-prompt">Từ này có Romaji là gì?</p>
               <div style="display: flex; align-items: center; justify-content: center; gap: 1rem;">
                 <h2 class="quiz-question-word" id="quiz-question-word-display">傘</h2>
+                <button class="btn btn-secondary btn-icon quiz-reveal-word-btn" id="quiz-reveal-word-btn" title="Xem chữ Nhật">👁️</button>
                 <button class="btn btn-secondary btn-icon" id="quiz-speak-btn" style="width: 42px; height: 42px; font-size: 1.2rem;" title="Phát âm tiếng Nhật">🔊</button>
               </div>
             </div>
@@ -566,7 +583,7 @@
             <div class="quiz-bottom-sheet" id="quiz-bottom-sheet">
               <div class="quiz-bottom-sheet-content">
                 <div class="quiz-bottom-sheet-title">❌ Chưa chính xác! Đáp án đúng là:</div>
-                <div class="quiz-bottom-sheet-correct" id="quiz-bottom-sheet-correct-text">あかい</div>
+                <div class="quiz-bottom-sheet-correct" id="quiz-bottom-sheet-correct-text">つき</div>
               </div>
               <button class="btn btn-primary" id="quiz-bottom-sheet-next-btn" style="width: 100%; padding: 0.8rem; margin: 0; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 1rem;">Tiếp tục (Enter)</button>
             </div>
@@ -817,7 +834,7 @@
 
       <!-- Modal: Chọn Dự án & Từ vựng Kiểm tra (2 cột) -->
       <div class="modal-overlay" id="quiz-vocab-picker-modal">
-        <div class="modal-container glass-panel" style="max-width: 800px; width: 90%;">
+        <div class="modal-container glass-panel" style="max-width: 900px; width: 92%;">
           <h2 style="margin-bottom: 1rem; color: var(--accent); font-family: var(--font-display);">🔍 Chọn Từ Vựng Kiểm Tra</h2>
           
           <div class="vocab-picker-layout" style="display: flex; gap: 8px; height: 450px; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--bg);">
@@ -831,16 +848,32 @@
             
             <!-- Cột phải: Toàn bộ từ vựng trong dự án đang chọn -->
             <div class="vocab-picker-right" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 12px 12px 12px 6px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+              <div class="picker-right-head">
                 <h3 id="picker-current-project-title" style="margin: 0; font-family: var(--font-display); font-size: 15px; color: var(--accent);">Tên dự án đang chọn</h3>
-                <div style="display: flex; gap: 6px;">
-                  <button class="btn btn-secondary" id="picker-select-all-btn" style="padding: 2px 8px; font-size: 11px; min-height: 24px;">Chọn tất cả</button>
-                  <button class="btn btn-secondary" id="picker-select-none-btn" style="padding: 2px 8px; font-size: 11px; min-height: 24px;">Bỏ chọn hết</button>
-                  <button class="btn btn-secondary" id="picker-select-weak-btn" style="padding: 2px 8px; font-size: 11px; min-height: 24px; color: var(--warning-strong); border-color: var(--warning);">Chọn từ yếu</button>
-                  <button class="btn btn-secondary" id="picker-select-due-btn" style="padding: 2px 8px; font-size: 11px; min-height: 24px; color: var(--accent); border-color: var(--accent);">Đến hạn ôn</button>
-                  <button class="btn btn-secondary" id="picker-select-overdue-btn" style="padding: 2px 8px; font-size: 11px; min-height: 24px; color: var(--error); border-color: var(--error);">Quá hạn</button>
-                  <button class="btn btn-secondary" id="picker-select-stale-btn" style="padding: 2px 8px; font-size: 11px; min-height: 24px;">Lâu chưa học</button>
-                  <button class="btn btn-secondary" id="picker-select-hard-correct-btn" style="padding: 2px 8px; font-size: 11px; min-height: 24px;">Khó vừa đúng</button>
+                <div class="picker-control-stack">
+                  <div class="picker-main-actions-row">
+                    <div class="picker-range-control" aria-label="Chọn nhanh theo khoảng thứ tự">
+                      <span>Chọn #</span>
+                      <input type="number" id="picker-range-start" min="0" inputmode="numeric" placeholder="Từ">
+                      <span>đến</span>
+                      <input type="number" id="picker-range-end" min="0" inputmode="numeric" placeholder="Cuối">
+                      <button type="button" class="btn btn-secondary picker-mini-btn" id="picker-select-range-btn">Chọn đoạn</button>
+                    </div>
+                    <span class="picker-control-divider" aria-hidden="true"></span>
+                    <div class="picker-basic-actions">
+                      <button class="btn btn-secondary picker-mini-btn" id="picker-select-all-btn">Chọn tất cả</button>
+                      <button class="btn btn-secondary picker-mini-btn" id="picker-select-none-btn">Bỏ chọn hết</button>
+                    </div>
+                  </div>
+                  <div class="picker-review-actions-row">
+                    <button class="btn btn-secondary picker-mini-btn picker-warning-btn" id="picker-select-weak-btn">Chọn từ yếu</button>
+                    <button class="btn btn-secondary picker-mini-btn picker-accent-btn" id="picker-select-due-btn">Đến hạn ôn</button>
+                    <button class="btn btn-secondary picker-mini-btn picker-error-btn" id="picker-select-overdue-btn">Quá hạn</button>
+                  </div>
+                  <div class="picker-review-extra-row">
+                    <button class="btn btn-secondary picker-mini-btn" id="picker-select-stale-btn">Lâu chưa học</button>
+                    <button class="btn btn-secondary picker-mini-btn" id="picker-select-hard-correct-btn">Khó vừa đúng</button>
+                  </div>
                 </div>
               </div>
               

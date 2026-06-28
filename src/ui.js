@@ -1900,10 +1900,11 @@ function renderPickerProjects() {
 
   // 1. "Tất cả dự án" item
   const totalVocabCount = projects.reduce((acc, p) => acc + (p.vocab ? p.vocab.length : 0), 0);
+  const totalSelectedCount = projects.reduce((acc, p) => acc + ((p.vocab || []).filter(v => tempSelectedVocabIds.includes(v.id)).length), 0);
   const allItem = document.createElement("button");
-  allItem.className = `picker-project-item ${currentPickerProjectId === "all" ? "active" : ""}`;
+  allItem.className = `picker-project-item ${currentPickerProjectId === "all" ? "active" : ""} ${totalSelectedCount > 0 ? "has-selection" : ""}`;
   allItem.type = "button";
-  allItem.innerHTML = `<span>🌐 Tất cả dự án</span> <span style="font-size: 11px; opacity: 0.7;">(${totalVocabCount})</span>`;
+  allItem.innerHTML = `<span>🌐 Tất cả dự án</span> <span style="font-size: 11px; opacity: 0.7;">(${totalSelectedCount > 0 ? `${totalSelectedCount}/` : ""}${totalVocabCount})</span>`;
   allItem.addEventListener("click", () => {
     selectPickerProject("all");
   });
@@ -1912,10 +1913,11 @@ function renderPickerProjects() {
   // 2. Individual projects
   projects.forEach(p => {
     const vocabCount = p.vocab ? p.vocab.length : 0;
+    const selectedCount = (p.vocab || []).filter(v => tempSelectedVocabIds.includes(v.id)).length;
     const item = document.createElement("button");
-    item.className = `picker-project-item ${currentPickerProjectId === p.id ? "active" : ""}`;
+    item.className = `picker-project-item ${currentPickerProjectId === p.id ? "active" : ""} ${selectedCount > 0 ? "has-selection" : ""}`;
     item.type = "button";
-    item.innerHTML = `<span>📁 ${p.name}</span> <span style="font-size: 11px; opacity: 0.7;">(${vocabCount})</span>`;
+    item.innerHTML = `<span>📁 ${p.name}</span> <span style="font-size: 11px; opacity: 0.7;">(${selectedCount > 0 ? `${selectedCount}/` : ""}${vocabCount})</span>`;
     item.addEventListener("click", () => {
       selectPickerProject(p.id);
     });
@@ -1943,6 +1945,26 @@ function selectPickerProject(projectId) {
 
 let collapsedPickerProjects = {};
 
+function getCurrentPickerWords() {
+  const projects = getProjects();
+  const words = [];
+
+  if (currentPickerProjectId === "all") {
+    projects.forEach(p => {
+      if (p.vocab) {
+        p.vocab.forEach(v => words.push(v));
+      }
+    });
+  } else {
+    const p = projects.find(proj => proj.id === currentPickerProjectId);
+    if (p && p.vocab) {
+      p.vocab.forEach(v => words.push(v));
+    }
+  }
+
+  return words;
+}
+
 function createWordCard(v, displayIndex, projectName) {
   const isChecked = tempSelectedVocabIds.includes(v.id);
   
@@ -1967,6 +1989,7 @@ function createWordCard(v, displayIndex, projectName) {
       tempSelectedVocabIds = tempSelectedVocabIds.filter(id => id !== v.id);
     }
     updateTempSelectedCount();
+    renderPickerProjects();
     renderPickerWords();
   });
 
@@ -2055,6 +2078,11 @@ function renderPickerWords() {
       headerDiv.style.transition = "background 0.2s";
 
       const projectSelectedCount = p.vocab.filter(v => tempSelectedVocabIds.includes(v.id)).length;
+      if (projectSelectedCount > 0) {
+        headerDiv.style.background = "var(--accent-soft)";
+        headerDiv.style.borderColor = "rgba(188, 74, 50, 0.28)";
+        headerDiv.style.opacity = "0.86";
+      }
 
       headerDiv.innerHTML = `
         <span style="display: flex; align-items: center; gap: 6px;">
@@ -2104,20 +2132,7 @@ function updateTempSelectedCount() {
 }
 
 function selectAllInCurrentPickerProject() {
-  const projects = getProjects();
-  let words = [];
-  if (currentPickerProjectId === "all") {
-    projects.forEach(p => {
-      if (p.vocab) {
-        p.vocab.forEach(v => words.push(v));
-      }
-    });
-  } else {
-    const p = projects.find(proj => proj.id === currentPickerProjectId);
-    if (p && p.vocab) {
-      p.vocab.forEach(v => words.push(v));
-    }
-  }
+  const words = getCurrentPickerWords();
 
   words.forEach(v => {
     if (!tempSelectedVocabIds.includes(v.id)) {
@@ -2125,48 +2140,60 @@ function selectAllInCurrentPickerProject() {
     }
   });
 
+  renderPickerProjects();
   renderPickerWords();
   updateTempSelectedCount();
 }
 
 function deselectAllInCurrentPickerProject() {
-  const projects = getProjects();
-  let words = [];
-  if (currentPickerProjectId === "all") {
-    projects.forEach(p => {
-      if (p.vocab) {
-        p.vocab.forEach(v => words.push(v));
-      }
-    });
-  } else {
-    const p = projects.find(proj => proj.id === currentPickerProjectId);
-    if (p && p.vocab) {
-      p.vocab.forEach(v => words.push(v));
-    }
-  }
+  const words = getCurrentPickerWords();
 
   const wordIds = words.map(v => v.id);
   tempSelectedVocabIds = tempSelectedVocabIds.filter(id => !wordIds.includes(id));
 
+  renderPickerProjects();
+  renderPickerWords();
+  updateTempSelectedCount();
+}
+
+function selectRangeInCurrentPickerProject() {
+  const words = getCurrentPickerWords();
+  if (words.length === 0) {
+    alert("Không có từ nào trong phạm vi hiện tại.");
+    return;
+  }
+
+  const startInput = document.getElementById("picker-range-start");
+  const endInput = document.getElementById("picker-range-end");
+  const rawStart = startInput ? startInput.value.trim() : "";
+  const rawEnd = endInput ? endInput.value.trim() : "";
+
+  let startIndex = rawStart === "" ? 0 : Math.max(0, parseInt(rawStart, 10) - 1);
+  let endIndex = rawEnd === "" ? words.length - 1 : Math.max(0, parseInt(rawEnd, 10) - 1);
+
+  if (!Number.isFinite(startIndex)) startIndex = 0;
+  if (!Number.isFinite(endIndex)) endIndex = words.length - 1;
+
+  startIndex = Math.min(startIndex, words.length - 1);
+  endIndex = Math.min(endIndex, words.length - 1);
+
+  if (startIndex > endIndex) {
+    [startIndex, endIndex] = [endIndex, startIndex];
+  }
+
+  words.slice(startIndex, endIndex + 1).forEach(v => {
+    if (!tempSelectedVocabIds.includes(v.id)) {
+      tempSelectedVocabIds.push(v.id);
+    }
+  });
+
+  renderPickerProjects();
   renderPickerWords();
   updateTempSelectedCount();
 }
 
 function selectWeakInCurrentPickerProject() {
-  const projects = getProjects();
-  let allWords = [];
-  if (currentPickerProjectId === "all") {
-    projects.forEach(p => {
-      if (p.vocab) {
-        p.vocab.forEach(v => allWords.push(v));
-      }
-    });
-  } else {
-    const p = projects.find(proj => proj.id === currentPickerProjectId);
-    if (p && p.vocab) {
-      p.vocab.forEach(v => allWords.push(v));
-    }
-  }
+  const allWords = getCurrentPickerWords();
 
   // Lọc ra các từ yếu trong danh sách từ đang hiển thị
   const weakWords = allWords.filter(isVocabWeak);
@@ -2189,25 +2216,13 @@ function selectWeakInCurrentPickerProject() {
     }
   });
 
+  renderPickerProjects();
   renderPickerWords();
   updateTempSelectedCount();
 }
 
 function selectReviewInCurrentPickerProject(filter, label) {
-  const projects = getProjects();
-  let allWords = [];
-  if (currentPickerProjectId === "all") {
-    projects.forEach(p => {
-      if (p.vocab) {
-        p.vocab.forEach(v => allWords.push(v));
-      }
-    });
-  } else {
-    const p = projects.find(proj => proj.id === currentPickerProjectId);
-    if (p && p.vocab) {
-      p.vocab.forEach(v => allWords.push(v));
-    }
-  }
+  const allWords = getCurrentPickerWords();
 
   const reviewWords = allWords.filter(v => {
     const status = getReviewStatus(v);
@@ -2231,6 +2246,7 @@ function selectReviewInCurrentPickerProject(filter, label) {
     }
   });
 
+  renderPickerProjects();
   renderPickerWords();
   updateTempSelectedCount();
 }
@@ -2513,6 +2529,10 @@ function setupQuizConfigEvents() {
     selectVocabBtn.addEventListener("click", () => {
       tempSelectedVocabIds = [...quizSelectedVocabIds];
       currentPickerProjectId = "all";
+      const rangeStartInput = document.getElementById("picker-range-start");
+      const rangeEndInput = document.getElementById("picker-range-end");
+      if (rangeStartInput) rangeStartInput.value = "";
+      if (rangeEndInput) rangeEndInput.value = "";
       
       document.getElementById("quiz-vocab-picker-modal").classList.add("active");
       selectPickerProject("all");
@@ -2561,6 +2581,25 @@ function setupQuizConfigEvents() {
       deselectAllInCurrentPickerProject();
     });
   }
+
+  const selectRangeBtn = document.getElementById("picker-select-range-btn");
+  if (selectRangeBtn) {
+    selectRangeBtn.addEventListener("click", () => {
+      selectRangeInCurrentPickerProject();
+    });
+  }
+
+  ["picker-range-start", "picker-range-end"].forEach(inputId => {
+    const input = document.getElementById(inputId);
+    if (input) {
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          selectRangeInCurrentPickerProject();
+        }
+      });
+    }
+  });
 
   // Nút Chọn từ yếu trong picker modal
   const selectWeakBtn = document.getElementById("picker-select-weak-btn");
@@ -2677,6 +2716,75 @@ function startQuiz(config) {
   renderCurrentQuestion();
 }
 
+function isQuizMeaningAnswerMode(mode) {
+  return mode === "jp_to_meaning" || mode === "romaji_to_meaning" || mode === "audio_to_meaning";
+}
+
+function getQuizModeLabel(mode) {
+  const labels = {
+    meaning_to_romaji: "Nghĩa ➔ Romaji",
+    romaji_to_meaning: "Romaji ➔ Nghĩa",
+    jp_to_meaning: "Nhật ➔ Nghĩa",
+    meaning_to_japanese: "Nghĩa ➔ Tiếng Nhật",
+    audio_to_meaning: "Âm thanh ➔ Nghĩa",
+    mixed: "Xáo trộn"
+  };
+  return labels[mode] || mode || "Không rõ";
+}
+
+function getQuizCorrectAnswerForDisplay(question) {
+  if (!question) return "";
+  if (isQuizMeaningAnswerMode(question.mode)) {
+    return question.vocab.meaning;
+  }
+  if (question.mode === "meaning_to_japanese") {
+    return cleanToKanaOnly(question.vocab.japanese);
+  }
+  return question.vocab.romaji;
+}
+
+function showAudioQuestionWord(question, shouldPenalize = true) {
+  if (!question || question.mode !== "audio_to_meaning") return;
+
+  const wordDisplay = document.getElementById("quiz-question-word-display");
+  const revealWordBtn = document.getElementById("quiz-reveal-word-btn");
+  if (!wordDisplay) return;
+
+  if (shouldPenalize && question.answerState === "unanswered") {
+    question.promptRevealed = true;
+
+    const hintContainer = document.getElementById("quiz-hint-container");
+    const hintLabel = document.getElementById("quiz-hint-label-text");
+    const hintText = document.getElementById("quiz-hint-text");
+    if (hintLabel) hintLabel.textContent = "Đã xem từ: ";
+    if (hintText) {
+      hintText.textContent = cleanToKanaOnly(question.vocab.japanese);
+      hintText.style.fontWeight = "700";
+      hintText.style.fontFamily = "var(--font-jp)";
+      hintText.style.color = "var(--warning)";
+    }
+    if (hintContainer) {
+      hintContainer.style.background = "var(--warning-soft)";
+      hintContainer.style.borderColor = "var(--warning)";
+      hintContainer.style.color = "var(--warning)";
+      hintContainer.style.display = "flex";
+    }
+  }
+
+  wordDisplay.textContent = cleanToKanaOnly(question.vocab.japanese);
+  wordDisplay.className = "quiz-question-word audio-revealed-word";
+  wordDisplay.removeAttribute("title");
+  wordDisplay.removeAttribute("role");
+  wordDisplay.removeAttribute("tabindex");
+  wordDisplay.onclick = null;
+  wordDisplay.onkeydown = null;
+
+  if (revealWordBtn) {
+    revealWordBtn.style.display = "none";
+    revealWordBtn.onclick = null;
+  }
+}
+
 function renderCurrentQuestion() {
   const question = activeQuizSession.getCurrentQuestion();
   if (!question) {
@@ -2719,7 +2827,10 @@ function renderCurrentQuestion() {
   inputEl.value = "";
   inputEl.className = "quiz-input";
   inputEl.disabled = false;
-  inputEl.placeholder = (question.mode === "jp_to_meaning" || question.mode === "romaji_to_meaning") ? "Nhập nghĩa tiếng Việt (không dấu)..." : "Nhập cách đọc bằng Romaji...";
+  inputEl.lang = question.mode === "meaning_to_japanese" ? "ja" : "vi";
+  inputEl.placeholder = question.mode === "meaning_to_japanese"
+    ? "Nhập chữ Nhật (Kana/Kanji)..."
+    : (isQuizMeaningAnswerMode(question.mode) ? "Nhập nghĩa tiếng Việt (không dấu)..." : "Nhập cách đọc bằng Romaji...");
   
   setTimeout(() => {
     inputEl.focus({ preventScroll: true });
@@ -2729,11 +2840,26 @@ function renderCurrentQuestion() {
 
   const wordDisplay = document.getElementById("quiz-question-word-display");
   const promptEl = document.getElementById("quiz-question-prompt");
+  const revealWordBtn = document.getElementById("quiz-reveal-word-btn");
+
+  wordDisplay.onclick = null;
+  wordDisplay.onkeydown = null;
+  wordDisplay.removeAttribute("title");
+  wordDisplay.removeAttribute("role");
+  wordDisplay.removeAttribute("tabindex");
+  if (revealWordBtn) {
+    revealWordBtn.style.display = "none";
+    revealWordBtn.onclick = null;
+  }
 
   if (question.mode === "meaning_to_romaji") {
     wordDisplay.textContent = question.vocab.meaning;
     wordDisplay.className = "quiz-question-word meaning-word";
     promptEl.textContent = "Từ này có Romaji là gì?";
+  } else if (question.mode === "meaning_to_japanese") {
+    wordDisplay.textContent = question.vocab.meaning;
+    wordDisplay.className = "quiz-question-word meaning-word";
+    promptEl.textContent = "Từ này viết bằng Tiếng Nhật là gì?";
   } else if (question.mode === "romaji_to_meaning") {
     wordDisplay.textContent = question.vocab.romaji;
     wordDisplay.className = "quiz-question-word romaji-word";
@@ -2742,15 +2868,36 @@ function renderCurrentQuestion() {
     wordDisplay.textContent = cleanToKanaOnly(question.vocab.japanese);
     wordDisplay.className = "quiz-question-word";
     promptEl.textContent = "Từ này có nghĩa Tiếng Việt là gì?";
+  } else if (question.mode === "audio_to_meaning") {
+    wordDisplay.textContent = cleanToKanaOnly(question.vocab.japanese);
+    wordDisplay.className = question.promptRevealed ? "quiz-question-word audio-revealed-word" : "quiz-question-word audio-hidden-word";
+    promptEl.textContent = "Âm thanh này có nghĩa Tiếng Việt là gì?";
+
+    if (!question.promptRevealed) {
+      wordDisplay.title = "Xem chữ Nhật";
+      wordDisplay.setAttribute("role", "button");
+      wordDisplay.setAttribute("tabindex", "0");
+      wordDisplay.onclick = () => showAudioQuestionWord(question, true);
+      wordDisplay.onkeydown = (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          showAudioQuestionWord(question, true);
+        }
+      };
+      if (revealWordBtn) {
+        revealWordBtn.style.display = "inline-flex";
+        revealWordBtn.onclick = () => showAudioQuestionWord(question, true);
+      }
+    }
   }
 
   // Quản lý hiển thị nút phát âm dựa trên chế độ câu hỏi
   const speakBtn = document.getElementById("quiz-speak-btn");
-  if (question.mode === "jp_to_meaning" || question.mode === "romaji_to_meaning") {
+  if (question.mode === "jp_to_meaning" || question.mode === "romaji_to_meaning" || question.mode === "audio_to_meaning") {
     speakJapanese(cleanToKanaOnly(question.vocab.japanese));
     speakBtn.style.display = "inline-flex";
   } else {
-    // Ẩn nút loa nếu hiển thị nghĩa Tiếng Việt (meaning_to_romaji) để không lộ đáp án
+    // Ẩn nút loa nếu hiển thị nghĩa Tiếng Việt để không lộ đáp án
     speakBtn.style.display = "none";
   }
 
@@ -2801,6 +2948,7 @@ function handleQuizAnswerSubmit() {
     // Phát âm từ tiếng Nhật khi trả lời đúng
     speakJapanese(cleanToKanaOnly(question.vocab.japanese));
     speakBtn.style.display = "inline-flex"; // luôn hiện loa sau khi trả lời xong
+    showAudioQuestionWord(question, false);
 
     const revealBtn = document.getElementById("quiz-reveal-correct-btn");
     if (revealBtn) revealBtn.style.display = "none";
@@ -2845,12 +2993,7 @@ function handleQuizAnswerSubmit() {
     if (revealBtn) {
       revealBtn.style.display = "inline-flex";
       revealBtn.onclick = () => {
-        let correctAnswer = "";
-        if (question.mode === "jp_to_meaning" || question.mode === "romaji_to_meaning") {
-          correctAnswer = question.vocab.meaning;
-        } else {
-          correctAnswer = question.vocab.romaji;
-        }
+        const correctAnswer = getQuizCorrectAnswerForDisplay(question);
 
         // Điền đáp án, khóa input
         inputEl.value = correctAnswer;
@@ -2870,6 +3013,7 @@ function handleQuizAnswerSubmit() {
         // Tự động phát âm đáp án tiếng Nhật (TTS) và hiện loa
         speakJapanese(cleanToKanaOnly(question.vocab.japanese));
         speakBtn.style.display = "inline-flex";
+        showAudioQuestionWord(question, false);
 
         // Ẩn dòng gợi ý thông thường
         hintContainer.style.display = "none";
@@ -2916,6 +3060,7 @@ function handleQuizAnswerSubmit() {
     // Phát âm đáp án đúng và hiện nút loa
     speakJapanese(cleanToKanaOnly(question.vocab.japanese));
     speakBtn.style.display = "inline-flex";
+    showAudioQuestionWord(question, false);
 
     const hintContainer = document.getElementById("quiz-hint-container");
     if (hintContainer) hintContainer.style.display = "none";
@@ -3113,7 +3258,7 @@ function renderQuizReport(report) {
           <button class="btn btn-secondary speak-row-btn" data-text="${cleanToKanaOnly(q.japanese)}" style="width:22px; height:22px; font-size:0.65rem; vertical-align:middle; padding:0; border:none; background:transparent; box-shadow:none; cursor:pointer;" title="Nghe phát âm">🔊</button>
         </div>
         <div class="report-detail-meaning">
-          Nghĩa: ${q.meaning} | Chế độ: ${q.mode === "jp_to_meaning" ? "Nhật ➔ Nghĩa" : (q.mode === "romaji_to_meaning" ? "Romaji ➔ Nghĩa" : "Nghĩa ➔ Romaji")}
+          Nghĩa: ${q.meaning} | Chế độ: ${getQuizModeLabel(q.mode)}${q.promptRevealed ? " · đã xem chữ Nhật" : ""}
         </div>
         <div style="font-size: 0.8rem; color: var(--ink-faint); margin-top:0.2rem; font-family: var(--font-mono);">
           Lịch sử gõ: "${q.userAnswers.join('" ➔ "')}"

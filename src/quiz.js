@@ -66,9 +66,69 @@ export function isSmartVietnameseMatch(userAnswer, correctAnswer) {
   return false;
 }
 
+function getJapaneseDisplayText(japaneseText) {
+  if (!japaneseText) return "";
+
+  const match = japaneseText.match(/\(([^)]+)\)/) || japaneseText.match(/（([^）]+)）/);
+  if (match) {
+    const content = match[1].trim();
+    const hasKanji = /[\u4E00-\u9FAF]/.test(content);
+    if (!hasKanji) {
+      return content;
+    }
+  }
+
+  return japaneseText.replace(/\([^)]+\)/g, "").replace(/（[^）]+）/g, "").trim();
+}
+
+function normalizeJapaneseAnswer(str) {
+  return String(str || "")
+    .normalize("NFKC")
+    .trim()
+    .replace(/\s+/g, "")
+    .replace(/[、。，．・]/g, "");
+}
+
+function getJapaneseAnswerCandidates(vocab) {
+  const raw = vocab?.japanese || "";
+  const display = getJapaneseDisplayText(raw);
+  const withoutAnnotation = raw.replace(/\([^)]+\)/g, "").replace(/（[^）]+）/g, "").trim();
+  const annotationMatch = raw.match(/\(([^)]+)\)/) || raw.match(/（([^）]+)）/);
+  const annotation = annotationMatch ? annotationMatch[1].trim() : "";
+
+  return [...new Set([display, withoutAnnotation, annotation, raw].filter(Boolean))];
+}
+
+function isJapaneseAnswerMatch(userAnswer, vocab) {
+  const normalizedUser = normalizeJapaneseAnswer(userAnswer);
+  if (!normalizedUser) return false;
+
+  return getJapaneseAnswerCandidates(vocab).some(candidate => {
+    return normalizeJapaneseAnswer(candidate) === normalizedUser;
+  });
+}
+
+function maskJapaneseAnswer(answer) {
+  const chars = Array.from(answer || "").filter(char => char.trim() !== "");
+  if (chars.length <= 1) return answer || "";
+
+  return chars.map((char, index) => {
+    if (index === 0) return char;
+    return "*";
+  }).join("");
+}
+
+function isMeaningAnswerMode(mode) {
+  return mode === "jp_to_meaning" || mode === "romaji_to_meaning" || mode === "audio_to_meaning";
+}
+
 // Tạo gợi ý (Hint) cho một chuỗi đáp án
 export function generateHint(answer, mode) {
   if (!answer) return "";
+
+  if (mode === "meaning_to_japanese") {
+    return maskJapaneseAnswer(answer);
+  }
   
   function maskWord(word) {
     if (!word) return "";
@@ -111,7 +171,7 @@ export class QuizSession {
     this.projectIds = config.projectIds || ["all"];
     this.vocabIds = config.vocabIds || []; // Danh sách từ vựng được chọn cụ thể
     this.questionCount = parseInt(config.questionCount) || 10;
-    this.quizMode = config.quizMode || "mixed"; // 'jp_to_romaji', 'meaning_to_romaji', 'jp_to_meaning', 'mixed'
+    this.quizMode = config.quizMode || "mixed";
     this.order = config.order || "random"; // 'sequential', 'random'
     this.allowRetry = config.allowRetry !== false; // mặc định cho phép retry
 
@@ -308,7 +368,7 @@ export class QuizSession {
       // Xác định chế độ của câu hỏi này
       let activeMode = this.quizMode;
       if (this.quizMode === "mixed") {
-        const modes = ["meaning_to_romaji", "romaji_to_meaning", "jp_to_meaning"];
+        const modes = ["meaning_to_romaji", "romaji_to_meaning", "jp_to_meaning", "meaning_to_japanese", "audio_to_meaning"];
         activeMode = modes[Math.floor(Math.random() * modes.length)];
       }
 
@@ -317,10 +377,11 @@ export class QuizSession {
         vocab: vocab,
         mode: activeMode,
         attempts: 0,
-        answerState: "unanswered", // 'unanswered', 'correct', 'correct_retry', 'wrong'
+        answerState: "unanswered",
         userAnswers: [],
         timeSpent: 0,
-        hintShown: ""
+        hintShown: "",
+        promptRevealed: false
       };
     });
   }
@@ -389,9 +450,12 @@ export class QuizSession {
     let correctAnswer = "";
     let isCorrect = false;
 
-    if (question.mode === "jp_to_meaning" || question.mode === "romaji_to_meaning") {
+    if (isMeaningAnswerMode(question.mode)) {
       correctAnswer = question.vocab.meaning;
       isCorrect = isSmartVietnameseMatch(userAnswer, correctAnswer);
+    } else if (question.mode === "meaning_to_japanese") {
+      correctAnswer = getJapaneseDisplayText(question.vocab.japanese);
+      isCorrect = isJapaneseAnswerMatch(userAnswer, question.vocab);
     } else {
       // Nhập Romaji (meaning_to_romaji)
       correctAnswer = question.vocab.romaji;
@@ -400,7 +464,7 @@ export class QuizSession {
 
     if (isCorrect) {
       // Trả lời đúng
-      const wasRetry = question.attempts > 1;
+      const wasRetry = question.attempts > 1 || question.promptRevealed;
       question.answerState = wasRetry ? "correct_retry" : "correct";
       
       // Cập nhật thống kê vào localStorage
@@ -492,6 +556,7 @@ export class QuizSession {
         meaning: q.vocab.meaning,
         projectName: q.vocab.projectName,
         mode: q.mode,
+        promptRevealed: q.promptRevealed,
         userAnswers: q.userAnswers,
         answerState: q.answerState,
         timeSpent: q.timeSpent,
