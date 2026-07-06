@@ -1738,6 +1738,17 @@ select.form-control {
   text-align: center;
 }
 
+.quiz-bottom-sheet-actions {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.quiz-bottom-sheet-actions button {
+  flex: 1;
+  justify-content: center;
+}
+
 .quiz-bottom-sheet-title {
   font-weight: 600;
   font-size: 0.95rem;

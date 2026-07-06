@@ -174,6 +174,7 @@ export class QuizSession {
     this.quizMode = config.quizMode || "mixed";
     this.order = config.order || "random"; // 'sequential', 'random'
     this.allowRetry = config.allowRetry !== false; // mặc định cho phép retry
+    this.repeatWrongPractice = config.repeatWrongPractice === true;
 
     this.vocabPool = [];
     this.questions = [];
@@ -381,7 +382,10 @@ export class QuizSession {
         userAnswers: [],
         timeSpent: 0,
         hintShown: "",
-        promptRevealed: false
+        promptRevealed: false,
+        practiceRepeatUsed: false,
+        practiceRepeatActive: false,
+        practiceRepeatAttempts: 0
       };
     });
   }
@@ -429,6 +433,71 @@ export class QuizSession {
     return null;
   }
 
+  getCorrectAnswerForQuestion(question) {
+    if (!question) return "";
+    if (isMeaningAnswerMode(question.mode)) {
+      return question.vocab.meaning;
+    }
+    if (question.mode === "meaning_to_japanese") {
+      return getJapaneseDisplayText(question.vocab.japanese);
+    }
+    return question.vocab.romaji;
+  }
+
+  isAnswerCorrectForQuestion(question, userAnswer) {
+    if (!question) return false;
+
+    if (isMeaningAnswerMode(question.mode)) {
+      return isSmartVietnameseMatch(userAnswer, question.vocab.meaning);
+    }
+    if (question.mode === "meaning_to_japanese") {
+      return isJapaneseAnswerMatch(userAnswer, question.vocab);
+    }
+    return normalizeString(userAnswer) === normalizeString(question.vocab.romaji);
+  }
+
+  canPracticeRepeatCurrentQuestion() {
+    const question = this.getCurrentQuestion();
+    return !!(
+      this.repeatWrongPractice &&
+      question &&
+      question.answerState === "wrong" &&
+      !question.practiceRepeatUsed
+    );
+  }
+
+  startPracticeRepeat() {
+    const question = this.getCurrentQuestion();
+    if (!this.canPracticeRepeatCurrentQuestion()) {
+      return false;
+    }
+
+    question.practiceRepeatUsed = true;
+    question.practiceRepeatActive = true;
+    question.practiceRepeatAttempts = 0;
+    this.questionStartTime = Date.now();
+    return true;
+  }
+
+  submitPracticeAnswer(userAnswer) {
+    const question = this.getCurrentQuestion();
+    if (!question || !question.practiceRepeatActive) {
+      return { status: "error", message: "Không có lượt làm lại đang chạy." };
+    }
+
+    question.practiceRepeatAttempts += 1;
+    const correctAnswer = this.getCorrectAnswerForQuestion(question);
+    const isCorrect = this.isAnswerCorrectForQuestion(question, userAnswer);
+    question.practiceRepeatActive = false;
+
+    return {
+      status: isCorrect ? "practice_correct" : "practice_wrong",
+      isCorrect,
+      correctAnswer,
+      attempts: question.practiceRepeatAttempts
+    };
+  }
+
   // Gửi câu trả lời
   submitAnswer(userAnswer) {
     const question = this.getCurrentQuestion();
@@ -450,17 +519,8 @@ export class QuizSession {
     let correctAnswer = "";
     let isCorrect = false;
 
-    if (isMeaningAnswerMode(question.mode)) {
-      correctAnswer = question.vocab.meaning;
-      isCorrect = isSmartVietnameseMatch(userAnswer, correctAnswer);
-    } else if (question.mode === "meaning_to_japanese") {
-      correctAnswer = getJapaneseDisplayText(question.vocab.japanese);
-      isCorrect = isJapaneseAnswerMatch(userAnswer, question.vocab);
-    } else {
-      // Nhập Romaji (meaning_to_romaji)
-      correctAnswer = question.vocab.romaji;
-      isCorrect = normalizeString(userAnswer) === normalizeString(correctAnswer);
-    }
+    correctAnswer = this.getCorrectAnswerForQuestion(question);
+    isCorrect = this.isAnswerCorrectForQuestion(question, userAnswer);
 
     if (isCorrect) {
       // Trả lời đúng

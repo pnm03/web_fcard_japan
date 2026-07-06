@@ -526,6 +526,13 @@
               </label>
             </div>
 
+            <div class="form-group">
+              <label class="checkbox-control-group">
+                <input type="checkbox" id="quiz-setup-repeat-wrong">
+                <span>Sai hoàn toàn thì làm lại ngay 1 lần để nhớ (Không tính điểm)</span>
+              </label>
+            </div>
+
             <button class="btn btn-primary" id="start-quiz-session-btn" style="width: 100%; padding: 1rem; font-size: 1.1rem; margin-top: 1rem;">
               Bắt đầu kiểm tra
             </button>
@@ -585,7 +592,10 @@
                 <div class="quiz-bottom-sheet-title">❌ Chưa chính xác! Đáp án đúng là:</div>
                 <div class="quiz-bottom-sheet-correct" id="quiz-bottom-sheet-correct-text">つき</div>
               </div>
-              <button class="btn btn-primary" id="quiz-bottom-sheet-next-btn" style="width: 100%; padding: 0.8rem; margin: 0; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 1rem;">Tiếp tục (Enter)</button>
+              <div class="quiz-bottom-sheet-actions">
+                <button class="btn btn-secondary" id="quiz-practice-repeat-btn" style="display: none;">Làm lại để nhớ</button>
+                <button class="btn btn-primary" id="quiz-bottom-sheet-next-btn" style="width: 100%; padding: 0.8rem; margin: 0; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 1rem;">Tiếp tục (Enter)</button>
+              </div>
             </div>
           </div>
         </section>
