@@ -35,6 +35,11 @@ const DEFAULT_PROJECTS = [
 ];
 
 const STORAGE_KEY = "nihongo_flashcard_projects";
+const ATTENDANCE_STORAGE_PREFIX = "nihongo_attendance_v1";
+export const ATTENDANCE_FREEZE_COST = 120;
+export const ATTENDANCE_FREEZE_MAX = 2;
+
+let attendanceUser = null;
 
 const BASE_VOCAB_COLUMNS = new Set([
   "id",
@@ -189,6 +194,92 @@ function formatHoursHuman(hours) {
   const weeks = days / 7;
   if (weeks < 8) return `${Math.round(weeks)} tuần`;
   return `${Math.round(days / 30)} tháng`;
+}
+
+function getLocalDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseDateKey(dateKey) {
+  const [year, month, day] = String(dateKey || "").split("-").map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day);
+}
+
+function diffDays(fromDateKey, toDateKey) {
+  const from = parseDateKey(fromDateKey);
+  const to = parseDateKey(toDateKey);
+  if (!from || !to) return 0;
+  return Math.round((to.getTime() - from.getTime()) / (24 * 60 * 60 * 1000));
+}
+
+function createDefaultAttendance() {
+  return {
+    xp: 0,
+    streak: 0,
+    longestStreak: 0,
+    freezeCount: 0,
+    freezesUsed: 0,
+    lastStudyDate: "",
+    totalStudyDays: 0,
+    totalWords: 0,
+    days: {},
+    recentEvents: []
+  };
+}
+
+function getAttendanceStorageKey() {
+  return `${ATTENDANCE_STORAGE_PREFIX}_${attendanceUser?.id || "guest"}`;
+}
+
+function normalizeAttendance(raw) {
+  const base = createDefaultAttendance();
+  const data = raw && typeof raw === "object" ? raw : {};
+  const days = data.days && typeof data.days === "object" ? data.days : {};
+
+  return {
+    ...base,
+    ...data,
+    xp: toNonNegativeInt(data.xp),
+    streak: toNonNegativeInt(data.streak),
+    longestStreak: toNonNegativeInt(data.longestStreak),
+    freezeCount: Math.min(ATTENDANCE_FREEZE_MAX, toNonNegativeInt(data.freezeCount)),
+    freezesUsed: toNonNegativeInt(data.freezesUsed),
+    totalStudyDays: toNonNegativeInt(data.totalStudyDays),
+    totalWords: toNonNegativeInt(data.totalWords),
+    lastStudyDate: typeof data.lastStudyDate === "string" ? data.lastStudyDate : "",
+    days,
+    recentEvents: Array.isArray(data.recentEvents) ? data.recentEvents.slice(-20) : []
+  };
+}
+
+function loadAttendance() {
+  try {
+    return normalizeAttendance(JSON.parse(localStorage.getItem(getAttendanceStorageKey())));
+  } catch (e) {
+    console.error("Lỗi khi đọc dữ liệu điểm danh", e);
+    return createDefaultAttendance();
+  }
+}
+
+function saveAttendance(attendance) {
+  localStorage.setItem(getAttendanceStorageKey(), JSON.stringify(normalizeAttendance(attendance)));
+}
+
+function emitAttendanceUpdate(attendance) {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("attendance:updated", { detail: attendance }));
+  }
+}
+
+function getAttendanceXpForAnswer(answerState) {
+  if (answerState === "correct") return 10;
+  if (answerState === "correct_retry") return 7;
+  if (answerState === "revealed") return 3;
+  return 5;
 }
 
 function classifyReviewGrade(vocab, answerState, timeSpentSec) {
@@ -425,6 +516,135 @@ export function initializeStorage() {
   if (!localStorage.getItem(STORAGE_KEY)) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_PROJECTS));
   }
+}
+
+export function setAttendanceUser(user) {
+  attendanceUser = user ? {
+    id: user.id || user.email || "local-user",
+    email: user.email || ""
+  } : null;
+}
+
+export function getAttendanceUser() {
+  return attendanceUser;
+}
+
+export function getAttendanceStats() {
+  const attendance = loadAttendance();
+  return {
+    ...attendance,
+    user: attendanceUser,
+    todayKey: getLocalDateKey(),
+    isLocked: !attendanceUser
+  };
+}
+
+export function recordStudyActivity({ projectId = "", vocabId = "", answerState = "correct" } = {}) {
+  if (!attendanceUser) return null;
+
+  const todayKey = getLocalDateKey();
+  const attendance = loadAttendance();
+  const day = attendance.days[todayKey] || {
+    words: 0,
+    xp: 0,
+    projects: [],
+    firstAt: Date.now(),
+    lastAt: Date.now()
+  };
+
+  const isFirstWordToday = day.words === 0;
+  const previousLastStudyDate = attendance.lastStudyDate;
+  const baseXp = getAttendanceXpForAnswer(answerState);
+  let bonusXp = 0;
+
+  if (isFirstWordToday) {
+    bonusXp += 20;
+
+    if (!previousLastStudyDate) {
+      attendance.streak = 1;
+    } else {
+      const gap = diffDays(previousLastStudyDate, todayKey);
+
+      if (gap === 0) {
+        attendance.streak = Math.max(1, attendance.streak);
+      } else if (gap === 1) {
+        attendance.streak += 1;
+      } else {
+        const missedDays = Math.max(0, gap - 1);
+        if (missedDays > 0 && missedDays <= attendance.freezeCount) {
+          attendance.freezeCount -= missedDays;
+          attendance.freezesUsed += missedDays;
+          attendance.streak += 1;
+          bonusXp += 10;
+        } else {
+          attendance.streak = 1;
+        }
+      }
+    }
+
+    if (attendance.streak > 0 && attendance.streak % 7 === 0) {
+      bonusXp += 30;
+    }
+
+    attendance.lastStudyDate = todayKey;
+    attendance.totalStudyDays += 1;
+    attendance.longestStreak = Math.max(attendance.longestStreak, attendance.streak);
+  }
+
+  const xpGain = baseXp + bonusXp;
+  day.words += 1;
+  day.xp += xpGain;
+  day.lastAt = Date.now();
+  if (projectId && !day.projects.includes(projectId)) {
+    day.projects.push(projectId);
+  }
+
+  attendance.days[todayKey] = day;
+  attendance.xp += xpGain;
+  attendance.totalWords += 1;
+  attendance.recentEvents.push({
+    at: Date.now(),
+    date: todayKey,
+    projectId,
+    vocabId,
+    answerState,
+    xp: xpGain,
+    firstWordToday: isFirstWordToday
+  });
+  attendance.recentEvents = attendance.recentEvents.slice(-20);
+
+  saveAttendance(attendance);
+  emitAttendanceUpdate(attendance);
+  return attendance;
+}
+
+export function buyStreakFreeze() {
+  if (!attendanceUser) {
+    return { ok: false, reason: "locked" };
+  }
+
+  const attendance = loadAttendance();
+  if (attendance.freezeCount >= ATTENDANCE_FREEZE_MAX) {
+    return { ok: false, reason: "max", attendance };
+  }
+
+  if (attendance.xp < ATTENDANCE_FREEZE_COST) {
+    return { ok: false, reason: "not_enough_xp", attendance };
+  }
+
+  attendance.xp -= ATTENDANCE_FREEZE_COST;
+  attendance.freezeCount += 1;
+  attendance.recentEvents.push({
+    at: Date.now(),
+    date: getLocalDateKey(),
+    type: "buy_freeze",
+    xp: -ATTENDANCE_FREEZE_COST
+  });
+  attendance.recentEvents = attendance.recentEvents.slice(-20);
+
+  saveAttendance(attendance);
+  emitAttendanceUpdate(attendance);
+  return { ok: true, attendance };
 }
 
 export function getProjects() {
@@ -680,6 +900,11 @@ export function updateVocabStats(projectId, vocabId, isCorrect, timeSpentSec, an
   projects[projectIndex].vocab[vocabIndex] = vocab;
 
   saveProjects(projects);
+  recordStudyActivity({
+    projectId,
+    vocabId,
+    answerState: normalizedAnswerState
+  });
   
   // Đồng bộ đám mây ngầm
   safeSync(async () => {
@@ -720,6 +945,11 @@ export function markVocabAsMaxDifficulty(projectId, vocabId, timeSpentSec = 0) {
   projects[projectIndex].vocab[vocabIndex] = vocab;
 
   saveProjects(projects);
+  recordStudyActivity({
+    projectId,
+    vocabId,
+    answerState: "revealed"
+  });
   
   // Đồng bộ đám mây ngầm
   safeSync(async () => {

@@ -8,7 +8,12 @@ export const HIRAGANA_LIST = [
   { kana: "ま", romaji: "ma" }, { kana: "み", romaji: "mi" }, { kana: "む", romaji: "mu" }, { kana: "め", romaji: "me" }, { kana: "も", romaji: "mo" },
   { kana: "や", romaji: "ya" }, { kana: "ゆ", romaji: "yu" }, { kana: "よ", romaji: "yo" },
   { kana: "ら", romaji: "ra" }, { kana: "り", romaji: "ri" }, { kana: "る", romaji: "ru" }, { kana: "れ", romaji: "re" }, { kana: "ろ", romaji: "ro" },
-  { kana: "わ", romaji: "wa" }, { kana: "を", romaji: "wo" }, { kana: "ん", romaji: "n" }
+  { kana: "わ", romaji: "wa" }, { kana: "を", romaji: "wo" }, { kana: "ん", romaji: "n" },
+  { kana: "が", romaji: "ga" }, { kana: "ぎ", romaji: "gi" }, { kana: "ぐ", romaji: "gu" }, { kana: "げ", romaji: "ge" }, { kana: "ご", romaji: "go" },
+  { kana: "ざ", romaji: "za" }, { kana: "じ", romaji: "ji" }, { kana: "ず", romaji: "zu" }, { kana: "ぜ", romaji: "ze" }, { kana: "ぞ", romaji: "zo" },
+  { kana: "だ", romaji: "da" }, { kana: "ぢ", romaji: "di", aliases: ["ji"] }, { kana: "づ", romaji: "du", aliases: ["zu"] }, { kana: "で", romaji: "de" }, { kana: "ど", romaji: "do" },
+  { kana: "ば", romaji: "ba" }, { kana: "び", romaji: "bi" }, { kana: "ぶ", romaji: "bu" }, { kana: "べ", romaji: "be" }, { kana: "ぼ", romaji: "bo" },
+  { kana: "ぱ", romaji: "pa" }, { kana: "ぴ", romaji: "pi" }, { kana: "ぷ", romaji: "pu" }, { kana: "ぺ", romaji: "pe" }, { kana: "ぽ", romaji: "po" }
 ];
 
 export const KATAKANA_LIST = [
@@ -21,8 +26,28 @@ export const KATAKANA_LIST = [
   { kana: "マ", romaji: "ma" }, { kana: "ミ", romaji: "mi" }, { kana: "ム", romaji: "mu" }, { kana: "メ", romaji: "me" }, { kana: "モ", romaji: "mo" },
   { kana: "ヤ", romaji: "ya" }, { kana: "ユ", romaji: "yu" }, { kana: "ヨ", romaji: "yo" },
   { kana: "ラ", romaji: "ra" }, { kana: "リ", romaji: "ri" }, { kana: "ル", romaji: "ru" }, { kana: "レ", romaji: "re" }, { kana: "ロ", romaji: "ro" },
-  { kana: "ワ", romaji: "wa" }, { kana: "ヲ", romaji: "wo" }, { kana: "ン", romaji: "n" }
+  { kana: "ワ", romaji: "wa" }, { kana: "ヲ", romaji: "wo" }, { kana: "ン", romaji: "n" },
+  { kana: "ガ", romaji: "ga" }, { kana: "ギ", romaji: "gi" }, { kana: "グ", romaji: "gu" }, { kana: "ゲ", romaji: "ge" }, { kana: "ゴ", romaji: "go" },
+  { kana: "ザ", romaji: "za" }, { kana: "ジ", romaji: "ji" }, { kana: "ズ", romaji: "zu" }, { kana: "ゼ", romaji: "ze" }, { kana: "ゾ", romaji: "zo" },
+  { kana: "ダ", romaji: "da" }, { kana: "ヂ", romaji: "di", aliases: ["ji"] }, { kana: "ヅ", romaji: "du", aliases: ["zu"] }, { kana: "デ", romaji: "de" }, { kana: "ド", romaji: "do" },
+  { kana: "バ", romaji: "ba" }, { kana: "ビ", romaji: "bi" }, { kana: "ブ", romaji: "bu" }, { kana: "ベ", romaji: "be" }, { kana: "ボ", romaji: "bo" },
+  { kana: "パ", romaji: "pa" }, { kana: "ピ", romaji: "pi" }, { kana: "プ", romaji: "pu" }, { kana: "ペ", romaji: "pe" }, { kana: "ポ", romaji: "po" }
 ];
+
+export function getKanaKey(item) {
+  return item?.key || item?.romaji || item?.kana || "";
+}
+
+export function getKanaAnswerLabels(item) {
+  return [item?.romaji, ...(Array.isArray(item?.aliases) ? item.aliases : [])]
+    .filter(Boolean)
+    .map(value => value.toLowerCase());
+}
+
+export function isKanaRomajiMatch(item, answer) {
+  const normalized = String(answer || "").trim().toLowerCase();
+  return getKanaAnswerLabels(item).includes(normalized);
+}
 
 // Hàm lấy danh sách distractors ngẫu nhiên
 export function generateKanaDistractors(correctItem, fullList, count = 3) {
@@ -44,6 +69,11 @@ const STROKE_COUNTS = {
   "や": 3, "ゆ": 2, "よ": 2,
   "ら": 2, "り": 2, "る": 1, "れ": 2, "ろ": 1,
   "わ": 2, "を": 3, "ん": 1,
+  "が": 5, "ぎ": 6, "ぐ": 3, "げ": 5, "ご": 4,
+  "ざ": 5, "じ": 3, "ず": 4, "ぜ": 5, "ぞ": 3,
+  "だ": 6, "ぢ": 4, "づ": 3, "で": 3, "ど": 4,
+  "ば": 5, "び": 3, "ぶ": 6, "べ": 3, "ぼ": 6,
+  "ぱ": 4, "ぴ": 2, "ぷ": 5, "ぺ": 2, "ぽ": 5,
   // Katakana
   "ア": 2, "イ": 2, "ウ": 3, "エ": 3, "オ": 3,
   "カ": 2, "キ": 3, "ク": 2, "ケ": 3, "コ": 2,
@@ -54,7 +84,12 @@ const STROKE_COUNTS = {
   "マ": 2, "ミ": 3, "ム": 2, "メ": 2, "モ": 3,
   "ヤ": 2, "ユ": 2, "ヨ": 3,
   "ラ": 2, "リ": 2, "ル": 2, "レ": 1, "ロ": 3,
-  "ワ": 2, "ヲ": 3, "ン": 2
+  "ワ": 2, "ヲ": 3, "ン": 2,
+  "ガ": 4, "ギ": 5, "グ": 4, "ゲ": 5, "ゴ": 4,
+  "ザ": 5, "ジ": 5, "ズ": 4, "ゼ": 4, "ゾ": 4,
+  "ダ": 5, "ヂ": 5, "ヅ": 5, "デ": 5, "ド": 4,
+  "バ": 4, "ビ": 4, "ブ": 3, "ベ": 3, "ボ": 6,
+  "パ": 3, "ピ": 3, "プ": 2, "ペ": 2, "ポ": 5
 };
 
 const KANA_STROKE_DIRECTIONS = {

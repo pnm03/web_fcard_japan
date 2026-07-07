@@ -18,14 +18,23 @@ import {
   saveToDictionaryCache,
   fetchAndSyncFromSupabase,
   setOnSyncStateChange,
-  markVocabAsMaxDifficulty
+  markVocabAsMaxDifficulty,
+  setAttendanceUser,
+  getAttendanceStats,
+  buyStreakFreeze,
+  ATTENDANCE_FREEZE_COST,
+  ATTENDANCE_FREEZE_MAX
 } from "./storage.js";
+import { supabase } from "./supabase.js";
 import { QuizSession } from "./quiz.js";
 import { 
   HIRAGANA_LIST, 
   KATAKANA_LIST, 
   generateKanaDistractors, 
-  evaluateDrawing 
+  evaluateDrawing,
+  getKanaAnswerLabels,
+  getKanaKey,
+  isKanaRomajiMatch
 } from "./kana.js";
 
 
@@ -43,6 +52,7 @@ let quizMultiplier = "custom";
 let isScanningMeanings = false;
 let currentSmartReviewFilter = "due";
 let currentSmartReviewSelectedId = null;
+let attendanceSession = null;
 const MS_PER_HOUR = 60 * 60 * 1000;
 const MS_PER_DAY = 24 * MS_PER_HOUR;
 let quizActiveSettings = {
@@ -251,6 +261,35 @@ function setupCloudSyncUI() {
   });
 }
 
+async function setupAttendanceAuth() {
+  try {
+    const { data } = await supabase.auth.getSession();
+    attendanceSession = data?.session || null;
+    setAttendanceUser(attendanceSession?.user || null);
+    if (document.getElementById("attendance-view")?.classList.contains("active")) {
+      renderAttendanceView();
+    }
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+      attendanceSession = session || null;
+      setAttendanceUser(attendanceSession?.user || null);
+      if (document.getElementById("attendance-view")?.classList.contains("active")) {
+        renderAttendanceView();
+      }
+    });
+  } catch (e) {
+    console.warn("Không thể kiểm tra trạng thái đăng nhập Supabase:", e);
+    attendanceSession = null;
+    setAttendanceUser(null);
+  }
+
+  window.addEventListener("attendance:updated", () => {
+    if (document.getElementById("attendance-view")?.classList.contains("active")) {
+      renderAttendanceView();
+    }
+  });
+}
+
 // 1. Quản lý Điều hướng (Navigation)
 function setupNavigation() {
   const navButtons = document.querySelectorAll(".nav-btn");
@@ -276,6 +315,8 @@ export function restoreActiveView() {
     activeView = "quiz-setup-view";
   } else if (activeView === "kana-practice-view") {
     activeView = "kana-setup-view";
+  } else if (activeView === "attendance-view") {
+    activeView = "dashboard-view";
   }
 
   if (activeView === "project-detail-view" && activeProjectId) {
@@ -559,6 +600,217 @@ function escapeHtml(value) {
 
 function clampUiNumber(value, min, max) {
   return Math.min(max, Math.max(min, Number(value) || 0));
+}
+
+function getUiDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatAttendanceDayLabel(dateKey) {
+  const [year, month, day] = String(dateKey).split("-").map(Number);
+  if (!year || !month || !day) return dateKey;
+  return new Intl.DateTimeFormat("vi-VN", {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit"
+  }).format(new Date(year, month - 1, day));
+}
+
+function getRecentAttendanceDays(stats, count = 14) {
+  const days = [];
+  const today = new Date();
+  for (let i = count - 1; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - i);
+    const key = getUiDateKey(date);
+    days.push({
+      key,
+      label: formatAttendanceDayLabel(key),
+      data: stats.days?.[key] || null,
+      isToday: key === stats.todayKey
+    });
+  }
+  return days;
+}
+
+function renderAttendanceLocked(root) {
+  root.innerHTML = `
+    <div class="attendance-lock-card">
+      <div class="attendance-lock-icon">✦</div>
+      <div>
+        <p class="attendance-kicker">Khu vực riêng tư</p>
+        <h1>Điểm danh học tập</h1>
+        <p class="attendance-lock-copy">
+          Đăng nhập để bật streak, tích XP và đổi đóng băng streak. Dữ liệu điểm danh sẽ được lưu theo tài khoản trên máy này.
+        </p>
+      </div>
+      <form id="attendance-login-form" class="attendance-login-form">
+        <input type="email" id="attendance-login-email" class="form-control" placeholder="email@example.com" required>
+        <button type="submit" class="btn btn-primary">Gửi link đăng nhập</button>
+      </form>
+      <p id="attendance-login-message" class="attendance-login-message"></p>
+    </div>
+  `;
+
+  const form = document.getElementById("attendance-login-form");
+  const message = document.getElementById("attendance-login-message");
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("attendance-login-email")?.value.trim();
+    if (!email) return;
+
+    message.textContent = "Đang gửi link đăng nhập...";
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}${window.location.pathname}`
+        }
+      });
+      if (error) throw error;
+      message.textContent = "Đã gửi link rồi. Mở email và bấm xác nhận để mở khóa Điểm danh.";
+    } catch (error) {
+      console.error("Lỗi đăng nhập điểm danh:", error);
+      message.textContent = "Chưa gửi được link đăng nhập. Kiểm tra Supabase Auth hoặc email rồi thử lại nhé.";
+    }
+  });
+}
+
+function renderAttendanceView() {
+  const root = document.getElementById("attendance-root");
+  if (!root) return;
+
+  const stats = getAttendanceStats();
+  if (stats.isLocked) {
+    renderAttendanceLocked(root);
+    return;
+  }
+
+  const today = stats.days?.[stats.todayKey] || { words: 0, xp: 0, projects: [] };
+  const todayDone = today.words > 0;
+  const todayProgress = Math.min(100, today.words * 100);
+  const recentDays = getRecentAttendanceDays(stats);
+  const userEmail = stats.user?.email || attendanceSession?.user?.email || "Tài khoản đã đăng nhập";
+  const canBuyFreeze = stats.xp >= ATTENDANCE_FREEZE_COST && stats.freezeCount < ATTENDANCE_FREEZE_MAX;
+
+  root.innerHTML = `
+    <div class="attendance-hero">
+      <div class="attendance-hero-main">
+        <p class="attendance-kicker">Daily check-in</p>
+        <h1>Điểm danh học tập</h1>
+        <p>Chỉ cần làm ít nhất 1 từ trong ngày là streak sáng lên. Nghỉ một ngày thì dùng đóng băng để cứu nhịp học.</p>
+      </div>
+      <div class="attendance-user-pill">
+        <span>Đã đăng nhập</span>
+        <strong>${escapeHtml(userEmail)}</strong>
+        <button type="button" class="btn btn-secondary" id="attendance-signout-btn">Đăng xuất</button>
+      </div>
+    </div>
+
+    <div class="attendance-stats-grid">
+      <div class="attendance-stat-card attendance-streak-card">
+        <span class="attendance-stat-label">Streak hiện tại</span>
+        <strong>${stats.streak}</strong>
+        <small>ngày liên tiếp</small>
+      </div>
+      <div class="attendance-stat-card">
+        <span class="attendance-stat-label">XP hiện có</span>
+        <strong>${stats.xp}</strong>
+        <small>điểm luyện tập</small>
+      </div>
+      <div class="attendance-stat-card">
+        <span class="attendance-stat-label">Đóng băng</span>
+        <strong>${stats.freezeCount}/${ATTENDANCE_FREEZE_MAX}</strong>
+        <small>lượt bảo vệ streak</small>
+      </div>
+      <div class="attendance-stat-card">
+        <span class="attendance-stat-label">Kỷ lục</span>
+        <strong>${stats.longestStreak}</strong>
+        <small>ngày dài nhất</small>
+      </div>
+    </div>
+
+    <div class="attendance-main-grid">
+      <section class="attendance-panel attendance-today-panel">
+        <div class="attendance-panel-head">
+          <div>
+            <p class="attendance-kicker">Hôm nay</p>
+            <h2>${todayDone ? "Đã điểm danh" : "Chưa học từ nào"}</h2>
+          </div>
+          <span class="attendance-day-badge ${todayDone ? "done" : ""}">${todayDone ? "Hoàn thành" : "Cần 1 từ"}</span>
+        </div>
+        <div class="attendance-progress">
+          <div style="width: ${todayProgress}%;"></div>
+        </div>
+        <p class="attendance-today-copy">
+          Hôm nay bạn đã làm <strong>${today.words}</strong> từ và nhận <strong>${today.xp}</strong> XP.
+        </p>
+        <div class="attendance-mini-rules">
+          <span>+20 XP khi mở streak ngày mới</span>
+          <span>+10 XP nếu streak được freeze cứu</span>
+          <span>+30 XP mỗi mốc 7 ngày</span>
+        </div>
+      </section>
+
+      <section class="attendance-panel attendance-shop-panel">
+        <div class="attendance-panel-head">
+          <div>
+            <p class="attendance-kicker">Cửa hàng nhỏ</p>
+            <h2>Đổi đóng băng streak</h2>
+          </div>
+          <span class="attendance-freeze-icon">❄</span>
+        </div>
+        <p>Mỗi đóng băng bảo vệ 1 ngày nghỉ. Nếu bỏ qua nhiều ngày hơn số đóng băng đang có, streak sẽ reset.</p>
+        <button type="button" class="btn btn-primary" id="attendance-buy-freeze-btn" ${canBuyFreeze ? "" : "disabled"}>
+          Đổi ${ATTENDANCE_FREEZE_COST} XP
+        </button>
+        <p id="attendance-shop-message" class="attendance-shop-message">
+          ${stats.freezeCount >= ATTENDANCE_FREEZE_MAX ? "Kho đóng băng đã đầy." : `Cần ${Math.max(0, ATTENDANCE_FREEZE_COST - stats.xp)} XP nữa để đổi.`}
+        </p>
+      </section>
+    </div>
+
+    <section class="attendance-panel">
+      <div class="attendance-panel-head">
+        <div>
+          <p class="attendance-kicker">14 ngày gần nhất</p>
+          <h2>Lịch điểm danh</h2>
+        </div>
+        <span class="attendance-total">${stats.totalWords} từ đã luyện</span>
+      </div>
+      <div class="attendance-calendar">
+        ${recentDays.map(day => `
+          <div class="attendance-day ${day.data ? "studied" : ""} ${day.isToday ? "today" : ""}">
+            <span>${escapeHtml(day.label)}</span>
+            <strong>${day.data?.words || 0}</strong>
+            <small>${day.data?.xp || 0} XP</small>
+          </div>
+        `).join("")}
+      </div>
+    </section>
+  `;
+
+  document.getElementById("attendance-signout-btn")?.addEventListener("click", async () => {
+    await supabase.auth.signOut();
+  });
+
+  document.getElementById("attendance-buy-freeze-btn")?.addEventListener("click", () => {
+    const result = buyStreakFreeze();
+    const message = document.getElementById("attendance-shop-message");
+    if (!message) return;
+
+    if (result.ok) {
+      message.textContent = "Đã đổi 1 đóng băng streak.";
+      renderAttendanceView();
+    } else if (result.reason === "max") {
+      message.textContent = "Kho đóng băng đã đầy.";
+    } else if (result.reason === "not_enough_xp") {
+      message.textContent = "Chưa đủ XP để đổi đóng băng.";
+    }
+  });
 }
 
 function formatSmartDateTime(timestamp) {
@@ -4776,6 +5028,19 @@ let userStrokes = []; // Lưu trữ tọa độ chi tiết các nét vẽ
 let isCanvasEventsBound = false; // Tránh bind trùng sự kiện canvas
 
 // Hàm helper lưu danh sách chữ cái Kana đã chọn vào localStorage
+function findKanaBySelectionKey(list, key) {
+  return list.find(item => getKanaKey(item) === key || item.romaji === key || item.kana === key);
+}
+
+function isKanaSavedSelectionMatch(savedSelection, item) {
+  if (!savedSelection) return true;
+  return savedSelection.includes(getKanaKey(item)) || savedSelection.includes(item.romaji);
+}
+
+function formatKanaRomajiLabel(item) {
+  return getKanaAnswerLabels(item).join("/");
+}
+
 function saveKanaSelection(kanaType) {
   const checkedBoxes = document.querySelectorAll(".kana-checkbox:checked");
   const checkedRomajis = Array.from(checkedBoxes).map(cb => cb.value);
@@ -4923,8 +5188,8 @@ function setupKanaEvents() {
       const listSource = kanaType === "hiragana" ? HIRAGANA_LIST : KATAKANA_LIST;
 
       checkedBoxes.forEach(cb => {
-        const romaji = cb.value;
-        const found = listSource.find(item => item.romaji === romaji);
+        const selectionKey = cb.value;
+        const found = findKanaBySelectionKey(listSource, selectionKey);
         if (found) {
           selectedKanaList.push(found);
         }
@@ -5056,12 +5321,17 @@ function renderKanaSetup() {
     { rowName: "Hàng MA", keys: ["ma", "mi", "mu", "me", "mo"] },
     { rowName: "Hàng YA", keys: ["ya", "yu", "yo"] },
     { rowName: "Hàng RA", keys: ["ra", "ri", "ru", "re", "ro"] },
-    { rowName: "Hàng WA", keys: ["wa", "wo", "n"] }
+    { rowName: "Hàng WA", keys: ["wa", "wo", "n"] },
+    { rowName: "Hàng G", keys: ["ga", "gi", "gu", "ge", "go"] },
+    { rowName: "Hàng Z", keys: ["za", "ji", "zu", "ze", "zo"] },
+    { rowName: "Hàng D", keys: ["da", "di", "du", "de", "do"] },
+    { rowName: "Hàng B", keys: ["ba", "bi", "bu", "be", "bo"] },
+    { rowName: "Hàng P", keys: ["pa", "pi", "pu", "pe", "po"] }
   ];
 
   KANA_ROWS.forEach(row => {
     // Lọc danh sách chữ mẫu thuộc hàng này
-    const rowItems = row.keys.map(key => list.find(item => item.romaji === key)).filter(Boolean);
+    const rowItems = row.keys.map(key => findKanaBySelectionKey(list, key)).filter(Boolean);
     if (rowItems.length === 0) return;
 
     const rowContainer = document.createElement("div");
@@ -5075,7 +5345,7 @@ function renderKanaSetup() {
     
     // Xác định trạng thái check của hàng
     const totalRowItems = rowItems.length;
-    const checkedRowItems = rowItems.filter(item => savedSelection ? savedSelection.includes(item.romaji) : true).length;
+    const checkedRowItems = rowItems.filter(item => isKanaSavedSelectionMatch(savedSelection, item)).length;
     const isRowAllChecked = totalRowItems === checkedRowItems;
 
     rowHeader.innerHTML = `
@@ -5091,7 +5361,7 @@ function renderKanaSetup() {
     rowItemsContainer.style.flex = "1";
 
     rowItems.forEach(item => {
-      const isChecked = savedSelection ? savedSelection.includes(item.romaji) : true;
+      const isChecked = isKanaSavedSelectionMatch(savedSelection, item);
       const itemEl = document.createElement("label");
       itemEl.style.display = "flex";
       itemEl.style.alignItems = "center";
@@ -5106,9 +5376,9 @@ function renderKanaSetup() {
       itemEl.style.margin = "0";
 
       itemEl.innerHTML = `
-        <input type="checkbox" class="kana-checkbox" value="${item.romaji}" ${isChecked ? "checked" : ""} style="accent-color: var(--accent); margin: 0; width: 14px; height: 14px;">
+        <input type="checkbox" class="kana-checkbox" value="${getKanaKey(item)}" ${isChecked ? "checked" : ""} style="accent-color: var(--accent); margin: 0; width: 14px; height: 14px;">
         <span style="font-family: var(--font-jp); font-size: 16px; font-weight: bold; color: var(--accent); margin-right: 2px;">${item.kana}</span>
-        <span>${item.romaji}</span>
+        <span>${formatKanaRomajiLabel(item)}</span>
       `;
 
       rowItemsContainer.appendChild(itemEl);
@@ -5413,7 +5683,7 @@ function renderKanaQuizQuestion() {
     if (mode === "quiz_kana_to_romaji" || mode === "typed_kana_to_romaji") {
       wordDisplay.textContent = currentItem.kana;
     } else {
-      wordDisplay.textContent = currentItem.romaji;
+      wordDisplay.textContent = formatKanaRomajiLabel(currentItem);
       wordDisplay.className = "quiz-question-word meaning-word";
     }
   }
@@ -5427,7 +5697,7 @@ function renderKanaQuizQuestion() {
       const bottomSheet = document.getElementById("kana-quiz-bottom-sheet");
       const bottomSheetText = document.getElementById("kana-quiz-bottom-sheet-correct-text");
       if (bottomSheetText) {
-        bottomSheetText.textContent = currentItem.romaji;
+        bottomSheetText.textContent = formatKanaRomajiLabel(currentItem);
       }
       if (bottomSheet) {
         bottomSheet.classList.add("active");
@@ -5501,8 +5771,8 @@ function renderKanaQuizQuestion() {
       btn.style.fontFamily = isKanaToRomaji ? "var(--font-mono)" : "var(--font-jp)";
       btn.style.position = "relative";
 
-      const optVal = isKanaToRomaji ? opt.romaji : opt.kana;
-      btn.dataset.value = optVal;
+      const optVal = isKanaToRomaji ? formatKanaRomajiLabel(opt) : opt.kana;
+      btn.dataset.value = isKanaToRomaji ? opt.romaji : opt.kana;
 
       const shortcutLabels = ["Q", "W", "A", "S"];
       btn.innerHTML = `
@@ -5578,7 +5848,7 @@ function renderKanaQuizQuestion() {
           e.stopPropagation();
 
           typedInput.disabled = true;
-          const isCorrect = userVal === currentItem.romaji.toLowerCase();
+          const isCorrect = isKanaRomajiMatch(currentItem, userVal);
 
           if (isCorrect) {
             correctKanaQuizCount++;
@@ -5593,7 +5863,7 @@ function renderKanaQuizQuestion() {
             typedInput.style.color = "var(--error)";
             typedInput.style.borderColor = "var(--error)";
             
-            feedbackEl.textContent = `Sai rồi! Đáp án đúng là: ${currentItem.romaji}`;
+            feedbackEl.textContent = `Sai rồi! Đáp án đúng là: ${formatKanaRomajiLabel(currentItem)}`;
             feedbackEl.style.color = "var(--error)";
           }
           feedbackEl.style.display = "block";
@@ -5689,7 +5959,7 @@ function renderKanaCard() {
   const backEl = document.getElementById("kana-card-back");
 
   frontEl.textContent = currentItem.kana;
-  backEl.textContent = currentItem.romaji;
+  backEl.textContent = formatKanaRomajiLabel(currentItem);
 
   // Reset về mặt trước
   frontEl.style.display = "block";
@@ -5851,7 +6121,7 @@ function renderKanaDrawChar() {
   
   // Hiển thị chữ mờ và tên kí tự (chỉ hiển thị Romaji ở nhãn để làm bài test viết thực tế)
   document.getElementById("kana-draw-template").textContent = currentItem.kana;
-  document.getElementById("kana-draw-char-name").textContent = `Hãy viết kí tự: ${currentItem.romaji}`;
+  document.getElementById("kana-draw-char-name").textContent = `Hãy viết kí tự: ${formatKanaRomajiLabel(currentItem)}`;
 
   // Đồng bộ trạng thái ẩn/hiện chữ mẫu theo checkbox hiện tại
   const hideTemplateCb = document.getElementById("kana-draw-hide-template-cb");
