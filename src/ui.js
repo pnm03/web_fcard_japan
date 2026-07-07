@@ -3125,9 +3125,10 @@ function keepQuizAnswerInputVisible(inputEl, behavior = "smooth") {
   const visualViewport = window.visualViewport;
   const viewportTop = visualViewport ? visualViewport.offsetTop : 0;
   const viewportBottom = visualViewport ? visualViewport.offsetTop + visualViewport.height : window.innerHeight;
+  const viewportHeight = visualViewport ? visualViewport.height : window.innerHeight;
   const rect = inputEl.getBoundingClientRect();
-  const bottomPadding = 18;
-  const topPadding = 74;
+  const bottomPadding = 10;
+  const topPadding = Math.max(48, Math.round(viewportHeight * 0.1));
 
   if (rect.bottom > viewportBottom - bottomPadding) {
     window.scrollBy({
@@ -3145,7 +3146,11 @@ function keepQuizAnswerInputVisible(inputEl, behavior = "smooth") {
 function focusQuizAnswerInput(inputEl, { delayed = true } = {}) {
   if (!inputEl || inputEl.disabled) return;
 
-  inputEl.focus();
+  try {
+    inputEl.focus({ preventScroll: true });
+  } catch {
+    inputEl.focus();
+  }
 
   const schedule = delayed ? [0, 90, 220, 420] : [0];
   schedule.forEach((delay, index) => {
