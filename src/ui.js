@@ -3065,7 +3065,7 @@ function startPracticeRepeatCurrentQuestion() {
   const inputEl = document.getElementById("quiz-answer-input");
   if (inputEl) {
     inputEl.placeholder = "Làm lại để nhớ, lượt này không tính điểm...";
-    inputEl.focus({ preventScroll: true });
+    focusQuizAnswerInput(inputEl);
   }
 
   const promptEl = document.getElementById("quiz-question-prompt");
@@ -3116,6 +3116,45 @@ function showAudioQuestionWord(question, shouldPenalize = true) {
   }
 }
 
+function keepQuizAnswerInputVisible(inputEl, behavior = "smooth") {
+  const quizActiveView = document.getElementById("quiz-active-view");
+  if (!inputEl || !quizActiveView?.classList.contains("active") || inputEl.disabled) {
+    return;
+  }
+
+  const visualViewport = window.visualViewport;
+  const viewportTop = visualViewport ? visualViewport.offsetTop : 0;
+  const viewportBottom = visualViewport ? visualViewport.offsetTop + visualViewport.height : window.innerHeight;
+  const rect = inputEl.getBoundingClientRect();
+  const bottomPadding = 18;
+  const topPadding = 74;
+
+  if (rect.bottom > viewportBottom - bottomPadding) {
+    window.scrollBy({
+      top: rect.bottom - (viewportBottom - bottomPadding),
+      behavior
+    });
+  } else if (rect.top < viewportTop + topPadding) {
+    window.scrollBy({
+      top: rect.top - (viewportTop + topPadding),
+      behavior
+    });
+  }
+}
+
+function focusQuizAnswerInput(inputEl, { delayed = true } = {}) {
+  if (!inputEl || inputEl.disabled) return;
+
+  inputEl.focus();
+
+  const schedule = delayed ? [0, 90, 220, 420] : [0];
+  schedule.forEach((delay, index) => {
+    setTimeout(() => {
+      keepQuizAnswerInputVisible(inputEl, index === 0 ? "auto" : "smooth");
+    }, delay);
+  });
+}
+
 function renderCurrentQuestion() {
   const question = activeQuizSession.getCurrentQuestion();
   if (!question) {
@@ -3164,7 +3203,7 @@ function renderCurrentQuestion() {
     : (isQuizMeaningAnswerMode(question.mode) ? "Nhập nghĩa tiếng Việt (không dấu)..." : "Nhập cách đọc bằng Romaji...");
   
   setTimeout(() => {
-    inputEl.focus({ preventScroll: true });
+    focusQuizAnswerInput(inputEl);
     const quizBox = document.getElementById("quiz-box");
     if (quizBox) quizBox.scrollTop = 0;
   }, 150);
@@ -3371,7 +3410,7 @@ function handleQuizAnswerSubmit() {
     hintContainer.style.display = "flex";
 
     inputEl.value = "";
-    inputEl.focus({ preventScroll: true });
+    focusQuizAnswerInput(inputEl);
     inputEl.placeholder = "Gợi ý đã hiển thị, hãy gõ lại...";
 
   } else if (result.status === "wrong") {
@@ -3550,10 +3589,23 @@ function setupQuizActiveEvents() {
     if (inputEl && !inputEl.disabled) {
       const isCharacterKey = e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey;
       if (isCharacterKey) {
-        inputEl.focus({ preventScroll: true });
+        focusQuizAnswerInput(inputEl, { delayed: false });
       }
     }
   });
+
+  const keepFocusedInputVisible = () => {
+    const quizActiveView = document.getElementById("quiz-active-view");
+    if (quizActiveView?.classList.contains("active") && document.activeElement === inputEl && !inputEl.disabled) {
+      keepQuizAnswerInputVisible(inputEl, "auto");
+    }
+  };
+
+  window.addEventListener("resize", keepFocusedInputVisible);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", keepFocusedInputVisible);
+    window.visualViewport.addEventListener("scroll", keepFocusedInputVisible);
+  }
 
   document.getElementById("quiz-abort-btn").onclick = () => {
     if (confirm("Bạn có chắc chắn muốn hủy bài kiểm tra hiện tại? Mọi tiến trình chưa hoàn thành sẽ không được lưu.")) {
