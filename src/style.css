@@ -2293,6 +2293,64 @@ select.form-control {
   gap: 6px;
 }
 
+.kana-extended-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  cursor: pointer;
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 700;
+  transition: var(--transition);
+}
+
+.kana-extended-toggle:hover {
+  border-color: var(--accent);
+  background: var(--paper);
+}
+
+.kana-extended-toggle-main,
+.kana-extended-toggle-meta {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.kana-extended-toggle-main {
+  gap: 8px;
+}
+
+.kana-extended-toggle-arrow {
+  width: 18px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  text-align: center;
+}
+
+.kana-extended-toggle-meta {
+  flex: 0 0 auto;
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.kana-extended-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 2px 0 0;
+}
+
 /* Responsive Table as Cards for Mobile Devices */
 @media (max-width: 768px) {
   .weak-detail-grid,
@@ -2408,6 +2466,16 @@ select.form-control {
 
 /* Responsive Kana Grid for Mobile Devices */
 @media (max-width: 600px) {
+  .kana-extended-toggle {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .kana-extended-toggle-meta {
+    padding-left: 26px;
+  }
+
   .kana-row {
     flex-direction: column;
     align-items: flex-start;

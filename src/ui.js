@@ -5047,6 +5047,14 @@ function saveKanaSelection(kanaType) {
   localStorage.setItem(`web_fcard_selected_${kanaType}`, JSON.stringify(checkedRomajis));
 }
 
+function getKanaExtendedOpen(kanaType) {
+  return localStorage.getItem(`web_fcard_kana_extended_open_${kanaType}`) === "true";
+}
+
+function setKanaExtendedOpen(kanaType, isOpen) {
+  localStorage.setItem(`web_fcard_kana_extended_open_${kanaType}`, isOpen ? "true" : "false");
+}
+
 // Khởi tạo các sự kiện cho bảng chữ cái
 function setupKanaEvents() {
   const selectAllBtn = document.getElementById("kana-select-all");
@@ -5321,7 +5329,10 @@ function renderKanaSetup() {
     { rowName: "Hàng MA", keys: ["ma", "mi", "mu", "me", "mo"] },
     { rowName: "Hàng YA", keys: ["ya", "yu", "yo"] },
     { rowName: "Hàng RA", keys: ["ra", "ri", "ru", "re", "ro"] },
-    { rowName: "Hàng WA", keys: ["wa", "wo", "n"] },
+    { rowName: "Hàng WA", keys: ["wa", "wo", "n"] }
+  ];
+
+  const KANA_EXTENDED_ROWS = [
     { rowName: "Hàng G", keys: ["ga", "gi", "gu", "ge", "go"] },
     { rowName: "Hàng Z", keys: ["za", "ji", "zu", "ze", "zo"] },
     { rowName: "Hàng D", keys: ["da", "di", "du", "de", "do"] },
@@ -5329,7 +5340,7 @@ function renderKanaSetup() {
     { rowName: "Hàng P", keys: ["pa", "pi", "pu", "pe", "po"] }
   ];
 
-  KANA_ROWS.forEach(row => {
+  const renderKanaRow = (row, parent) => {
     // Lọc danh sách chữ mẫu thuộc hàng này
     const rowItems = row.keys.map(key => findKanaBySelectionKey(list, key)).filter(Boolean);
     if (rowItems.length === 0) return;
@@ -5386,7 +5397,7 @@ function renderKanaSetup() {
 
     rowContainer.appendChild(rowHeader);
     rowContainer.appendChild(rowItemsContainer);
-    grid.appendChild(rowContainer);
+    parent.appendChild(rowContainer);
 
     // Lắng nghe sự kiện tick/untick của checkbox Chọn cả hàng
     const rowSelectAllCb = rowHeader.querySelector(".kana-row-select-all");
@@ -5409,7 +5420,40 @@ function renderKanaSetup() {
         updateCountToSelection();
       });
     });
-  });
+  };
+
+  KANA_ROWS.forEach(row => renderKanaRow(row, grid));
+
+  const extendedRowsOpen = getKanaExtendedOpen(kanaType);
+  const extendedItemsCount = KANA_EXTENDED_ROWS.reduce((sum, row) => {
+    return sum + row.keys.map(key => findKanaBySelectionKey(list, key)).filter(Boolean).length;
+  }, 0);
+
+  const extendedToggle = document.createElement("button");
+  extendedToggle.type = "button";
+  extendedToggle.className = `kana-extended-toggle ${extendedRowsOpen ? "open" : ""}`;
+  extendedToggle.setAttribute("aria-expanded", extendedRowsOpen ? "true" : "false");
+  extendedToggle.innerHTML = `
+    <span class="kana-extended-toggle-main">
+      <span class="kana-extended-toggle-arrow">${extendedRowsOpen ? "▾" : "▸"}</span>
+      <span>Âm đục / bán đục</span>
+    </span>
+    <span class="kana-extended-toggle-meta">G, Z, D, B, P · ${extendedItemsCount} chữ</span>
+  `;
+
+  const extendedPanel = document.createElement("div");
+  extendedPanel.className = "kana-extended-panel";
+  extendedPanel.style.display = extendedRowsOpen ? "flex" : "none";
+
+  KANA_EXTENDED_ROWS.forEach(row => renderKanaRow(row, extendedPanel));
+
+  extendedToggle.onclick = () => {
+    setKanaExtendedOpen(kanaType, !getKanaExtendedOpen(kanaType));
+    renderKanaSetup();
+  };
+
+  grid.appendChild(extendedToggle);
+  grid.appendChild(extendedPanel);
 
   // Cập nhật số lượng mặc định sau khi render toàn bộ lưới (đọc từ localStorage)
   updateKanaSetupCountDefault();
