@@ -101,6 +101,123 @@ button, input, select, textarea {
   min-height: 100vh;
 }
 
+.auth-shell {
+  min-height: 100vh;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.auth-required .auth-shell,
+.auth-loading .auth-shell {
+  display: flex;
+}
+
+.auth-required .main-header,
+.auth-required .container,
+.auth-loading .main-header,
+.auth-loading .container {
+  display: none;
+}
+
+.auth-card {
+  width: min(100%, 416px);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  box-shadow: var(--shadow-hover);
+  padding: 42px 38px;
+}
+
+.auth-panel {
+  display: none;
+}
+
+.auth-panel.active {
+  display: block;
+}
+
+.auth-back-btn,
+.auth-links button {
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font: 600 12px var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.auth-back-btn {
+  margin-bottom: 24px;
+}
+
+.auth-back-btn:hover,
+.auth-links button:hover {
+  color: var(--accent);
+}
+
+.auth-panel h1 {
+  font: 760 32px/1.08 var(--font-display);
+  letter-spacing: 0;
+  margin-bottom: 8px;
+}
+
+.auth-panel > p {
+  color: var(--ink-soft);
+  margin-bottom: 26px;
+}
+
+.auth-form .form-group {
+  margin-bottom: 16px;
+}
+
+.auth-form label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink-faint);
+  font: 700 11px var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.auth-submit-btn {
+  width: 100%;
+  justify-content: center;
+  min-height: 44px;
+  margin-top: 8px;
+}
+
+.auth-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 24px 0 18px;
+}
+
+.auth-links {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-message {
+  min-height: 20px;
+  margin-top: 12px;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.auth-message.error {
+  color: var(--error);
+}
+
+.auth-message.success {
+  color: var(--good);
+}
+
 /* Header Navigation (Web Note Styled) */
 .main-header {
   padding: 10px 30px;
@@ -112,6 +229,22 @@ button, input, select, textarea {
   position: sticky;
   top: 0;
   z-index: 100;
+}
+
+.app-user-menu {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+#app-user-email {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-soft);
+  font: 600 11px var(--font-mono);
 }
 
 .logo {
@@ -146,6 +279,9 @@ button, input, select, textarea {
 
 .main-nav {
   display: flex;
+  flex: 1;
+  justify-content: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -3226,6 +3362,7 @@ body,
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       "logo sync"
+      "user user"
       "nav nav";
     align-items: center;
     gap: 8px 10px;
@@ -3259,6 +3396,16 @@ body,
     margin-left: 0;
     padding: 4px 9px;
     white-space: nowrap;
+  }
+
+  .app-user-menu {
+    grid-area: user;
+    justify-content: center;
+    width: 100%;
+  }
+
+  #app-user-email {
+    max-width: 56vw;
   }
 
   .main-nav {

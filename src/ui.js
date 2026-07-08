@@ -1,5 +1,6 @@
 import { 
   getProjects, 
+  saveProjects,
   getProjectById, 
   addProject, 
   deleteProject, 
@@ -19,6 +20,7 @@ import {
   saveToDictionaryCache,
   fetchAndSyncFromSupabase,
   setOnSyncStateChange,
+  setCloudUser,
   markVocabAsMaxDifficulty,
   setAttendanceUser,
   getAttendanceStats,
@@ -55,6 +57,9 @@ let currentSmartReviewFilter = "due";
 let currentSmartReviewSelectedId = null;
 let attendanceSession = null;
 let cleanupProjectVocabDragSort = null;
+let currentAuthSession = null;
+let hasRestoredAfterAuth = false;
+let isPasswordRecoveryMode = false;
 const MS_PER_HOUR = 60 * 60 * 1000;
 const MS_PER_DAY = 24 * MS_PER_HOUR;
 let quizActiveSettings = {
@@ -192,6 +197,8 @@ function startQuizWithVocabIds(vocabIds, message = "") {
 
 // Khởi tạo các sự kiện giao diện
 export function initUI() {
+  document.body.classList.add("auth-loading");
+  setupAuthUI();
   setupNavigation();
   setupProjectActions();
   setupVocabActions();
@@ -216,9 +223,357 @@ export function initUI() {
   
   // Khởi tạo hiển thị trạng thái đồng bộ đám mây và chạy đồng bộ ngầm lần đầu
   setupCloudSyncUI();
-  
-  // Khôi phục view trước đó
-  restoreActiveView();
+  setupAppAuth();
+}
+
+function setAuthMode(mode) {
+  document.querySelectorAll(".auth-panel").forEach(panel => {
+    panel.classList.toggle("active", panel.getAttribute("data-auth-panel") === mode);
+  });
+  document.querySelectorAll(".auth-message").forEach(message => {
+    message.textContent = "";
+    message.className = "auth-message";
+  });
+}
+
+function setAuthMessage(mode, text, type = "info") {
+  const message = document.querySelector(`[data-auth-message="${mode}"]`);
+  if (!message) return;
+  message.textContent = text;
+  message.className = `auth-message ${type}`;
+}
+
+function getFriendlyAuthError(error, fallback) {
+  const code = error?.code || "";
+  const message = error?.message || "";
+  const text = `${code} ${message}`.toLowerCase();
+
+  if (code === "over_email_send_rate_limit" || text.includes("email rate limit")) {
+    return "Supabase đang giới hạn gửi email vì vừa gửi quá nhiều lần. Đợi khoảng 1 giờ rồi thử lại, hoặc cấu hình SMTP riêng để gửi ổn định hơn.";
+  }
+
+  if (code === "email_address_not_authorized") {
+    return "Email này chưa được phép nhận mail từ SMTP mặc định của Supabase. Thêm email vào team Supabase hoặc cấu hình SMTP riêng nhé.";
+  }
+
+  return message || fallback;
+}
+
+function getAuthRedirectUrl() {
+  return `${window.location.origin}${window.location.pathname}`;
+}
+
+function getAuthUrlParams() {
+  const params = new URLSearchParams(window.location.search);
+  const hash = window.location.hash.startsWith("#")
+    ? window.location.hash.slice(1)
+    : window.location.hash;
+  const hashParams = new URLSearchParams(hash);
+  return { params, hashParams };
+}
+
+function getAuthUrlError() {
+  const { params, hashParams } = getAuthUrlParams();
+  const error = params.get("error") || hashParams.get("error");
+  if (!error) return null;
+  return {
+    error,
+    code: params.get("error_code") || hashParams.get("error_code") || "",
+    description: params.get("error_description") || hashParams.get("error_description") || ""
+  };
+}
+
+function isExpiredAuthLinkError(authError) {
+  const text = `${authError?.code || ""} ${authError?.description || ""}`.toLowerCase();
+  return text.includes("otp_expired")
+    || text.includes("expired")
+    || text.includes("invalid");
+}
+
+function hasPendingPasswordRecovery() {
+  return localStorage.getItem("nihongo_password_recovery_pending") === "1";
+}
+
+function clearPendingPasswordRecovery() {
+  localStorage.removeItem("nihongo_password_recovery_pending");
+}
+
+function isPasswordRecoveryUrl({ includePendingCode = true } = {}) {
+  const hash = window.location.hash || "";
+  const search = window.location.search || "";
+  const { params, hashParams } = getAuthUrlParams();
+  return hash.includes("type=recovery")
+    || search.includes("type=recovery")
+    || params.get("auth") === "recovery"
+    || hashParams.get("auth") === "recovery"
+    || (includePendingCode && hasPendingPasswordRecovery() && params.has("code"));
+}
+
+function enterPasswordRecoveryMode(session) {
+  isPasswordRecoveryMode = true;
+  currentAuthSession = session || currentAuthSession;
+  attendanceSession = null;
+  setCloudUser(null);
+  setAttendanceUser(null);
+  document.body.classList.remove("auth-loading");
+  document.body.classList.add("auth-required");
+  document.body.classList.remove("auth-ready");
+  setAuthMode("update-password");
+  setAuthMessage("update-password", "Nhập mật khẩu mới cho tài khoản của bạn.", "success");
+  setTimeout(() => document.getElementById("auth-update-password")?.focus(), 80);
+}
+
+async function getPasswordRecoverySessionFromUrl() {
+  const { params, hashParams } = getAuthUrlParams();
+  const code = params.get("code");
+
+  if (code) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) throw error;
+    return data?.session || null;
+  }
+
+  const accessToken = hashParams.get("access_token");
+  const refreshToken = hashParams.get("refresh_token");
+  if (accessToken && refreshToken) {
+    const { data, error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken
+    });
+    if (error) throw error;
+    return data?.session || null;
+  }
+
+  const { data } = await supabase.auth.getSession();
+  return data?.session || null;
+}
+
+function setupAuthUI() {
+  document.querySelectorAll("[data-auth-switch]").forEach(button => {
+    button.addEventListener("click", () => {
+      setAuthMode(button.getAttribute("data-auth-switch"));
+    });
+  });
+
+  const loginForm = document.getElementById("auth-login-form");
+  loginForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const email = document.getElementById("auth-login-email")?.value.trim();
+    const password = document.getElementById("auth-login-password")?.value;
+    if (!email || !password) return;
+
+    setAuthMessage("login", "Đang đăng nhập...");
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setAuthMessage("login", "Email hoặc mật khẩu chưa đúng. Kiểm tra lại giúp mình nhé.", "error");
+    } else {
+      setAuthMessage("login", "Đăng nhập thành công. Đang đồng bộ dữ liệu...", "success");
+    }
+  });
+
+  const registerForm = document.getElementById("auth-register-form");
+  registerForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const email = document.getElementById("auth-register-email")?.value.trim();
+    const password = document.getElementById("auth-register-password")?.value || "";
+    const confirmPassword = document.getElementById("auth-register-confirm")?.value || "";
+    if (!email || !password) return;
+    if (password.length < 6) {
+      setAuthMessage("register", "Mật khẩu nên có ít nhất 6 ký tự.", "error");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setAuthMessage("register", "Xác nhận mật khẩu chưa khớp.", "error");
+      return;
+    }
+
+    setAuthMessage("register", "Đang tạo tài khoản...");
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: getAuthRedirectUrl()
+      }
+    });
+
+    if (error) {
+      setAuthMessage("register", getFriendlyAuthError(error, "Chưa tạo được tài khoản."), "error");
+    } else if (data.session) {
+      setAuthMessage("register", "Tạo tài khoản thành công. Đang mở app...", "success");
+    } else {
+      setAuthMessage("register", "Đã gửi email xác nhận. Mở email rồi quay lại đăng nhập nhé.", "success");
+    }
+  });
+
+  const resetForm = document.getElementById("auth-reset-form");
+  resetForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const email = document.getElementById("auth-reset-email")?.value.trim();
+    if (!email) return;
+
+    setAuthMessage("reset", "Đang gửi yêu cầu...");
+    localStorage.setItem("nihongo_password_recovery_pending", "1");
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${getAuthRedirectUrl()}?auth=recovery`
+    });
+    if (error) {
+      clearPendingPasswordRecovery();
+      setAuthMessage("reset", getFriendlyAuthError(error, "Chưa gửi được email khôi phục."), "error");
+    } else {
+      setAuthMessage("reset", "Đã gửi email đặt lại mật khẩu. Kiểm tra hộp thư của bạn nhé.", "success");
+    }
+  });
+
+  const updatePasswordForm = document.getElementById("auth-update-password-form");
+  updatePasswordForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const password = document.getElementById("auth-update-password")?.value || "";
+    const confirmPassword = document.getElementById("auth-update-confirm")?.value || "";
+    if (password.length < 6) {
+      setAuthMessage("update-password", "Mật khẩu nên có ít nhất 6 ký tự.", "error");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setAuthMessage("update-password", "Xác nhận mật khẩu chưa khớp.", "error");
+      return;
+    }
+
+    setAuthMessage("update-password", "Đang cập nhật mật khẩu...");
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) {
+      setAuthMessage("update-password", getFriendlyAuthError(error, "Chưa đổi được mật khẩu."), "error");
+      return;
+    }
+
+    isPasswordRecoveryMode = false;
+    clearPendingPasswordRecovery();
+    window.history.replaceState({}, document.title, getAuthRedirectUrl());
+    setAuthMessage("update-password", "Đã đổi mật khẩu. Đang mở app...", "success");
+    const { data } = await supabase.auth.getSession();
+    await applyAuthSession(data?.session || currentAuthSession, { restore: true });
+  });
+
+  document.getElementById("app-signout-btn")?.addEventListener("click", async () => {
+    await supabase.auth.signOut();
+  });
+}
+
+function updateAuthShell(user) {
+  const isLoggedIn = !!user;
+  document.body.classList.remove("auth-loading");
+  document.body.classList.toggle("auth-required", !isLoggedIn);
+  document.body.classList.toggle("auth-ready", isLoggedIn);
+
+  const email = user?.email || "";
+  const emailEl = document.getElementById("app-user-email");
+  if (emailEl) {
+    emailEl.textContent = email;
+    emailEl.title = email;
+  }
+}
+
+function rerenderActiveViewAfterSync() {
+  const activeView = localStorage.getItem("web_fcard_active_view") || "dashboard-view";
+  if (activeView === "dashboard-view") {
+    renderDashboard();
+  } else if (activeView === "projects-view") {
+    renderProjectList();
+  } else if (activeView === "project-detail-view") {
+    renderProjectDetail();
+  } else if (activeView === "weak-vocab-view") {
+    renderWeakVocabView();
+  } else if (activeView === "smart-review-view") {
+    renderSmartReviewView();
+  } else if (activeView === "quiz-setup-view") {
+    setupQuizConfig();
+  }
+}
+
+async function applyAuthSession(session, { restore = false } = {}) {
+  if (isPasswordRecoveryMode) {
+    currentAuthSession = session || currentAuthSession;
+    enterPasswordRecoveryMode(currentAuthSession);
+    return;
+  }
+
+  currentAuthSession = session || null;
+  attendanceSession = currentAuthSession;
+  setCloudUser(currentAuthSession?.user || null);
+  setAttendanceUser(currentAuthSession?.user || null);
+  updateAuthShell(currentAuthSession?.user || null);
+
+  if (!currentAuthSession?.user) {
+    hasRestoredAfterAuth = false;
+    setAuthMode("login");
+    return;
+  }
+
+  await fetchAndSyncFromSupabase();
+  if (restore || !hasRestoredAfterAuth) {
+    restoreActiveView();
+    hasRestoredAfterAuth = true;
+  } else {
+    rerenderActiveViewAfterSync();
+  }
+}
+
+async function setupAppAuth() {
+  try {
+    const authUrlError = getAuthUrlError();
+    if (authUrlError) {
+      clearPendingPasswordRecovery();
+      window.history.replaceState({}, document.title, getAuthRedirectUrl());
+      updateAuthShell(null);
+      if (isExpiredAuthLinkError(authUrlError)) {
+        setAuthMode("reset");
+        setAuthMessage("reset", "Link khôi phục đã hết hạn hoặc đã được dùng. Gửi lại email reset mới nhé.", "error");
+      } else {
+        setAuthMode("login");
+        setAuthMessage("login", authUrlError.description || "Link đăng nhập không hợp lệ. Thử lại giúp mình nhé.", "error");
+      }
+      return;
+    }
+
+    if (isPasswordRecoveryUrl()) {
+      try {
+        const recoverySession = await getPasswordRecoverySessionFromUrl();
+        if (recoverySession) {
+          enterPasswordRecoveryMode(recoverySession);
+        } else {
+          updateAuthShell(null);
+          setAuthMode("reset");
+          setAuthMessage("reset", "Link khôi phục chưa tạo được phiên đổi mật khẩu. Gửi lại email reset giúp mình nhé.", "error");
+        }
+      } catch (error) {
+        console.error("Không xử lý được link khôi phục:", error);
+        updateAuthShell(null);
+        setAuthMode("reset");
+        setAuthMessage("reset", "Link khôi phục hết hạn hoặc không hợp lệ. Gửi lại email reset giúp mình nhé.", "error");
+      }
+    } else {
+      const { data } = await supabase.auth.getSession();
+      await applyAuthSession(data?.session || null, { restore: true });
+    }
+
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        enterPasswordRecoveryMode(session || currentAuthSession);
+        return;
+      }
+      applyAuthSession(session || null, {
+        restore: !hasRestoredAfterAuth
+      }).catch(error => {
+        console.error("Lỗi cập nhật phiên đăng nhập:", error);
+        setAuthMessage("login", "Phiên đăng nhập có lỗi. Thử tải lại trang giúp mình nhé.", "error");
+      });
+    });
+  } catch (error) {
+    console.error("Không thể khởi tạo đăng nhập:", error);
+    setCloudUser(null);
+    setAttendanceUser(null);
+    updateAuthShell(null);
+    setAuthMessage("login", "Chưa kết nối được Supabase Auth. Kiểm tra cấu hình rồi thử lại nhé.", "error");
+  }
 }
 
 function setupCloudSyncUI() {
@@ -243,22 +598,10 @@ function setupCloudSyncUI() {
       syncStatusEl.classList.add("status-error");
       iconEl.textContent = "⚠️";
       textEl.textContent = "Lỗi đồng bộ";
-    }
-  });
-  
-  // Kích hoạt đồng bộ ngầm từ Supabase về LocalStorage khi khởi động app
-  fetchAndSyncFromSupabase().then(() => {
-    const activeView = localStorage.getItem("web_fcard_active_view") || "dashboard-view";
-    if (activeView === "dashboard-view") {
-      renderDashboard();
-    } else if (activeView === "projects-view") {
-      renderProjectList();
-    } else if (activeView === "project-detail-view") {
-      renderProjectDetail();
-    } else if (activeView === "weak-vocab-view") {
-      renderWeakVocabView();
-    } else if (activeView === "smart-review-view") {
-      renderSmartReviewView();
+    } else if (state === "auth") {
+      syncStatusEl.classList.add("status-error");
+      iconEl.textContent = "🔒";
+      textEl.textContent = "Cần đăng nhập";
     }
   });
 }
@@ -4151,7 +4494,7 @@ function setupJsonImportExport() {
           };
 
           projects.push(newProject);
-          localStorage.setItem("nihongo_flashcard_projects", JSON.stringify(projects));
+          saveProjects(projects);
           
           alert(`Đã nhập thành công dự án "${newProject.name}" với ${newProject.vocab.length} từ.`);
           renderProjectList();

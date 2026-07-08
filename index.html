@@ -5,9 +5,272 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Nihongo Flashcard - Sổ Tay Luyện Tập Tiếng Nhật</title>
+    <style>
+      html {
+        background: #f4f1ea;
+      }
+
+      body.auth-loading,
+      body.auth-required {
+        margin: 0;
+        min-height: 100vh;
+        background-color: #f4f1ea;
+        background-image: radial-gradient(rgba(28, 26, 23, 0.035) 1px, transparent 1px);
+        background-size: 6px 6px;
+        color: #1c1a17;
+        font-family: Georgia, "Times New Roman", serif;
+      }
+
+      body.auth-loading .main-header,
+      body.auth-loading .container,
+      body.auth-required .main-header,
+      body.auth-required .container {
+        display: none !important;
+      }
+
+      body.auth-loading .auth-shell,
+      body.auth-required .auth-shell {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        padding: 24px;
+      }
+
+      body.auth-loading .auth-card,
+      body.auth-required .auth-card {
+        width: min(100%, 416px);
+        box-sizing: border-box;
+        background: #fbfaf6;
+        border: 1px solid #d2ccbe;
+        border-radius: 12px;
+        box-shadow: 0 4px 8px rgba(28, 26, 23, 0.06), 0 16px 32px -8px rgba(28, 26, 23, 0.16);
+        padding: 42px 38px;
+      }
+
+      body.auth-loading .auth-panel,
+      body.auth-required .auth-panel {
+        display: none;
+      }
+
+      body.auth-loading .auth-panel.active,
+      body.auth-required .auth-panel.active {
+        display: block;
+      }
+
+      body.auth-loading .auth-back-btn,
+      body.auth-loading .auth-links button,
+      body.auth-required .auth-back-btn,
+      body.auth-required .auth-links button {
+        border: 0;
+        background: transparent;
+        color: #56514a;
+        cursor: pointer;
+        font: 600 12px ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      body.auth-loading .auth-back-btn,
+      body.auth-required .auth-back-btn {
+        margin-bottom: 24px;
+      }
+
+      body.auth-loading .auth-panel h1,
+      body.auth-required .auth-panel h1 {
+        margin: 0 0 8px;
+        color: #1c1a17;
+        font: 700 32px/1.08 Georgia, "Times New Roman", serif;
+      }
+
+      body.auth-loading .auth-panel > p,
+      body.auth-required .auth-panel > p {
+        margin: 0 0 26px;
+        color: #56514a;
+      }
+
+      body.auth-loading .form-group,
+      body.auth-required .form-group {
+        margin-bottom: 16px;
+      }
+
+      body.auth-loading label,
+      body.auth-required label {
+        display: block;
+        margin-bottom: 6px;
+        color: #928b80;
+        font: 700 11px ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      body.auth-loading input,
+      body.auth-required input {
+        width: 100%;
+        min-height: 36px;
+        box-sizing: border-box;
+        border: 1px solid #d2ccbe;
+        border-radius: 8px;
+        background: #fffefa;
+        padding: 8px 12px;
+        color: #1c1a17;
+        font: 16px Georgia, "Times New Roman", serif;
+      }
+
+      body.auth-loading .btn,
+      body.auth-loading button[type="submit"],
+      body.auth-required .btn,
+      body.auth-required button[type="submit"] {
+        min-height: 42px;
+        border: 1px solid #b5482e;
+        border-radius: 8px;
+        background: #b5482e;
+        color: #fbfaf6;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      body.auth-loading .auth-submit-btn,
+      body.auth-required .auth-submit-btn {
+        width: 100%;
+        margin-top: 8px;
+      }
+
+      body.auth-loading .auth-divider,
+      body.auth-required .auth-divider {
+        height: 1px;
+        margin: 24px 0 18px;
+        background: #e2ddd2;
+      }
+
+      body.auth-loading .auth-links,
+      body.auth-required .auth-links {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+      }
+
+      body.auth-loading .auth-message,
+      body.auth-required .auth-message {
+        min-height: 20px;
+        margin-top: 12px;
+        color: #56514a;
+        font-size: 0.9rem;
+        text-align: center;
+      }
+
+      body.auth-loading .auth-message.error,
+      body.auth-required .auth-message.error {
+        color: #c84343;
+      }
+
+      body.auth-loading .auth-message.success,
+      body.auth-required .auth-message.success {
+        color: #4f7a4a;
+      }
+
+      @media (max-width: 520px) {
+        body.auth-loading .auth-card,
+        body.auth-required .auth-card {
+          padding: 30px 22px;
+        }
+      }
+    </style>
   </head>
-  <body>
+  <body class="auth-loading">
     <div id="app">
+      <!-- Auth Gate -->
+      <section id="auth-view" class="auth-shell" aria-label="Đăng nhập Nihongo Flashcard">
+        <div class="auth-card">
+          <div class="auth-panel active" data-auth-panel="login">
+            <button type="button" class="auth-back-btn" data-auth-switch="login">← NIHONGO FLASHCARD</button>
+            <h1>Chào mừng trở lại</h1>
+            <p>Đăng nhập để đồng bộ bộ từ, lịch ôn và tiến độ học lên đám mây.</p>
+            <form id="auth-login-form" class="auth-form">
+              <div class="form-group">
+                <label for="auth-login-email">Email</label>
+                <input type="email" class="form-control" id="auth-login-email" autocomplete="email" placeholder="qminh203.fw@gmail.com" required>
+              </div>
+              <div class="form-group">
+                <label for="auth-login-password">Mật khẩu</label>
+                <input type="password" class="form-control" id="auth-login-password" autocomplete="current-password" required>
+              </div>
+              <button type="submit" class="btn btn-primary auth-submit-btn">Đăng nhập</button>
+              <p class="auth-message" data-auth-message="login"></p>
+            </form>
+            <div class="auth-divider"></div>
+            <div class="auth-links">
+              <button type="button" data-auth-switch="register">Chưa có tài khoản? Đăng ký ngay</button>
+              <button type="button" data-auth-switch="reset">Quên mật khẩu?</button>
+            </div>
+          </div>
+
+          <div class="auth-panel" data-auth-panel="register">
+            <button type="button" class="auth-back-btn" data-auth-switch="login">← QUAY LẠI ĐĂNG NHẬP</button>
+            <h1>Tạo tài khoản mới</h1>
+            <p>Lưu trữ và truy cập dữ liệu học tiếng Nhật từ bất kỳ đâu.</p>
+            <form id="auth-register-form" class="auth-form">
+              <div class="form-group">
+                <label for="auth-register-email">Email</label>
+                <input type="email" class="form-control" id="auth-register-email" autocomplete="email" required>
+              </div>
+              <div class="form-group">
+                <label for="auth-register-password">Mật khẩu</label>
+                <input type="password" class="form-control" id="auth-register-password" autocomplete="new-password" required>
+              </div>
+              <div class="form-group">
+                <label for="auth-register-confirm">Xác nhận mật khẩu</label>
+                <input type="password" class="form-control" id="auth-register-confirm" autocomplete="new-password" required>
+              </div>
+              <button type="submit" class="btn btn-primary auth-submit-btn">Đăng ký</button>
+              <p class="auth-message" data-auth-message="register"></p>
+            </form>
+            <div class="auth-divider"></div>
+            <div class="auth-links">
+              <button type="button" data-auth-switch="login">Đã có tài khoản? Đăng nhập</button>
+            </div>
+          </div>
+
+          <div class="auth-panel" data-auth-panel="reset">
+            <button type="button" class="auth-back-btn" data-auth-switch="login">← QUAY LẠI ĐĂNG NHẬP</button>
+            <h1>Khôi phục mật khẩu</h1>
+            <p>Nhập email để nhận hướng dẫn đặt lại mật khẩu.</p>
+            <form id="auth-reset-form" class="auth-form">
+              <div class="form-group">
+                <label for="auth-reset-email">Email</label>
+                <input type="email" class="form-control" id="auth-reset-email" autocomplete="email" required>
+              </div>
+              <button type="submit" class="btn btn-primary auth-submit-btn">Gửi yêu cầu</button>
+              <p class="auth-message" data-auth-message="reset"></p>
+            </form>
+            <div class="auth-divider"></div>
+            <div class="auth-links">
+              <button type="button" data-auth-switch="login">Quay lại đăng nhập</button>
+            </div>
+          </div>
+
+          <div class="auth-panel" data-auth-panel="update-password">
+            <button type="button" class="auth-back-btn">← ĐẶT LẠI MẬT KHẨU</button>
+            <h1>Đặt mật khẩu mới</h1>
+            <p>Link khôi phục đã được xác nhận. Nhập mật khẩu mới để hoàn tất.</p>
+            <form id="auth-update-password-form" class="auth-form">
+              <div class="form-group">
+                <label for="auth-update-password">Mật khẩu mới</label>
+                <input type="password" class="form-control" id="auth-update-password" autocomplete="new-password" required>
+              </div>
+              <div class="form-group">
+                <label for="auth-update-confirm">Xác nhận mật khẩu</label>
+                <input type="password" class="form-control" id="auth-update-confirm" autocomplete="new-password" required>
+              </div>
+              <button type="submit" class="btn btn-primary auth-submit-btn">Cập nhật mật khẩu</button>
+              <p class="auth-message" data-auth-message="update-password"></p>
+            </form>
+          </div>
+        </div>
+      </section>
+
       <!-- Main Navigation Header -->
       <header class="main-header">
         <a href="#" class="logo" id="logo-btn">
@@ -41,6 +304,10 @@
             Kiểm tra
           </button>
         </nav>
+        <div class="app-user-menu">
+          <span id="app-user-email"></span>
+          <button type="button" class="btn btn-secondary" id="app-signout-btn">Đăng xuất</button>
+        </div>
       </header>
 
       <!-- Main Application Container -->

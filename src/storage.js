@@ -36,14 +36,24 @@ const DEFAULT_PROJECTS = [
 
 const STORAGE_KEY = "nihongo_flashcard_projects";
 const ATTENDANCE_STORAGE_PREFIX = "nihongo_attendance_v1";
+export const LEGACY_OWNER_EMAIL = "qminh203.fw@gmail.com";
 export const ATTENDANCE_FREEZE_COST = 120;
 export const ATTENDANCE_FREEZE_MAX = 2;
 
 let attendanceUser = null;
+let cloudUser = null;
+
+const BASE_PROJECT_COLUMNS = new Set([
+  "id",
+  "name",
+  "description",
+  "user_id"
+]);
 
 const BASE_VOCAB_COLUMNS = new Set([
   "id",
   "project_id",
+  "user_id",
   "japanese",
   "romaji",
   "meaning",
@@ -73,6 +83,7 @@ const LEARNING_VOCAB_COLUMNS = [
   "updated_at"
 ];
 
+let supportedProjectColumns = new Set(BASE_PROJECT_COLUMNS);
 let supportedVocabColumns = new Set(BASE_VOCAB_COLUMNS);
 
 // Trạng thái đồng bộ cơ sở dữ liệu
@@ -473,12 +484,47 @@ function rememberVocabColumns(rows = []) {
   supportedVocabColumns = new Set([...BASE_VOCAB_COLUMNS, ...Object.keys(rows[0])]);
 }
 
+function rememberProjectColumns(rows = []) {
+  if (!rows.length) return;
+  supportedProjectColumns = new Set([...BASE_PROJECT_COLUMNS, ...Object.keys(rows[0])]);
+}
+
 function supportsVocabColumn(column) {
   return supportedVocabColumns.has(column);
 }
 
+function supportsProjectColumn(column) {
+  return supportedProjectColumns.has(column);
+}
+
 function toDbTimestamp(ms) {
   return ms ? new Date(ms).toISOString() : null;
+}
+
+function getCloudUserId() {
+  return cloudUser?.id || null;
+}
+
+function isLegacyOwnerUser(user = cloudUser) {
+  return (user?.email || "").toLowerCase() === LEGACY_OWNER_EMAIL.toLowerCase();
+}
+
+function getProjectsStorageKey() {
+  return getCloudUserId() ? `${STORAGE_KEY}_${getCloudUserId()}` : STORAGE_KEY;
+}
+
+function buildProjectUpsertPayload(project) {
+  const payload = {
+    id: project.id,
+    name: project.name,
+    description: project.description || ""
+  };
+
+  if (getCloudUserId() && supportsProjectColumn("user_id")) {
+    payload.user_id = getCloudUserId();
+  }
+
+  return payload;
 }
 
 function buildVocabUpsertPayload(vocab, projectId) {
@@ -493,6 +539,10 @@ function buildVocabUpsertPayload(vocab, projectId) {
     wrong_count: normalized.wrongCount,
     difficulty_score: normalized.difficultyScore
   };
+
+  if (getCloudUserId() && supportsVocabColumn("user_id")) {
+    payload.user_id = getCloudUserId();
+  }
 
   const learningPayload = {
     order_index: normalized.orderIndex,
@@ -537,9 +587,22 @@ async function safeSync(actionFn) {
 }
 
 export function initializeStorage() {
-  if (!localStorage.getItem(STORAGE_KEY)) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_PROJECTS));
+  const storageKey = getProjectsStorageKey();
+  if (!localStorage.getItem(storageKey)) {
+    localStorage.setItem(storageKey, JSON.stringify(DEFAULT_PROJECTS));
   }
+}
+
+export function setCloudUser(user) {
+  cloudUser = user ? {
+    id: user.id || "",
+    email: user.email || ""
+  } : null;
+  setAttendanceUser(user);
+}
+
+export function getCloudUser() {
+  return cloudUser;
 }
 
 export function setAttendanceUser(user) {
@@ -674,7 +737,7 @@ export function buyStreakFreeze() {
 export function getProjects() {
   initializeStorage();
   try {
-    const projects = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    const projects = JSON.parse(localStorage.getItem(getProjectsStorageKey())) || [];
     return projects.map(project => ({
       ...project,
       vocab: normalizeVocabList(project.vocab || [])
@@ -690,7 +753,7 @@ export function saveProjects(projects) {
     ...project,
     vocab: normalizeVocabList(project.vocab || [])
   }));
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedProjects));
+  localStorage.setItem(getProjectsStorageKey(), JSON.stringify(normalizedProjects));
 }
 
 export function getProjectById(projectId) {
@@ -713,11 +776,7 @@ export function addProject(name, description = "") {
   safeSync(async () => {
     const { error } = await supabase
       .from("projects")
-      .upsert({
-        id: newProject.id,
-        name: newProject.name,
-        description: newProject.description
-      });
+      .upsert(buildProjectUpsertPayload(newProject));
     if (error) throw error;
   });
 
@@ -731,10 +790,14 @@ export function deleteProject(projectId) {
   
   // Đồng bộ đám mây ngầm
   safeSync(async () => {
-    const { error } = await supabase
+    let query = supabase
       .from("projects")
       .delete()
       .eq("id", projectId);
+    if (getCloudUserId() && supportsProjectColumn("user_id")) {
+      query = query.eq("user_id", getCloudUserId());
+    }
+    const { error } = await query;
     if (error) throw error;
   });
 }
@@ -752,11 +815,7 @@ export function updateProjectInfo(projectId, name, description) {
     safeSync(async () => {
       const { error } = await supabase
         .from("projects")
-        .upsert({
-          id: updated.id,
-          name: updated.name,
-          description: updated.description
-        });
+        .upsert(buildProjectUpsertPayload(updated));
       if (error) throw error;
     });
 
@@ -905,10 +964,14 @@ export function deleteVocabFromProject(projectId, vocabId) {
   
   // Đồng bộ đám mây ngầm
   safeSync(async () => {
-    const { error } = await supabase
+    let query = supabase
       .from("vocab")
       .delete()
       .eq("id", vocabId);
+    if (getCloudUserId() && supportsVocabColumn("user_id")) {
+      query = query.eq("user_id", getCloudUserId());
+    }
+    const { error } = await query;
     if (error) throw error;
   });
 
@@ -1041,12 +1104,18 @@ export function markVocabAsMaxDifficulty(projectId, vocabId, timeSpentSec = 0) {
 
 // Kéo dữ liệu từ đám mây Supabase về ghi đè LocalStorage
 export async function fetchAndSyncFromSupabase() {
+  if (!getCloudUserId()) {
+    updateSyncState("auth");
+    return;
+  }
+
   updateSyncState("syncing");
   try {
     const { data: dbProjects, error: projError } = await supabase
       .from("projects")
       .select("*");
     if (projError) throw projError;
+    rememberProjectColumns(dbProjects || []);
 
     const { data: dbVocab, error: vocabError } = await supabase
       .from("vocab")
@@ -1054,17 +1123,26 @@ export async function fetchAndSyncFromSupabase() {
     if (vocabError) throw vocabError;
     rememberVocabColumns(dbVocab || []);
 
+    const userId = getCloudUserId();
+    const canClaimLegacyRows = isLegacyOwnerUser();
+    const cloudProjects = (dbProjects || []).filter(project => {
+      if (!supportsProjectColumn("user_id")) return true;
+      return project.user_id === userId || (!project.user_id && canClaimLegacyRows);
+    });
+    const cloudProjectIds = new Set(cloudProjects.map(project => project.id));
+    const cloudVocab = (dbVocab || []).filter(vocab => {
+      if (!cloudProjectIds.has(vocab.project_id)) return false;
+      if (!supportsVocabColumn("user_id")) return true;
+      return vocab.user_id === userId || (!vocab.user_id && canClaimLegacyRows);
+    });
+
     // Nếu cơ sở dữ liệu trên mây trống trơn, tự động đẩy toàn bộ LocalStorage lên làm bản sao lưu gốc (Backup)
-    if ((!dbProjects || dbProjects.length === 0) && (!dbVocab || dbVocab.length === 0)) {
+    if (cloudProjects.length === 0 && cloudVocab.length === 0) {
       const localProjects = getProjects();
       if (localProjects.length > 0) {
-        console.log("Supabase trống. Tiến hành sao lưu dữ liệu local lên cloud...");
+        console.log("Supabase trống cho user hiện tại. Tiến hành sao lưu dữ liệu local lên cloud...");
         
-        const projectsToUpload = localProjects.map(p => ({
-          id: p.id,
-          name: p.name,
-          description: p.description || ""
-        }));
+        const projectsToUpload = localProjects.map(buildProjectUpsertPayload);
         const { error: uploadProjError } = await supabase.from("projects").upsert(projectsToUpload);
         if (uploadProjError) throw uploadProjError;
 
@@ -1085,8 +1163,8 @@ export async function fetchAndSyncFromSupabase() {
     }
 
     // Nếu có dữ liệu trên mây, ghi đè LocalStorage
-    const mergedProjects = (dbProjects || []).map(p => {
-      const projectVocab = (dbVocab || [])
+    const mergedProjects = cloudProjects.map(p => {
+      const projectVocab = cloudVocab
         .filter(v => v.project_id === p.id)
         .map(v => normalizeVocab({
           id: v.id,
@@ -1118,6 +1196,7 @@ export async function fetchAndSyncFromSupabase() {
         id: p.id,
         name: p.name,
         description: p.description || "",
+        userId: p.user_id || userId,
         vocab: projectVocab
       };
     });
