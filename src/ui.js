@@ -54,6 +54,7 @@ let isScanningMeanings = false;
 let currentSmartReviewFilter = "due";
 let currentSmartReviewSelectedId = null;
 let attendanceSession = null;
+let cleanupProjectVocabDragSort = null;
 const MS_PER_HOUR = 60 * 60 * 1000;
 const MS_PER_DAY = 24 * MS_PER_HOUR;
 let quizActiveSettings = {
@@ -1507,87 +1508,193 @@ function showProjectDetail(projectId) {
 }
 
 function setupProjectVocabDragSort(project) {
+  if (cleanupProjectVocabDragSort) {
+    cleanupProjectVocabDragSort();
+    cleanupProjectVocabDragSort = null;
+  }
+
   const rows = Array.from(document.querySelectorAll(".project-vocab-row"));
   if (!project || rows.length < 2) return;
 
-  let draggedId = null;
+  let pressTimer = null;
+  let pressState = null;
+  let dragState = null;
+  const longPressMs = 240;
+  const moveCancelPx = 8;
 
   const clearDropState = () => {
-    rows.forEach(row => {
+    document.querySelectorAll(".project-vocab-row").forEach(row => {
       row.classList.remove("is-dragging", "drag-over-before", "drag-over-after");
     });
   };
 
-  const getInsertAfter = (row, event) => {
+  const clearPressTimer = () => {
+    if (pressTimer) {
+      clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+  };
+
+  const getPoint = (event) => {
+    const touch = event.touches?.[0] || event.changedTouches?.[0];
+    return {
+      x: touch ? touch.clientX : event.clientX,
+      y: touch ? touch.clientY : event.clientY
+    };
+  };
+
+  const isInteractiveTarget = (target) => {
+    return !!target.closest("button, a, input, textarea, select, label, [contenteditable='true']");
+  };
+
+  const getRowFromPoint = (point) => {
+    return document.elementFromPoint(point.x, point.y)?.closest(".project-vocab-row") || null;
+  };
+
+  const getInsertAfter = (row, point) => {
     const rect = row.getBoundingClientRect();
-    return event.clientY > rect.top + rect.height / 2;
+    return point.y > rect.top + rect.height / 2;
+  };
+
+  const updateDropTarget = (point) => {
+    if (!dragState) return;
+
+    clearDropState();
+    const targetRow = getRowFromPoint(point);
+    const targetId = targetRow?.getAttribute("data-vocab-id") || null;
+
+    if (!targetRow || targetId === dragState.draggedId) {
+      dragState.targetId = null;
+      dragState.insertAfter = false;
+      dragState.draggedRow.classList.add("is-dragging");
+      return;
+    }
+
+    const insertAfter = getInsertAfter(targetRow, point);
+    targetRow.classList.toggle("drag-over-before", !insertAfter);
+    targetRow.classList.toggle("drag-over-after", insertAfter);
+    dragState.draggedRow.classList.add("is-dragging");
+    dragState.targetId = targetId;
+    dragState.insertAfter = insertAfter;
+  };
+
+  const startDrag = (row) => {
+    const draggedId = row.getAttribute("data-vocab-id");
+    if (!draggedId) return;
+
+    dragState = {
+      draggedId,
+      draggedRow: row,
+      targetId: null,
+      insertAfter: false
+    };
+    row.classList.add("is-dragging");
+    document.body.classList.add("vocab-row-dragging");
+  };
+
+  const finishDrag = (shouldCommit) => {
+    clearPressTimer();
+
+    if (!dragState) {
+      pressState = null;
+      return;
+    }
+
+    const { draggedId, targetId, insertAfter } = dragState;
+    dragState = null;
+    pressState = null;
+    clearDropState();
+    document.body.classList.remove("vocab-row-dragging");
+
+    if (!shouldCommit || !targetId || draggedId === targetId) return;
+
+    const orderedIds = (project.vocab || []).map(vocab => vocab.id);
+    const draggedIndex = orderedIds.indexOf(draggedId);
+    if (draggedIndex === -1) return;
+
+    orderedIds.splice(draggedIndex, 1);
+    const targetIndex = orderedIds.indexOf(targetId);
+    if (targetIndex === -1) return;
+
+    orderedIds.splice(insertAfter ? targetIndex + 1 : targetIndex, 0, draggedId);
+    const didReorder = reorderVocabInProject(project.id, orderedIds);
+    if (didReorder) {
+      renderProjectDetail();
+    }
   };
 
   rows.forEach(row => {
-    row.addEventListener("dragstart", (event) => {
-      if (!event.target.closest(".vocab-drag-handle")) {
+    row.addEventListener("mousedown", (event) => {
+      if (event.button !== 0 || isInteractiveTarget(event.target)) return;
+      const point = getPoint(event);
+      pressState = { row, startX: point.x, startY: point.y };
+      clearPressTimer();
+      pressTimer = setTimeout(() => startDrag(row), longPressMs);
+    });
+
+    row.addEventListener("touchstart", (event) => {
+      if (event.touches.length !== 1 || isInteractiveTarget(event.target)) return;
+      const point = getPoint(event);
+      pressState = { row, startX: point.x, startY: point.y };
+      clearPressTimer();
+      pressTimer = setTimeout(() => startDrag(row), longPressMs);
+    }, { passive: true });
+
+    row.addEventListener("contextmenu", (event) => {
+      if (!isInteractiveTarget(event.target)) {
         event.preventDefault();
-        return;
       }
-
-      draggedId = row.getAttribute("data-vocab-id");
-      row.classList.add("is-dragging");
-      event.dataTransfer.effectAllowed = "move";
-      event.dataTransfer.setData("text/plain", draggedId);
-    });
-
-    row.addEventListener("dragover", (event) => {
-      if (!draggedId || draggedId === row.getAttribute("data-vocab-id")) return;
-      event.preventDefault();
-      row.classList.toggle("drag-over-before", !getInsertAfter(row, event));
-      row.classList.toggle("drag-over-after", getInsertAfter(row, event));
-    });
-
-    row.addEventListener("dragleave", () => {
-      row.classList.remove("drag-over-before", "drag-over-after");
-    });
-
-    row.addEventListener("drop", (event) => {
-      if (!draggedId) return;
-      event.preventDefault();
-
-      const targetId = row.getAttribute("data-vocab-id");
-      const insertAfter = getInsertAfter(row, event);
-      clearDropState();
-
-      if (!targetId || draggedId === targetId) {
-        draggedId = null;
-        return;
-      }
-
-      const orderedIds = (project.vocab || []).map(vocab => vocab.id);
-      const draggedIndex = orderedIds.indexOf(draggedId);
-      if (draggedIndex === -1) {
-        draggedId = null;
-        return;
-      }
-
-      orderedIds.splice(draggedIndex, 1);
-      const targetIndex = orderedIds.indexOf(targetId);
-      if (targetIndex === -1) {
-        draggedId = null;
-        return;
-      }
-
-      orderedIds.splice(insertAfter ? targetIndex + 1 : targetIndex, 0, draggedId);
-      const didReorder = reorderVocabInProject(project.id, orderedIds);
-      draggedId = null;
-
-      if (didReorder) {
-        renderProjectDetail();
-      }
-    });
-
-    row.addEventListener("dragend", () => {
-      draggedId = null;
-      clearDropState();
     });
   });
+
+  const handleMove = (event) => {
+    if (!pressState && !dragState) return;
+
+    const point = getPoint(event);
+    if (!dragState && pressState) {
+      const distance = Math.hypot(point.x - pressState.startX, point.y - pressState.startY);
+      if (distance > moveCancelPx) {
+        clearPressTimer();
+        pressState = null;
+      }
+      return;
+    }
+
+    event.preventDefault();
+    updateDropTarget(point);
+  };
+
+  const handleEnd = (event) => {
+    if (dragState) {
+      event.preventDefault();
+      finishDrag(true);
+      return;
+    }
+
+    clearPressTimer();
+    pressState = null;
+  };
+
+  const handleCancel = () => finishDrag(false);
+
+  document.addEventListener("mousemove", handleMove);
+  document.addEventListener("mouseup", handleEnd);
+  document.addEventListener("touchmove", handleMove, { passive: false });
+  document.addEventListener("touchend", handleEnd, { passive: false });
+  document.addEventListener("touchcancel", handleCancel, { passive: true });
+
+  cleanupProjectVocabDragSort = () => {
+    clearPressTimer();
+    pressState = null;
+    dragState = null;
+    clearDropState();
+    document.body.classList.remove("vocab-row-dragging");
+    document.removeEventListener("mousemove", handleMove);
+    document.removeEventListener("mouseup", handleEnd);
+    document.removeEventListener("touchmove", handleMove);
+    document.removeEventListener("touchend", handleEnd);
+    document.removeEventListener("touchcancel", handleCancel);
+  };
 }
 
 function renderProjectDetail() {
@@ -1595,6 +1702,11 @@ function renderProjectDetail() {
   if (!proj) {
     switchView("projects-view");
     return;
+  }
+
+  if (cleanupProjectVocabDragSort) {
+    cleanupProjectVocabDragSort();
+    cleanupProjectVocabDragSort = null;
   }
 
   document.getElementById("detail-project-title").textContent = proj.name;
@@ -1618,7 +1730,7 @@ function renderProjectDetail() {
         <table class="vocab-table">
           <thead>
             <tr>
-              <th style="width: 86px; text-align: center;">STT</th>
+              <th style="width: 64px; text-align: center;">STT</th>
               <th>Tiếng Nhật</th>
               <th>Romaji</th>
               <th>Nghĩa Tiếng Việt</th>
@@ -1639,9 +1751,8 @@ function renderProjectDetail() {
       }
 
       tableHtml += `
-        <tr class="project-vocab-row" data-vocab-id="${v.id}" draggable="true">
+        <tr class="project-vocab-row" data-vocab-id="${v.id}" title="Ấn giữ dòng để kéo đổi vị trí">
           <td data-label="STT" class="vocab-order-cell">
-            <button class="vocab-drag-handle" type="button" title="Kéo để đổi vị trí" aria-label="Kéo để đổi vị trí từ ${v.romaji}">↕</button>
             <span class="vocab-order-number">${(v.orderIndex ?? index) + 1}</span>
           </td>
           <td data-label="Tiếng Nhật" class="vocab-jp-cell">

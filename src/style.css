@@ -1544,6 +1544,20 @@ select.form-control {
   background: var(--paper);
 }
 
+.project-vocab-row {
+  cursor: grab;
+  user-select: none;
+}
+
+.project-vocab-row:active,
+.vocab-row-dragging .project-vocab-row {
+  cursor: grabbing;
+}
+
+.project-vocab-row button {
+  cursor: pointer;
+}
+
 .project-vocab-row.is-dragging {
   opacity: 0.54;
   background: var(--accent-soft);
@@ -1563,31 +1577,6 @@ select.form-control {
   font-size: 0.95rem;
   color: var(--ink-soft);
   white-space: nowrap;
-}
-
-.vocab-drag-handle {
-  width: 28px;
-  height: 28px;
-  margin-right: 6px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--field);
-  color: var(--ink-soft);
-  font-family: var(--font-mono);
-  cursor: grab;
-  transition: var(--transition);
-}
-
-.vocab-drag-handle:hover,
-.vocab-drag-handle:focus-visible {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--accent-soft);
-  outline: none;
-}
-
-.vocab-drag-handle:active {
-  cursor: grabbing;
 }
 
 .vocab-order-number {
