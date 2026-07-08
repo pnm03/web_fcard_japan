@@ -1519,6 +1519,11 @@ function setupProjectVocabDragSort(project) {
   let pressState = null;
   let dragState = null;
   const dragStartPx = 3;
+  const rowsById = new Map(rows.map(row => [row.getAttribute("data-vocab-id"), row]));
+  const originalOrderNumbers = new Map(rows.map(row => [
+    row.getAttribute("data-vocab-id"),
+    row.querySelector(".vocab-order-number")?.textContent || ""
+  ]));
 
   const clearDropState = () => {
     document.querySelectorAll(".project-vocab-row").forEach(row => {
@@ -1593,9 +1598,78 @@ function setupProjectVocabDragSort(project) {
     gap.className = "project-vocab-drop-gap";
     gap.style.height = `${Math.max(52, rect.height)}px`;
 
+    const label = document.createElement("span");
+    label.className = "project-vocab-drop-label";
+    gap.appendChild(label);
+
     cell.appendChild(gap);
     placeholder.appendChild(cell);
     return placeholder;
+  };
+
+  const setOrderNumber = (row, number, isLive = false) => {
+    const el = row?.querySelector(".vocab-order-number");
+    if (!el) return;
+    el.textContent = String(number);
+    el.classList.toggle("is-live-order", isLive);
+  };
+
+  const setPreviewOrderNumber = (number) => {
+    const el = dragState?.preview?.querySelector(".vocab-order-number");
+    if (!el) return;
+    el.textContent = String(number);
+    el.classList.add("is-live-order");
+  };
+
+  const setPlaceholderOrderNumber = (number) => {
+    const label = dragState?.placeholder?.querySelector(".project-vocab-drop-label");
+    if (label) {
+      label.textContent = `Vị trí #${number}`;
+    }
+  };
+
+  const restoreOrderNumbers = () => {
+    rows.forEach(row => {
+      const id = row.getAttribute("data-vocab-id");
+      const number = originalOrderNumbers.get(id);
+      const el = row.querySelector(".vocab-order-number");
+      if (el && number) {
+        el.textContent = number;
+        el.classList.remove("is-live-order");
+      }
+    });
+  };
+
+  const updateLiveOrderNumbers = () => {
+    if (!dragState?.placeholder) return;
+
+    const parent = dragState.placeholder.parentElement;
+    if (!parent) return;
+
+    const tentativeIds = [];
+    Array.from(parent.children).forEach(child => {
+      if (child === dragState.placeholder) {
+        tentativeIds.push(dragState.draggedId);
+        return;
+      }
+
+      if (!child.classList?.contains("project-vocab-row")) return;
+      const id = child.getAttribute("data-vocab-id");
+      if (id && id !== dragState.draggedId) {
+        tentativeIds.push(id);
+      }
+    });
+
+    tentativeIds.forEach((id, index) => {
+      const number = index + 1;
+      if (id === dragState.draggedId) {
+        setPreviewOrderNumber(number);
+        setPlaceholderOrderNumber(number);
+        return;
+      }
+
+      setOrderNumber(rowsById.get(id), number, true);
+    });
   };
 
   const updateDragPreview = (point) => {
@@ -1618,6 +1692,7 @@ function setupProjectVocabDragSort(project) {
     if (!placement) {
       dragState.targetId = null;
       dragState.insertAfter = false;
+      updateLiveOrderNumbers();
       return;
     }
 
@@ -1631,6 +1706,7 @@ function setupProjectVocabDragSort(project) {
     row.classList.toggle("drag-over-after", insertAfter);
     dragState.targetId = row.getAttribute("data-vocab-id");
     dragState.insertAfter = insertAfter;
+    updateLiveOrderNumbers();
   };
 
   const startDrag = (row, point) => {
@@ -1678,24 +1754,36 @@ function setupProjectVocabDragSort(project) {
     clearDropState();
     document.body.classList.remove("vocab-row-dragging");
 
-    if (!shouldCommit || !targetId || draggedId === targetId) return;
+    if (!shouldCommit || !targetId || draggedId === targetId) {
+      restoreOrderNumbers();
+      return;
+    }
 
     const orderedIds = (project.vocab || []).map(vocab => vocab.id);
     const draggedIndex = orderedIds.indexOf(draggedId);
-    if (draggedIndex === -1) return;
+    if (draggedIndex === -1) {
+      restoreOrderNumbers();
+      return;
+    }
 
     orderedIds.splice(draggedIndex, 1);
     const targetIndex = orderedIds.indexOf(targetId);
-    if (targetIndex === -1) return;
+    if (targetIndex === -1) {
+      restoreOrderNumbers();
+      return;
+    }
 
     orderedIds.splice(insertAfter ? targetIndex + 1 : targetIndex, 0, draggedId);
     if (orderedIds.every((id, index) => id === (project.vocab || [])[index]?.id)) {
+      restoreOrderNumbers();
       return;
     }
 
     const didReorder = reorderVocabInProject(project.id, orderedIds);
     if (didReorder) {
       renderProjectDetail();
+    } else {
+      restoreOrderNumbers();
     }
   };
 
@@ -1767,6 +1855,7 @@ function setupProjectVocabDragSort(project) {
     pressState = null;
     dragState = null;
     clearDropState();
+    restoreOrderNumbers();
     document.body.classList.remove("vocab-row-dragging");
     document.removeEventListener("mousemove", handleMove);
     document.removeEventListener("mouseup", handleEnd);
