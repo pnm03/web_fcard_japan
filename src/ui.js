@@ -7,6 +7,7 @@ import {
   addVocabToProject, 
   updateVocabInProject, 
   deleteVocabFromProject,
+  reorderVocabInProject,
   getWeakVocab,
   getReviewDueVocab,
   getReviewOverview,
@@ -1505,6 +1506,90 @@ function showProjectDetail(projectId) {
   renderProjectDetail();
 }
 
+function setupProjectVocabDragSort(project) {
+  const rows = Array.from(document.querySelectorAll(".project-vocab-row"));
+  if (!project || rows.length < 2) return;
+
+  let draggedId = null;
+
+  const clearDropState = () => {
+    rows.forEach(row => {
+      row.classList.remove("is-dragging", "drag-over-before", "drag-over-after");
+    });
+  };
+
+  const getInsertAfter = (row, event) => {
+    const rect = row.getBoundingClientRect();
+    return event.clientY > rect.top + rect.height / 2;
+  };
+
+  rows.forEach(row => {
+    row.addEventListener("dragstart", (event) => {
+      if (!event.target.closest(".vocab-drag-handle")) {
+        event.preventDefault();
+        return;
+      }
+
+      draggedId = row.getAttribute("data-vocab-id");
+      row.classList.add("is-dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", draggedId);
+    });
+
+    row.addEventListener("dragover", (event) => {
+      if (!draggedId || draggedId === row.getAttribute("data-vocab-id")) return;
+      event.preventDefault();
+      row.classList.toggle("drag-over-before", !getInsertAfter(row, event));
+      row.classList.toggle("drag-over-after", getInsertAfter(row, event));
+    });
+
+    row.addEventListener("dragleave", () => {
+      row.classList.remove("drag-over-before", "drag-over-after");
+    });
+
+    row.addEventListener("drop", (event) => {
+      if (!draggedId) return;
+      event.preventDefault();
+
+      const targetId = row.getAttribute("data-vocab-id");
+      const insertAfter = getInsertAfter(row, event);
+      clearDropState();
+
+      if (!targetId || draggedId === targetId) {
+        draggedId = null;
+        return;
+      }
+
+      const orderedIds = (project.vocab || []).map(vocab => vocab.id);
+      const draggedIndex = orderedIds.indexOf(draggedId);
+      if (draggedIndex === -1) {
+        draggedId = null;
+        return;
+      }
+
+      orderedIds.splice(draggedIndex, 1);
+      const targetIndex = orderedIds.indexOf(targetId);
+      if (targetIndex === -1) {
+        draggedId = null;
+        return;
+      }
+
+      orderedIds.splice(insertAfter ? targetIndex + 1 : targetIndex, 0, draggedId);
+      const didReorder = reorderVocabInProject(project.id, orderedIds);
+      draggedId = null;
+
+      if (didReorder) {
+        renderProjectDetail();
+      }
+    });
+
+    row.addEventListener("dragend", () => {
+      draggedId = null;
+      clearDropState();
+    });
+  });
+}
+
 function renderProjectDetail() {
   const proj = getProjectById(currentProjectId);
   if (!proj) {
@@ -1533,7 +1618,7 @@ function renderProjectDetail() {
         <table class="vocab-table">
           <thead>
             <tr>
-              <th style="width: 60px; text-align: center;">STT</th>
+              <th style="width: 86px; text-align: center;">STT</th>
               <th>Tiếng Nhật</th>
               <th>Romaji</th>
               <th>Nghĩa Tiếng Việt</th>
@@ -1554,8 +1639,11 @@ function renderProjectDetail() {
       }
 
       tableHtml += `
-        <tr>
-          <td data-label="STT" style="text-align: center; font-family: var(--font-mono); font-size: 0.95rem; color: var(--ink-soft);">${index + 1}</td>
+        <tr class="project-vocab-row" data-vocab-id="${v.id}" draggable="true">
+          <td data-label="STT" class="vocab-order-cell">
+            <button class="vocab-drag-handle" type="button" title="Kéo để đổi vị trí" aria-label="Kéo để đổi vị trí từ ${v.romaji}">↕</button>
+            <span class="vocab-order-number">${(v.orderIndex ?? index) + 1}</span>
+          </td>
           <td data-label="Tiếng Nhật" class="vocab-jp-cell">
             ${cleanToKanaOnly(v.japanese)}
             <button class="btn btn-secondary speak-row-btn" data-text="${cleanToKanaOnly(v.japanese)}" style="width:24px; height:24px; font-size:0.7rem; vertical-align:middle; padding:0; border:none; background:transparent; box-shadow:none; cursor:pointer;" title="Nghe phát âm">🔊</button>
@@ -1583,6 +1671,8 @@ function renderProjectDetail() {
       </div>
     `;
     tableContainer.innerHTML = tableHtml;
+
+    setupProjectVocabDragSort(proj);
 
     // Đăng ký sự kiện Sửa/Xóa từ vựng
     document.querySelectorAll(".edit-vocab-btn").forEach(btn => {
@@ -2249,7 +2339,8 @@ function createWordCard(v, displayIndex, projectName) {
   wordInfo.style.display = "flex";
   wordInfo.style.flexDirection = "column";
 
-  const stt = `<span style="color: var(--ink-faint); font-size: 11px; margin-right: 4px;">#${displayIndex}</span>`;
+  const fixedDisplayIndex = (v.orderIndex ?? (displayIndex - 1)) + 1;
+  const stt = `<span style="color: var(--ink-faint); font-size: 11px; margin-right: 4px;">#${fixedDisplayIndex}</span>`;
   
   const textSpan = document.createElement("span");
   textSpan.style.fontWeight = isChecked ? "600" : "500";
@@ -3746,11 +3837,12 @@ function setupJsonImportExport() {
           const projects = getProjects();
           
           // Chuẩn hóa và làm sạch từ vựng khi nhập
-          const cleanedVocab = importedProj.vocab.map(v => ({
+          const cleanedVocab = importedProj.vocab.map((v, index) => ({
             id: "v-" + Date.now() + "-" + Math.random().toString(36).substr(2, 5),
             japanese: v.japanese || "",
             romaji: (v.romaji || "").toLowerCase().trim(),
             meaning: v.meaning || "",
+            orderIndex: index,
             correctCount: 0,
             wrongCount: 0,
             historyTimes: [],
@@ -3807,7 +3899,8 @@ function setupJsonImportExport() {
         vocab: proj.vocab.map(v => ({
           japanese: v.japanese,
           romaji: v.romaji,
-          meaning: v.meaning
+          meaning: v.meaning,
+          orderIndex: v.orderIndex || 0
         }))
       };
 

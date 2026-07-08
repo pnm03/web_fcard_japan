@@ -53,6 +53,7 @@ const BASE_VOCAB_COLUMNS = new Set([
 ]);
 
 const LEARNING_VOCAB_COLUMNS = [
+  "order_index",
   "history_times",
   "answer_history",
   "last_tested_at",
@@ -407,7 +408,7 @@ function calculateMasteryScore(vocab) {
   return Math.round(clampNumber(score, 0, 100));
 }
 
-function normalizeVocab(vocab) {
+function normalizeVocab(vocab, fallbackOrderIndex = 0) {
   const correctCount = toNonNegativeInt(vocab.correctCount ?? vocab.correct_count);
   const wrongCount = toNonNegativeInt(vocab.wrongCount ?? vocab.wrong_count);
   const historyTimes = normalizeHistoryTimes(vocab.historyTimes ?? vocab.history_times);
@@ -418,6 +419,7 @@ function normalizeVocab(vocab) {
     ...vocab,
     correctCount,
     wrongCount,
+    orderIndex: toNonNegativeInt(vocab.orderIndex ?? vocab.order_index, fallbackOrderIndex),
     historyTimes,
     answerHistory,
     difficultyScore: Math.round(clampNumber(toFiniteNumber(vocab.difficultyScore ?? vocab.difficulty_score, 0), 0, 100)),
@@ -443,6 +445,27 @@ function normalizeVocab(vocab) {
   ));
 
   return normalized;
+}
+
+function normalizeVocabList(vocabList = []) {
+  const normalized = (vocabList || []).map((vocab, index) => ({
+    ...normalizeVocab(vocab, index),
+    __originalIndex: index
+  }));
+
+  normalized.sort((a, b) => {
+    const orderDiff = (a.orderIndex || 0) - (b.orderIndex || 0);
+    if (orderDiff !== 0) return orderDiff;
+    return a.__originalIndex - b.__originalIndex;
+  });
+
+  return normalized.map((vocab, index) => {
+    const { __originalIndex, ...cleanVocab } = vocab;
+    return {
+      ...cleanVocab,
+      orderIndex: index
+    };
+  });
 }
 
 function rememberVocabColumns(rows = []) {
@@ -472,6 +495,7 @@ function buildVocabUpsertPayload(vocab, projectId) {
   };
 
   const learningPayload = {
+    order_index: normalized.orderIndex,
     history_times: normalized.historyTimes,
     answer_history: normalized.answerHistory,
     last_tested_at: toDbTimestamp(normalized.lastTested),
@@ -653,7 +677,7 @@ export function getProjects() {
     const projects = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
     return projects.map(project => ({
       ...project,
-      vocab: (project.vocab || []).map(normalizeVocab)
+      vocab: normalizeVocabList(project.vocab || [])
     }));
   } catch (e) {
     console.error("Lỗi khi đọc localStorage", e);
@@ -662,7 +686,11 @@ export function getProjects() {
 }
 
 export function saveProjects(projects) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+  const normalizedProjects = (projects || []).map(project => ({
+    ...project,
+    vocab: normalizeVocabList(project.vocab || [])
+  }));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedProjects));
 }
 
 export function getProjectById(projectId) {
@@ -747,6 +775,7 @@ export function addVocabToProject(projectId, vocabData) {
     japanese: vocabData.japanese.trim(),
     romaji: vocabData.romaji.trim().toLowerCase(),
     meaning: vocabData.meaning.trim(),
+    orderIndex: projects[projectIndex].vocab.length,
     correctCount: 0,
     wrongCount: 0,
     historyTimes: [],
@@ -813,6 +842,54 @@ export function updateVocabInProject(projectId, vocabId, updatedData) {
       .from("vocab")
       .upsert(buildVocabUpsertPayload(updated, projectId));
     if (error) throw error;
+  });
+
+  return true;
+}
+
+export function reorderVocabInProject(projectId, orderedVocabIds) {
+  if (!Array.isArray(orderedVocabIds) || orderedVocabIds.length === 0) {
+    return false;
+  }
+
+  const projects = getProjects();
+  const projectIndex = projects.findIndex(p => p.id === projectId);
+  if (projectIndex === -1) return false;
+
+  const currentVocab = projects[projectIndex].vocab || [];
+  const vocabById = new Map(currentVocab.map(v => [v.id, v]));
+  const seenIds = new Set();
+  const reordered = [];
+
+  orderedVocabIds.forEach(id => {
+    const vocab = vocabById.get(id);
+    if (vocab && !seenIds.has(id)) {
+      seenIds.add(id);
+      reordered.push(vocab);
+    }
+  });
+
+  currentVocab.forEach(vocab => {
+    if (!seenIds.has(vocab.id)) {
+      reordered.push(vocab);
+    }
+  });
+
+  projects[projectIndex].vocab = reordered.map((vocab, index) => ({
+    ...vocab,
+    orderIndex: index
+  }));
+
+  saveProjects(projects);
+
+  safeSync(async () => {
+    const payload = projects[projectIndex].vocab.map(vocab => buildVocabUpsertPayload(vocab, projectId));
+    if (payload.length > 0) {
+      const { error } = await supabase
+        .from("vocab")
+        .upsert(payload);
+      if (error) throw error;
+    }
   });
 
   return true;
@@ -1016,6 +1093,7 @@ export async function fetchAndSyncFromSupabase() {
           japanese: v.japanese,
           romaji: v.romaji,
           meaning: v.meaning,
+          order_index: v.order_index,
           correct_count: v.correct_count,
           wrong_count: v.wrong_count,
           difficulty_score: v.difficulty_score,
