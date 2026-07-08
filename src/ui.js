@@ -1516,23 +1516,14 @@ function setupProjectVocabDragSort(project) {
   const rows = Array.from(document.querySelectorAll(".project-vocab-row"));
   if (!project || rows.length < 2) return;
 
-  let pressTimer = null;
   let pressState = null;
   let dragState = null;
-  const longPressMs = 240;
-  const moveCancelPx = 14;
+  const dragStartPx = 3;
 
   const clearDropState = () => {
     document.querySelectorAll(".project-vocab-row").forEach(row => {
-      row.classList.remove("is-dragging", "drag-over-before", "drag-over-after");
+      row.classList.remove("drag-over-before", "drag-over-after");
     });
-  };
-
-  const clearPressTimer = () => {
-    if (pressTimer) {
-      clearTimeout(pressTimer);
-      pressTimer = null;
-    }
   };
 
   const getPoint = (event) => {
@@ -1547,13 +1538,29 @@ function setupProjectVocabDragSort(project) {
     return !!target.closest("button, a, input, textarea, select, label, [contenteditable='true']");
   };
 
-  const getRowFromPoint = (point) => {
-    return document.elementFromPoint(point.x, point.y)?.closest(".project-vocab-row") || null;
-  };
-
   const getInsertAfter = (row, point) => {
     const rect = row.getBoundingClientRect();
     return point.y > rect.top + rect.height / 2;
+  };
+
+  const getTargetPlacement = (point) => {
+    const availableRows = rows.filter(row => row !== dragState?.draggedRow);
+    if (!availableRows.length) return null;
+
+    for (const row of availableRows) {
+      const rect = row.getBoundingClientRect();
+      if (point.y < rect.top) {
+        return { row, insertAfter: false };
+      }
+      if (point.y <= rect.bottom) {
+        return { row, insertAfter: getInsertAfter(row, point) };
+      }
+    }
+
+    return {
+      row: availableRows[availableRows.length - 1],
+      insertAfter: true
+    };
   };
 
   const createDragPreview = (row, rect) => {
@@ -1575,6 +1582,22 @@ function setupProjectVocabDragSort(project) {
     return preview;
   };
 
+  const createDropPlaceholder = (row, rect) => {
+    const placeholder = document.createElement("tr");
+    placeholder.className = "project-vocab-drop-placeholder";
+
+    const cell = document.createElement("td");
+    cell.colSpan = row.children.length || 7;
+
+    const gap = document.createElement("div");
+    gap.className = "project-vocab-drop-gap";
+    gap.style.height = `${Math.max(52, rect.height)}px`;
+
+    cell.appendChild(gap);
+    placeholder.appendChild(cell);
+    return placeholder;
+  };
+
   const updateDragPreview = (point) => {
     if (!dragState?.preview) return;
 
@@ -1590,37 +1613,41 @@ function setupProjectVocabDragSort(project) {
     if (!dragState) return;
 
     clearDropState();
-    const targetRow = getRowFromPoint(point);
-    const targetId = targetRow?.getAttribute("data-vocab-id") || null;
+    const placement = getTargetPlacement(point);
 
-    if (!targetRow || targetId === dragState.draggedId) {
+    if (!placement) {
       dragState.targetId = null;
       dragState.insertAfter = false;
-      dragState.draggedRow.classList.add("is-dragging");
       return;
     }
 
-    const insertAfter = getInsertAfter(targetRow, point);
-    targetRow.classList.toggle("drag-over-before", !insertAfter);
-    targetRow.classList.toggle("drag-over-after", insertAfter);
-    dragState.draggedRow.classList.add("is-dragging");
-    dragState.targetId = targetId;
+    const { row, insertAfter } = placement;
+    const parent = row.parentElement;
+    if (parent && dragState.placeholder) {
+      parent.insertBefore(dragState.placeholder, insertAfter ? row.nextSibling : row);
+    }
+
+    row.classList.toggle("drag-over-before", !insertAfter);
+    row.classList.toggle("drag-over-after", insertAfter);
+    dragState.targetId = row.getAttribute("data-vocab-id");
     dragState.insertAfter = insertAfter;
   };
 
-  const startDrag = (row) => {
+  const startDrag = (row, point) => {
     const draggedId = row.getAttribute("data-vocab-id");
     if (!draggedId) return;
-    const startPoint = pressState ? { x: pressState.startX, y: pressState.startY } : null;
     const rect = row.getBoundingClientRect();
-    const offsetX = startPoint ? startPoint.x - rect.left : rect.width / 2;
-    const offsetY = startPoint ? startPoint.y - rect.top : rect.height / 2;
+    const startPoint = point || { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    const offsetX = startPoint.x - rect.left;
+    const offsetY = startPoint.y - rect.top;
     const preview = createDragPreview(row, rect);
+    const placeholder = createDropPlaceholder(row, rect);
 
     dragState = {
       draggedId,
       draggedRow: row,
       preview,
+      placeholder,
       offsetX,
       offsetY,
       width: rect.width,
@@ -1630,22 +1657,24 @@ function setupProjectVocabDragSort(project) {
     };
     row.classList.add("is-dragging");
     document.body.classList.add("vocab-row-dragging");
-    updateDragPreview(startPoint || { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+    row.parentElement?.insertBefore(placeholder, row.nextSibling);
+    updateDragPreview(startPoint);
+    updateDropTarget(startPoint);
   };
 
   const finishDrag = (shouldCommit) => {
-    clearPressTimer();
-
     if (!dragState) {
       pressState = null;
       return;
     }
 
-    const { draggedId, targetId, insertAfter, preview } = dragState;
+    const { draggedId, draggedRow, targetId, insertAfter, preview, placeholder } = dragState;
     dragState = null;
     pressState = null;
     preview?.classList.add("is-dropping");
     setTimeout(() => preview?.remove(), 120);
+    placeholder?.remove();
+    draggedRow?.classList.remove("is-dragging");
     clearDropState();
     document.body.classList.remove("vocab-row-dragging");
 
@@ -1660,6 +1689,10 @@ function setupProjectVocabDragSort(project) {
     if (targetIndex === -1) return;
 
     orderedIds.splice(insertAfter ? targetIndex + 1 : targetIndex, 0, draggedId);
+    if (orderedIds.every((id, index) => id === (project.vocab || [])[index]?.id)) {
+      return;
+    }
+
     const didReorder = reorderVocabInProject(project.id, orderedIds);
     if (didReorder) {
       renderProjectDetail();
@@ -1671,16 +1704,12 @@ function setupProjectVocabDragSort(project) {
       if (event.button !== 0 || isInteractiveTarget(event.target)) return;
       const point = getPoint(event);
       pressState = { row, startX: point.x, startY: point.y };
-      clearPressTimer();
-      pressTimer = setTimeout(() => startDrag(row), longPressMs);
     });
 
     row.addEventListener("touchstart", (event) => {
       if (event.touches.length !== 1 || isInteractiveTarget(event.target)) return;
       const point = getPoint(event);
       pressState = { row, startX: point.x, startY: point.y };
-      clearPressTimer();
-      pressTimer = setTimeout(() => startDrag(row), longPressMs);
     }, { passive: true });
 
     row.addEventListener("contextmenu", (event) => {
@@ -1696,11 +1725,16 @@ function setupProjectVocabDragSort(project) {
     const point = getPoint(event);
     if (!dragState && pressState) {
       const distance = Math.hypot(point.x - pressState.startX, point.y - pressState.startY);
-      if (distance > moveCancelPx) {
-        clearPressTimer();
-        pressState = null;
+      if (distance < dragStartPx) {
+        return;
       }
-      return;
+
+      event.preventDefault();
+      startDrag(pressState.row, point);
+      if (!dragState) {
+        pressState = null;
+        return;
+      }
     }
 
     event.preventDefault();
@@ -1715,7 +1749,6 @@ function setupProjectVocabDragSort(project) {
       return;
     }
 
-    clearPressTimer();
     pressState = null;
   };
 
@@ -1728,8 +1761,9 @@ function setupProjectVocabDragSort(project) {
   document.addEventListener("touchcancel", handleCancel, { passive: true });
 
   cleanupProjectVocabDragSort = () => {
-    clearPressTimer();
+    dragState?.placeholder?.remove();
     dragState?.preview?.remove();
+    dragState?.draggedRow?.classList.remove("is-dragging");
     pressState = null;
     dragState = null;
     clearDropState();
