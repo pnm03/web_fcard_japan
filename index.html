@@ -5,6 +5,14 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Nihongo Flashcard - Sổ Tay Luyện Tập Tiếng Nhật</title>
+    <script>
+      try {
+        const savedTheme = localStorage.getItem("nihongo_account_theme");
+        if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+      } catch (error) {
+        // Theme mặc định vẫn hoạt động nếu trình duyệt chặn localStorage.
+      }
+    </script>
     <style>
       html {
         background: #f4f1ea;
@@ -312,9 +320,17 @@
             aria-haspopup="menu"
             aria-expanded="false"
           >
+            <span class="app-user-avatar" aria-hidden="true">
+              <img id="app-user-avatar-image" alt="">
+              <span id="app-user-avatar-fallback">Q</span>
+            </span>
             <span id="app-user-email"></span>
           </button>
           <div class="app-user-dropdown" id="app-user-dropdown" role="menu" aria-hidden="true">
+            <button type="button" data-account-panel="personal" role="menuitem">Thông tin cá nhân</button>
+            <button type="button" data-account-panel="security" role="menuitem">Bảo mật</button>
+            <button type="button" data-account-panel="settings" role="menuitem">Cài đặt</button>
+            <div class="app-user-dropdown-divider" aria-hidden="true"></div>
             <button type="button" id="app-signout-btn" role="menuitem">Đăng xuất</button>
           </div>
         </div>
@@ -953,6 +969,144 @@
       </main>
 
       <!-- ================= MODALS SECTION ================= -->
+
+      <!-- Modal: Tài khoản -->
+      <div class="modal-overlay account-modal-overlay" id="account-modal">
+        <div class="modal-container account-modal" role="dialog" aria-modal="true" aria-labelledby="account-modal-title">
+          <header class="account-modal-header">
+            <div>
+              <p class="account-modal-kicker">Tài khoản</p>
+              <h2 id="account-modal-title">Không gian của bạn</h2>
+            </div>
+            <button type="button" class="account-modal-close" id="close-account-modal-btn" aria-label="Đóng" title="Đóng">×</button>
+          </header>
+
+          <div class="account-modal-layout">
+            <nav class="account-tabs" aria-label="Quản lý tài khoản">
+              <button type="button" class="active" data-account-tab="personal">Thông tin cá nhân</button>
+              <button type="button" data-account-tab="security">Bảo mật</button>
+              <button type="button" data-account-tab="settings">Cài đặt</button>
+            </nav>
+
+            <div class="account-content">
+              <section class="account-panel active" data-account-panel-content="personal">
+                <div class="account-section-heading">
+                  <h3>Thông tin cá nhân</h3>
+                  <p>Thông tin hiển thị trên tài khoản Nihongo Flashcard.</p>
+                </div>
+
+                <div class="account-avatar-editor">
+                  <div class="account-avatar-preview">
+                    <img id="account-avatar-preview-image" alt="Ảnh đại diện">
+                    <span id="account-avatar-preview-fallback">Q</span>
+                  </div>
+                  <div class="account-avatar-actions">
+                    <strong>Ảnh đại diện</strong>
+                    <small>JPEG, PNG hoặc WebP, tối đa 5 MB.</small>
+                    <div>
+                      <label class="btn btn-secondary account-upload-btn" for="account-avatar-input">Chọn ảnh</label>
+                      <input type="file" id="account-avatar-input" accept="image/jpeg,image/png,image/webp" hidden>
+                      <button type="button" class="account-text-btn" id="remove-account-avatar-btn">Gỡ ảnh</button>
+                    </div>
+                  </div>
+                </div>
+
+                <form id="account-profile-form">
+                  <div class="form-group">
+                    <label for="account-display-name">Tên hiển thị</label>
+                    <input type="text" class="form-control" id="account-display-name" maxlength="40" required autocomplete="nickname">
+                  </div>
+                  <div class="form-group">
+                    <label for="account-email">Email</label>
+                    <input type="email" class="form-control" id="account-email" readonly>
+                  </div>
+                  <div class="account-form-actions">
+                    <span class="account-message" id="account-profile-message" aria-live="polite"></span>
+                    <button type="submit" class="btn btn-primary">Lưu thông tin</button>
+                  </div>
+                </form>
+              </section>
+
+              <section class="account-panel" data-account-panel-content="security">
+                <div class="account-section-heading">
+                  <h3>Bảo mật</h3>
+                  <p>Đổi mật khẩu hoặc quản lý vòng đời tài khoản.</p>
+                </div>
+
+                <form id="account-password-form">
+                  <div class="account-form-grid">
+                    <div class="form-group">
+                      <label for="account-new-password">Mật khẩu mới</label>
+                      <input type="password" class="form-control" id="account-new-password" minlength="8" required autocomplete="new-password">
+                    </div>
+                    <div class="form-group">
+                      <label for="account-confirm-password">Xác nhận mật khẩu</label>
+                      <input type="password" class="form-control" id="account-confirm-password" minlength="8" required autocomplete="new-password">
+                    </div>
+                  </div>
+                  <div class="account-form-actions">
+                    <span class="account-message" id="account-password-message" aria-live="polite"></span>
+                    <button type="submit" class="btn btn-primary">Đổi mật khẩu</button>
+                  </div>
+                </form>
+
+                <div class="account-danger-zone">
+                  <div>
+                    <h4>Xóa tài khoản</h4>
+                    <p>Dữ liệu dự án, từ vựng và tiến độ trên cloud sẽ bị xóa vĩnh viễn.</p>
+                  </div>
+                  <form id="account-delete-form">
+                    <label for="account-delete-confirm">Nhập <strong>XOA TAI KHOAN</strong> để xác nhận</label>
+                    <div class="account-delete-row">
+                      <input type="text" class="form-control" id="account-delete-confirm" autocomplete="off" placeholder="XOA TAI KHOAN">
+                      <button type="submit" class="btn account-danger-btn">Xóa tài khoản</button>
+                    </div>
+                    <span class="account-message" id="account-delete-message" aria-live="polite"></span>
+                  </form>
+                </div>
+              </section>
+
+              <section class="account-panel" data-account-panel-content="settings">
+                <div class="account-section-heading">
+                  <h3>Cài đặt</h3>
+                  <p>Cá nhân hóa giao diện và quyền sử dụng dữ liệu.</p>
+                </div>
+
+                <form id="account-settings-form">
+                  <fieldset class="account-theme-fieldset">
+                    <legend>Giao diện</legend>
+                    <div class="account-theme-grid" id="account-theme-grid"></div>
+                  </fieldset>
+
+                  <div class="account-preference-list">
+                    <label class="account-toggle-row">
+                      <span>
+                        <strong>Nhắc ôn tập qua email</strong>
+                        <small>Cho phép gửi lịch và từ cần ôn tới email tài khoản.</small>
+                      </span>
+                      <input type="checkbox" id="account-email-notifications">
+                      <span class="account-toggle" aria-hidden="true"></span>
+                    </label>
+                    <label class="account-toggle-row">
+                      <span>
+                        <strong>Phân tích dữ liệu dự án</strong>
+                        <small>Cho phép dùng thống kê học tập để cải thiện gợi ý ôn tập.</small>
+                      </span>
+                      <input type="checkbox" id="account-project-analytics">
+                      <span class="account-toggle" aria-hidden="true"></span>
+                    </label>
+                  </div>
+
+                  <div class="account-form-actions">
+                    <span class="account-message" id="account-settings-message" aria-live="polite"></span>
+                    <button type="submit" class="btn btn-primary">Lưu cài đặt</button>
+                  </div>
+                </form>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
       
       <!-- Modal: Kiểm tra nghĩa từ vựng -->
       <div class="modal-overlay" id="quiz-check-meaning-modal">

@@ -605,6 +605,12 @@ export function getCloudUser() {
   return cloudUser;
 }
 
+export function clearCurrentUserLocalData(userId = getCloudUserId()) {
+  if (!userId) return;
+  localStorage.removeItem(`${STORAGE_KEY}_${userId}`);
+  localStorage.removeItem(`${ATTENDANCE_STORAGE_PREFIX}_${userId}`);
+}
+
 export function setAttendanceUser(user) {
   attendanceUser = user ? {
     id: user.id || user.email || "local-user",

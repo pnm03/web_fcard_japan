@@ -23,12 +23,23 @@ import {
   setCloudUser,
   markVocabAsMaxDifficulty,
   setAttendanceUser,
+  clearCurrentUserLocalData,
   getAttendanceStats,
   buyStreakFreeze,
   ATTENDANCE_FREEZE_COST,
   ATTENDANCE_FREEZE_MAX
 } from "./storage.js";
 import { supabase } from "./supabase.js";
+import {
+  ACCOUNT_THEMES,
+  applyAccountTheme,
+  deleteOwnAccount,
+  getAccountProfile,
+  removeAccountAvatar,
+  restoreSavedAccountTheme,
+  updateAccountProfile,
+  uploadAccountAvatar
+} from "./account.js";
 import { QuizSession } from "./quiz.js";
 import { 
   HIRAGANA_LIST, 
@@ -58,6 +69,7 @@ let currentSmartReviewSelectedId = null;
 let attendanceSession = null;
 let cleanupProjectVocabDragSort = null;
 let currentAuthSession = null;
+let currentAccountProfile = null;
 let hasRestoredAfterAuth = false;
 let isPasswordRecoveryMode = false;
 const MS_PER_HOUR = 60 * 60 * 1000;
@@ -198,7 +210,9 @@ function startQuizWithVocabIds(vocabIds, message = "") {
 // Khởi tạo các sự kiện giao diện
 export function initUI() {
   document.body.classList.add("auth-loading");
+  restoreSavedAccountTheme();
   setupAuthUI();
+  setupAccountCenterUI();
   setupNavigation();
   setupProjectActions();
   setupVocabActions();
@@ -455,64 +469,57 @@ function setupAuthUI() {
 
   const accountMenu = document.getElementById("app-user-menu");
   const accountTrigger = document.getElementById("app-user-trigger");
-  const accountDropdown = document.getElementById("app-user-dropdown");
-  let accountMenuHideTimer = null;
-
-  const setAccountMenuOpen = (isOpen) => {
-    if (!accountMenu || !accountTrigger || !accountDropdown) return;
-    accountMenu.classList.toggle("is-open", isOpen);
-    accountTrigger.setAttribute("aria-expanded", String(isOpen));
-    accountDropdown.setAttribute("aria-hidden", String(!isOpen));
-  };
-
-  const cancelAccountMenuHide = () => {
-    if (accountMenuHideTimer !== null) {
-      window.clearTimeout(accountMenuHideTimer);
-      accountMenuHideTimer = null;
-    }
-  };
-
-  const openAccountMenu = () => {
-    cancelAccountMenuHide();
-    setAccountMenuOpen(true);
-  };
-
-  const scheduleAccountMenuHide = () => {
-    cancelAccountMenuHide();
-    accountMenuHideTimer = window.setTimeout(() => {
-      const stillInteracting = accountMenu?.matches(":hover")
-        || accountMenu?.contains(document.activeElement);
-      if (!stillInteracting) setAccountMenuOpen(false);
-      accountMenuHideTimer = null;
-    }, 2000);
-  };
-
-  accountMenu?.addEventListener("mouseenter", openAccountMenu);
-  accountMenu?.addEventListener("mouseleave", scheduleAccountMenuHide);
-  accountMenu?.addEventListener("focusin", openAccountMenu);
-  accountMenu?.addEventListener("focusout", scheduleAccountMenuHide);
   accountTrigger?.addEventListener("click", () => {
-    cancelAccountMenuHide();
-    setAccountMenuOpen(!accountMenu.classList.contains("is-open"));
+    setAppUserMenuOpen(!accountMenu.classList.contains("is-open"));
   });
   document.addEventListener("pointerdown", (event) => {
     if (accountMenu && !accountMenu.contains(event.target)) {
-      cancelAccountMenuHide();
-      setAccountMenuOpen(false);
+      setAppUserMenuOpen(false);
     }
   });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && accountMenu?.classList.contains("is-open")) {
-      cancelAccountMenuHide();
-      setAccountMenuOpen(false);
+      setAppUserMenuOpen(false);
       accountTrigger?.focus();
     }
   });
 
   document.getElementById("app-signout-btn")?.addEventListener("click", async () => {
-    setAccountMenuOpen(false);
+    setAppUserMenuOpen(false);
     await supabase.auth.signOut();
   });
+}
+
+function setAppUserMenuOpen(isOpen) {
+  const accountMenu = document.getElementById("app-user-menu");
+  const accountTrigger = document.getElementById("app-user-trigger");
+  const accountDropdown = document.getElementById("app-user-dropdown");
+  if (!accountMenu || !accountTrigger || !accountDropdown) return;
+
+  accountMenu.classList.toggle("is-open", isOpen);
+  accountTrigger.setAttribute("aria-expanded", String(isOpen));
+  accountDropdown.setAttribute("aria-hidden", String(!isOpen));
+}
+
+function setAccountAvatar(imageEl, fallbackEl, avatarUrl, displayName) {
+  if (!imageEl || !fallbackEl) return;
+  const initial = String(displayName || "H").trim().charAt(0).toUpperCase() || "H";
+  fallbackEl.textContent = initial;
+  imageEl.onerror = () => {
+    imageEl.removeAttribute("src");
+    imageEl.hidden = true;
+    fallbackEl.hidden = false;
+  };
+
+  if (avatarUrl) {
+    imageEl.src = avatarUrl;
+    imageEl.hidden = false;
+    fallbackEl.hidden = true;
+  } else {
+    imageEl.removeAttribute("src");
+    imageEl.hidden = true;
+    fallbackEl.hidden = false;
+  }
 }
 
 function updateAuthShell(user) {
@@ -521,13 +528,316 @@ function updateAuthShell(user) {
   document.body.classList.toggle("auth-required", !isLoggedIn);
   document.body.classList.toggle("auth-ready", isLoggedIn);
 
+  currentAccountProfile = user ? getAccountProfile(user) : null;
+  if (currentAccountProfile) applyAccountTheme(currentAccountProfile.theme);
+
   const email = user?.email || "";
   const emailEl = document.getElementById("app-user-email");
   if (emailEl) {
-    const localPart = email.split("@")[0] || "";
-    emailEl.textContent = localPart.split(/[._+-]/)[0] || localPart;
+    emailEl.textContent = currentAccountProfile?.displayName || "";
     emailEl.title = email;
   }
+
+  setAccountAvatar(
+    document.getElementById("app-user-avatar-image"),
+    document.getElementById("app-user-avatar-fallback"),
+    currentAccountProfile?.avatarUrl || "",
+    currentAccountProfile?.displayName || ""
+  );
+}
+
+function setAccountMessage(id, message = "", type = "") {
+  const element = document.getElementById(id);
+  if (!element) return;
+  element.textContent = message;
+  element.className = `account-message${type ? ` ${type}` : ""}`;
+}
+
+function getFriendlyAccountError(error, fallback) {
+  const text = `${error?.message || ""} ${error?.code || ""}`.toLowerCase();
+  if (text.includes("bucket not found") || text.includes("row-level security")) {
+    return "Chức năng này cần migration tài khoản mới trên Supabase.";
+  }
+  if (text.includes("new password should be different")) {
+    return "Mật khẩu mới cần khác mật khẩu hiện tại.";
+  }
+  if (text.includes("password should be at least")) {
+    return "Mật khẩu cần có ít nhất 8 ký tự.";
+  }
+  if (text.includes("authentication required") || text.includes("jwt")) {
+    return "Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.";
+  }
+  return error?.message || fallback;
+}
+
+function setAccountPanel(panelName) {
+  const validPanel = ["personal", "security", "settings"].includes(panelName)
+    ? panelName
+    : "personal";
+  document.querySelectorAll("[data-account-tab]").forEach(button => {
+    const isActive = button.dataset.accountTab === validPanel;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+  });
+  document.querySelectorAll("[data-account-panel-content]").forEach(panel => {
+    panel.classList.toggle("active", panel.dataset.accountPanelContent === validPanel);
+  });
+}
+
+function renderAccountThemeOptions(selectedTheme) {
+  const container = document.getElementById("account-theme-grid");
+  if (!container) return;
+
+  container.innerHTML = ACCOUNT_THEMES.map(theme => `
+    <label class="account-theme-option">
+      <input type="radio" name="account-theme" value="${escapeHtml(theme.id)}" ${theme.id === selectedTheme ? "checked" : ""}>
+      <span class="account-theme-preview" aria-hidden="true">
+        ${theme.colors.map(color => `<i style="--theme-swatch: ${escapeHtml(color)}"></i>`).join("")}
+      </span>
+      <span>
+        <strong>${escapeHtml(theme.name)}</strong>
+        <small>${escapeHtml(theme.description)}</small>
+      </span>
+    </label>
+  `).join("");
+
+  container.querySelectorAll('input[name="account-theme"]').forEach(input => {
+    input.addEventListener("change", () => {
+      if (input.checked) applyAccountTheme(input.value);
+    });
+  });
+}
+
+function populateAccountModal() {
+  const user = currentAuthSession?.user;
+  if (!user) return;
+  currentAccountProfile = getAccountProfile(user);
+
+  const displayNameInput = document.getElementById("account-display-name");
+  const emailInput = document.getElementById("account-email");
+  const emailNotificationsInput = document.getElementById("account-email-notifications");
+  const projectAnalyticsInput = document.getElementById("account-project-analytics");
+
+  if (displayNameInput) displayNameInput.value = currentAccountProfile.displayName;
+  if (emailInput) emailInput.value = user.email || "";
+  if (emailNotificationsInput) emailNotificationsInput.checked = currentAccountProfile.emailNotifications;
+  if (projectAnalyticsInput) projectAnalyticsInput.checked = currentAccountProfile.allowProjectAnalytics;
+
+  setAccountAvatar(
+    document.getElementById("account-avatar-preview-image"),
+    document.getElementById("account-avatar-preview-fallback"),
+    currentAccountProfile.avatarUrl,
+    currentAccountProfile.displayName
+  );
+  renderAccountThemeOptions(currentAccountProfile.theme);
+  ["account-profile-message", "account-password-message", "account-delete-message", "account-settings-message"]
+    .forEach(id => setAccountMessage(id));
+}
+
+function openAccountModal(panelName = "personal") {
+  if (!currentAuthSession?.user) return;
+  populateAccountModal();
+  setAccountPanel(panelName);
+  setAppUserMenuOpen(false);
+  const modal = document.getElementById("account-modal");
+  modal?.classList.add("active");
+  window.setTimeout(() => modal?.querySelector("[data-account-tab].active")?.focus(), 80);
+}
+
+function closeAccountModal() {
+  document.getElementById("account-modal")?.classList.remove("active");
+  if (currentAccountProfile) applyAccountTheme(currentAccountProfile.theme);
+}
+
+function setupAccountCenterUI() {
+  const modal = document.getElementById("account-modal");
+  const closeButton = document.getElementById("close-account-modal-btn");
+
+  document.querySelectorAll("[data-account-panel]").forEach(button => {
+    button.addEventListener("click", () => openAccountModal(button.dataset.accountPanel));
+  });
+  document.querySelectorAll("[data-account-tab]").forEach(button => {
+    button.addEventListener("click", () => setAccountPanel(button.dataset.accountTab));
+  });
+
+  closeButton?.addEventListener("click", closeAccountModal);
+  modal?.addEventListener("pointerdown", event => {
+    if (event.target === modal) closeAccountModal();
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && modal?.classList.contains("active")) {
+      closeAccountModal();
+    }
+  });
+
+  document.getElementById("account-profile-form")?.addEventListener("submit", async event => {
+    event.preventDefault();
+    const button = event.submitter;
+    const displayName = document.getElementById("account-display-name")?.value || "";
+    setAccountMessage("account-profile-message", "Đang lưu...");
+    if (button) button.disabled = true;
+
+    try {
+      const user = await updateAccountProfile({ displayName });
+      if (user && currentAuthSession) currentAuthSession.user = user;
+      updateAuthShell(user || currentAuthSession?.user);
+      populateAccountModal();
+      setAccountMessage("account-profile-message", "Đã lưu tên hiển thị.", "success");
+    } catch (error) {
+      setAccountMessage(
+        "account-profile-message",
+        getFriendlyAccountError(error, "Chưa lưu được thông tin."),
+        "error"
+      );
+    } finally {
+      if (button) button.disabled = false;
+    }
+  });
+
+  document.getElementById("account-avatar-input")?.addEventListener("change", async event => {
+    const file = event.target.files?.[0];
+    if (!file || !currentAuthSession?.user) return;
+    setAccountMessage("account-profile-message", "Đang tối ưu và tải ảnh lên...");
+    event.target.disabled = true;
+
+    try {
+      const result = await uploadAccountAvatar(currentAuthSession.user, file);
+      if (result.user && currentAuthSession) currentAuthSession.user = result.user;
+      updateAuthShell(result.user || currentAuthSession.user);
+      populateAccountModal();
+      setAccountMessage("account-profile-message", "Đã cập nhật ảnh đại diện.", "success");
+    } catch (error) {
+      setAccountMessage(
+        "account-profile-message",
+        getFriendlyAccountError(error, "Chưa đổi được ảnh đại diện."),
+        "error"
+      );
+    } finally {
+      event.target.disabled = false;
+      event.target.value = "";
+    }
+  });
+
+  document.getElementById("remove-account-avatar-btn")?.addEventListener("click", async event => {
+    if (!currentAuthSession?.user) return;
+    event.currentTarget.disabled = true;
+    setAccountMessage("account-profile-message", "Đang gỡ ảnh...");
+
+    try {
+      const user = await removeAccountAvatar(currentAuthSession.user);
+      if (user && currentAuthSession) currentAuthSession.user = user;
+      updateAuthShell(user || currentAuthSession.user);
+      populateAccountModal();
+      setAccountMessage("account-profile-message", "Đã gỡ ảnh đại diện.", "success");
+    } catch (error) {
+      setAccountMessage(
+        "account-profile-message",
+        getFriendlyAccountError(error, "Chưa gỡ được ảnh đại diện."),
+        "error"
+      );
+    } finally {
+      event.currentTarget.disabled = false;
+    }
+  });
+
+  document.getElementById("account-password-form")?.addEventListener("submit", async event => {
+    event.preventDefault();
+    const button = event.submitter;
+    const password = document.getElementById("account-new-password")?.value || "";
+    const confirmPassword = document.getElementById("account-confirm-password")?.value || "";
+
+    if (password.length < 8) {
+      setAccountMessage("account-password-message", "Mật khẩu cần có ít nhất 8 ký tự.", "error");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setAccountMessage("account-password-message", "Hai mật khẩu chưa khớp.", "error");
+      return;
+    }
+
+    if (button) button.disabled = true;
+    setAccountMessage("account-password-message", "Đang đổi mật khẩu...");
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+      event.currentTarget.reset();
+      setAccountMessage("account-password-message", "Đổi mật khẩu thành công.", "success");
+    } catch (error) {
+      setAccountMessage(
+        "account-password-message",
+        getFriendlyAccountError(error, "Chưa đổi được mật khẩu."),
+        "error"
+      );
+    } finally {
+      if (button) button.disabled = false;
+    }
+  });
+
+  document.getElementById("account-settings-form")?.addEventListener("submit", async event => {
+    event.preventDefault();
+    const button = event.submitter;
+    const selectedTheme = document.querySelector('input[name="account-theme"]:checked')?.value || "paper";
+    const emailNotifications = document.getElementById("account-email-notifications")?.checked === true;
+    const allowProjectAnalytics = document.getElementById("account-project-analytics")?.checked === true;
+
+    if (button) button.disabled = true;
+    setAccountMessage("account-settings-message", "Đang lưu...");
+    try {
+      const user = await updateAccountProfile({
+        theme: selectedTheme,
+        emailNotifications,
+        allowProjectAnalytics
+      });
+      if (user && currentAuthSession) currentAuthSession.user = user;
+      updateAuthShell(user || currentAuthSession?.user);
+      populateAccountModal();
+      setAccountPanel("settings");
+      setAccountMessage("account-settings-message", "Đã lưu cài đặt.", "success");
+    } catch (error) {
+      setAccountMessage(
+        "account-settings-message",
+        getFriendlyAccountError(error, "Chưa lưu được cài đặt."),
+        "error"
+      );
+    } finally {
+      if (button) button.disabled = false;
+    }
+  });
+
+  document.getElementById("account-delete-form")?.addEventListener("submit", async event => {
+    event.preventDefault();
+    const confirmation = document.getElementById("account-delete-confirm")?.value.trim().toUpperCase();
+    if (confirmation !== "XOA TAI KHOAN") {
+      setAccountMessage("account-delete-message", "Câu xác nhận chưa đúng.", "error");
+      return;
+    }
+
+    const shouldDelete = window.confirm(
+      "Xóa vĩnh viễn tài khoản cùng toàn bộ dự án và tiến độ trên cloud?"
+    );
+    if (!shouldDelete) return;
+
+    const button = event.submitter;
+    const userId = currentAuthSession?.user?.id;
+    if (button) button.disabled = true;
+    setAccountMessage("account-delete-message", "Đang xóa tài khoản...");
+
+    try {
+      await deleteOwnAccount();
+      clearCurrentUserLocalData(userId);
+      localStorage.removeItem("nihongo_account_theme");
+      applyAccountTheme("paper");
+      await supabase.auth.signOut({ scope: "local" });
+      window.location.reload();
+    } catch (error) {
+      setAccountMessage(
+        "account-delete-message",
+        getFriendlyAccountError(error, "Chưa xóa được tài khoản."),
+        "error"
+      );
+      if (button) button.disabled = false;
+    }
+  });
 }
 
 function rerenderActiveViewAfterSync() {
