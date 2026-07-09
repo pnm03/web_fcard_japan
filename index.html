@@ -1056,9 +1056,11 @@
                     <p>Dữ liệu dự án, từ vựng và tiến độ trên cloud sẽ bị xóa vĩnh viễn.</p>
                   </div>
                   <form id="account-delete-form">
-                    <label for="account-delete-confirm">Nhập <strong>XOA TAI KHOAN</strong> để xác nhận</label>
+                    <label for="account-delete-confirm">
+                      Nhập email <strong id="account-delete-email-hint"></strong> để xác nhận
+                    </label>
                     <div class="account-delete-row">
-                      <input type="text" class="form-control" id="account-delete-confirm" autocomplete="off" placeholder="XOA TAI KHOAN">
+                      <input type="email" class="form-control" id="account-delete-confirm" autocomplete="off" placeholder="email@example.com">
                       <button type="submit" class="btn account-danger-btn">Xóa tài khoản</button>
                     </div>
                     <span class="account-message" id="account-delete-message" aria-live="polite"></span>

@@ -320,6 +320,15 @@ body {
   transition: color var(--transition), background-color var(--transition);
 }
 
+body.account-modal-open {
+  position: fixed;
+  right: 0;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -1926,6 +1935,7 @@ h2 {
 /* Account center */
 .account-modal-overlay {
   padding: 24px;
+  overscroll-behavior: contain;
 }
 
 .account-modal {
@@ -2024,6 +2034,7 @@ h2 {
 .account-content {
   min-width: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 26px 30px 32px;
 }
 

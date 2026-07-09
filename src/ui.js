@@ -70,6 +70,7 @@ let attendanceSession = null;
 let cleanupProjectVocabDragSort = null;
 let currentAuthSession = null;
 let currentAccountProfile = null;
+let accountModalScrollY = 0;
 let hasRestoredAfterAuth = false;
 let isPasswordRecoveryMode = false;
 const MS_PER_HOUR = 60 * 60 * 1000;
@@ -617,11 +618,18 @@ function populateAccountModal() {
   const emailInput = document.getElementById("account-email");
   const emailNotificationsInput = document.getElementById("account-email-notifications");
   const projectAnalyticsInput = document.getElementById("account-project-analytics");
+  const deleteEmailHint = document.getElementById("account-delete-email-hint");
+  const deleteConfirmInput = document.getElementById("account-delete-confirm");
 
   if (displayNameInput) displayNameInput.value = currentAccountProfile.displayName;
   if (emailInput) emailInput.value = user.email || "";
   if (emailNotificationsInput) emailNotificationsInput.checked = currentAccountProfile.emailNotifications;
   if (projectAnalyticsInput) projectAnalyticsInput.checked = currentAccountProfile.allowProjectAnalytics;
+  if (deleteEmailHint) deleteEmailHint.textContent = user.email || "";
+  if (deleteConfirmInput) {
+    deleteConfirmInput.value = "";
+    deleteConfirmInput.placeholder = user.email || "email@example.com";
+  }
 
   setAccountAvatar(
     document.getElementById("account-avatar-preview-image"),
@@ -640,12 +648,25 @@ function openAccountModal(panelName = "personal") {
   setAccountPanel(panelName);
   setAppUserMenuOpen(false);
   const modal = document.getElementById("account-modal");
+  if (!document.body.classList.contains("account-modal-open")) {
+    accountModalScrollY = window.scrollY;
+    const scrollbarWidth = Math.max(0, window.innerWidth - document.documentElement.clientWidth);
+    document.body.style.top = `-${accountModalScrollY}px`;
+    document.body.style.paddingRight = scrollbarWidth ? `${scrollbarWidth}px` : "";
+    document.body.classList.add("account-modal-open");
+  }
   modal?.classList.add("active");
   window.setTimeout(() => modal?.querySelector("[data-account-tab].active")?.focus(), 80);
 }
 
 function closeAccountModal() {
   document.getElementById("account-modal")?.classList.remove("active");
+  if (document.body.classList.contains("account-modal-open")) {
+    document.body.classList.remove("account-modal-open");
+    document.body.style.top = "";
+    document.body.style.paddingRight = "";
+    window.scrollTo(0, accountModalScrollY);
+  }
   if (currentAccountProfile) applyAccountTheme(currentAccountProfile.theme);
 }
 
@@ -806,9 +827,10 @@ function setupAccountCenterUI() {
 
   document.getElementById("account-delete-form")?.addEventListener("submit", async event => {
     event.preventDefault();
-    const confirmation = document.getElementById("account-delete-confirm")?.value.trim().toUpperCase();
-    if (confirmation !== "XOA TAI KHOAN") {
-      setAccountMessage("account-delete-message", "Câu xác nhận chưa đúng.", "error");
+    const confirmation = document.getElementById("account-delete-confirm")?.value.trim().toLowerCase();
+    const accountEmail = currentAuthSession?.user?.email?.trim().toLowerCase() || "";
+    if (!accountEmail || confirmation !== accountEmail) {
+      setAccountMessage("account-delete-message", "Email xác nhận chưa đúng.", "error");
       return;
     }
 
