@@ -453,7 +453,64 @@ function setupAuthUI() {
     await applyAuthSession(data?.session || currentAuthSession, { restore: true });
   });
 
+  const accountMenu = document.getElementById("app-user-menu");
+  const accountTrigger = document.getElementById("app-user-trigger");
+  const accountDropdown = document.getElementById("app-user-dropdown");
+  let accountMenuHideTimer = null;
+
+  const setAccountMenuOpen = (isOpen) => {
+    if (!accountMenu || !accountTrigger || !accountDropdown) return;
+    accountMenu.classList.toggle("is-open", isOpen);
+    accountTrigger.setAttribute("aria-expanded", String(isOpen));
+    accountDropdown.setAttribute("aria-hidden", String(!isOpen));
+  };
+
+  const cancelAccountMenuHide = () => {
+    if (accountMenuHideTimer !== null) {
+      window.clearTimeout(accountMenuHideTimer);
+      accountMenuHideTimer = null;
+    }
+  };
+
+  const openAccountMenu = () => {
+    cancelAccountMenuHide();
+    setAccountMenuOpen(true);
+  };
+
+  const scheduleAccountMenuHide = () => {
+    cancelAccountMenuHide();
+    accountMenuHideTimer = window.setTimeout(() => {
+      const stillInteracting = accountMenu?.matches(":hover")
+        || accountMenu?.contains(document.activeElement);
+      if (!stillInteracting) setAccountMenuOpen(false);
+      accountMenuHideTimer = null;
+    }, 2000);
+  };
+
+  accountMenu?.addEventListener("mouseenter", openAccountMenu);
+  accountMenu?.addEventListener("mouseleave", scheduleAccountMenuHide);
+  accountMenu?.addEventListener("focusin", openAccountMenu);
+  accountMenu?.addEventListener("focusout", scheduleAccountMenuHide);
+  accountTrigger?.addEventListener("click", () => {
+    cancelAccountMenuHide();
+    setAccountMenuOpen(!accountMenu.classList.contains("is-open"));
+  });
+  document.addEventListener("pointerdown", (event) => {
+    if (accountMenu && !accountMenu.contains(event.target)) {
+      cancelAccountMenuHide();
+      setAccountMenuOpen(false);
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && accountMenu?.classList.contains("is-open")) {
+      cancelAccountMenuHide();
+      setAccountMenuOpen(false);
+      accountTrigger?.focus();
+    }
+  });
+
   document.getElementById("app-signout-btn")?.addEventListener("click", async () => {
+    setAccountMenuOpen(false);
     await supabase.auth.signOut();
   });
 }
@@ -467,7 +524,8 @@ function updateAuthShell(user) {
   const email = user?.email || "";
   const emailEl = document.getElementById("app-user-email");
   if (emailEl) {
-    emailEl.textContent = email;
+    const localPart = email.split("@")[0] || "";
+    emailEl.textContent = localPart.split(/[._+-]/)[0] || localPart;
     emailEl.title = email;
   }
 }

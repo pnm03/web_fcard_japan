@@ -304,9 +304,19 @@
             Kiểm tra
           </button>
         </nav>
-        <div class="app-user-menu">
-          <span id="app-user-email"></span>
-          <button type="button" class="btn btn-secondary" id="app-signout-btn">Đăng xuất</button>
+        <div class="app-user-menu" id="app-user-menu">
+          <button
+            type="button"
+            class="app-user-trigger"
+            id="app-user-trigger"
+            aria-haspopup="menu"
+            aria-expanded="false"
+          >
+            <span id="app-user-email"></span>
+          </button>
+          <div class="app-user-dropdown" id="app-user-dropdown" role="menu" aria-hidden="true">
+            <button type="button" id="app-signout-btn" role="menuitem">Đăng xuất</button>
+          </div>
         </div>
       </header>
 

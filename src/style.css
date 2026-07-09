@@ -232,10 +232,34 @@ button, input, select, textarea {
 }
 
 .app-user-menu {
-  display: flex;
+  position: relative;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
   min-width: 0;
+}
+
+.app-user-trigger {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 6px 9px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: color 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.app-user-trigger:hover,
+.app-user-trigger:focus-visible,
+.app-user-menu.is-open .app-user-trigger {
+  border-color: var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  outline: none;
 }
 
 #app-user-email {
@@ -243,8 +267,52 @@ button, input, select, textarea {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font: 600 11px var(--font-mono);
+}
+
+.app-user-dropdown {
+  position: absolute;
+  top: calc(100% + 5px);
+  right: 0;
+  z-index: 20;
+  min-width: 112px;
+  padding: 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--paper);
+  box-shadow: 0 10px 24px rgba(45, 38, 30, 0.14);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity 0.16s ease, transform 0.16s ease, visibility 0s linear 0.16s;
+}
+
+.app-user-menu.is-open .app-user-dropdown {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
+  transition-delay: 0s;
+}
+
+.app-user-dropdown button {
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
   color: var(--ink-soft);
   font: 600 11px var(--font-mono);
+  text-align: left;
+  cursor: pointer;
+}
+
+.app-user-dropdown button:hover,
+.app-user-dropdown button:focus-visible {
+  background: var(--accent-soft);
+  color: var(--accent);
+  outline: none;
 }
 
 .logo {
@@ -3401,11 +3469,20 @@ body,
   .app-user-menu {
     grid-area: user;
     justify-content: center;
-    width: 100%;
+    justify-self: center;
   }
 
   #app-user-email {
     max-width: 56vw;
+  }
+
+  .app-user-dropdown {
+    right: 50%;
+    transform: translate(50%, -4px);
+  }
+
+  .app-user-menu.is-open .app-user-dropdown {
+    transform: translate(50%, 0);
   }
 
   .main-nav {
