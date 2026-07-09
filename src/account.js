@@ -42,6 +42,30 @@ export const ACCOUNT_THEMES = [
     name: "Mực Sumi",
     description: "Tối giản, rõ nét và điềm tĩnh",
     colors: ["#f1f2f2", "#34383b", "#52725f"]
+  },
+  {
+    id: "tokyo-night",
+    name: "Tokyo Night",
+    description: "Nền đêm, hồng neon và xanh điện",
+    colors: ["#151820", "#ff5c8a", "#55c7d8"]
+  },
+  {
+    id: "lantern",
+    name: "Đèn Lồng",
+    description: "Than tối, vàng ấm và đỏ son",
+    colors: ["#1d1a17", "#f1b83b", "#e46652"]
+  },
+  {
+    id: "ramune",
+    name: "Ramune Pop",
+    description: "Bạc hà, hồng kẹo và vàng chanh",
+    colors: ["#e9f8f5", "#df4f7b", "#e6b83f"]
+  },
+  {
+    id: "shinkansen",
+    name: "Shinkansen",
+    description: "Trắng lạnh, xanh tốc độ và tín hiệu đỏ",
+    colors: ["#edf3f7", "#185da8", "#d9474f"]
   }
 ];
 

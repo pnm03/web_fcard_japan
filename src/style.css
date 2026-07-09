@@ -169,6 +169,136 @@ html[data-theme="mono"] {
   --bg-image: radial-gradient(rgba(32, 35, 37, 0.04) 1px, transparent 1px);
 }
 
+html[data-theme="tokyo-night"] {
+  color-scheme: dark;
+  --bg: #11141a;
+  --paper: #1b2028;
+  --field: #242b35;
+  --ink: #f4f5f7;
+  --ink-soft: #b6bec9;
+  --ink-faint: #7e8998;
+  --accent: #ff5c8a;
+  --accent-hover: #ff7ba2;
+  --accent-soft: #422538;
+  --accent-glow: rgba(255, 92, 138, 0.2);
+  --good: #62d59a;
+  --good-soft: #203d32;
+  --warning: #f2c14e;
+  --warning-soft: #433821;
+  --error: #ff746d;
+  --error-soft: #462a2b;
+  --line: #303846;
+  --line-strong: #414b5b;
+  --radius: 5px;
+  --radius-lg: 8px;
+  --modal-overlay: rgba(3, 5, 9, 0.72);
+  --shadow: 0 10px 30px -16px rgba(0, 0, 0, 0.7);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-hover: 0 18px 44px -18px rgba(0, 0, 0, 0.85);
+  --bg-image:
+    linear-gradient(rgba(85, 199, 216, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 92, 138, 0.035) 1px, transparent 1px);
+  --bg-size: 24px 24px;
+}
+
+html[data-theme="lantern"] {
+  color-scheme: dark;
+  --bg: #171512;
+  --paper: #24211d;
+  --field: #2e2a25;
+  --ink: #fff7e8;
+  --ink-soft: #c9bcaa;
+  --ink-faint: #8f8375;
+  --accent: #f1b83b;
+  --accent-hover: #ffd166;
+  --accent-soft: #49391d;
+  --accent-glow: rgba(241, 184, 59, 0.18);
+  --good: #58b99f;
+  --good-soft: #203b34;
+  --warning: #f0a346;
+  --warning-soft: #49351f;
+  --error: #e46652;
+  --error-soft: #482b27;
+  --line: #3a352e;
+  --line-strong: #50483e;
+  --radius: 3px;
+  --radius-lg: 6px;
+  --modal-overlay: rgba(4, 3, 2, 0.72);
+  --shadow: 0 12px 28px -18px rgba(0, 0, 0, 0.8);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-hover: 0 20px 46px -18px rgba(0, 0, 0, 0.9);
+  --bg-image: repeating-linear-gradient(
+    0deg,
+    rgba(241, 184, 59, 0.018) 0,
+    rgba(241, 184, 59, 0.018) 1px,
+    transparent 1px,
+    transparent 5px
+  );
+  --bg-size: auto;
+}
+
+html[data-theme="ramune"] {
+  --bg: #e7f7f3;
+  --paper: #fbfffe;
+  --field: #ffffff;
+  --ink: #23302f;
+  --ink-soft: #536866;
+  --ink-faint: #829b97;
+  --accent: #df4f7b;
+  --accent-hover: #c53867;
+  --accent-soft: #f5dbe4;
+  --accent-glow: rgba(223, 79, 123, 0.16);
+  --good: #278b80;
+  --good-soft: #d6eeea;
+  --warning: #b8861d;
+  --warning-soft: #f7edc9;
+  --error: #d45158;
+  --error-soft: #f7dfe1;
+  --line: #d1e8e3;
+  --line-strong: #b8d8d1;
+  --radius: 14px;
+  --radius-lg: 20px;
+  --modal-overlay: rgba(25, 57, 53, 0.38);
+  --shadow: 0 9px 26px -16px rgba(25, 93, 84, 0.28);
+  --shadow-sm: 0 2px 7px rgba(25, 93, 84, 0.1);
+  --shadow-hover: 0 18px 38px -18px rgba(25, 93, 84, 0.38);
+  --bg-image:
+    radial-gradient(rgba(223, 79, 123, 0.045) 1px, transparent 1px),
+    radial-gradient(rgba(39, 139, 128, 0.04) 1px, transparent 1px);
+  --bg-size: 12px 12px, 18px 18px;
+}
+
+html[data-theme="shinkansen"] {
+  --bg: #eaf0f5;
+  --paper: #f9fbfd;
+  --field: #ffffff;
+  --ink: #172431;
+  --ink-soft: #4c6072;
+  --ink-faint: #8091a0;
+  --accent: #185da8;
+  --accent-hover: #104a89;
+  --accent-soft: #d9e7f5;
+  --accent-glow: rgba(24, 93, 168, 0.15);
+  --good: #16806c;
+  --good-soft: #d8ebe7;
+  --warning: #c17b13;
+  --warning-soft: #f5e9d3;
+  --error: #d9474f;
+  --error-soft: #f6dfe1;
+  --line: #d6e0e9;
+  --line-strong: #bdcbd7;
+  --radius: 4px;
+  --radius-lg: 7px;
+  --modal-overlay: rgba(23, 36, 49, 0.44);
+  --shadow: 0 8px 24px -16px rgba(25, 58, 88, 0.3);
+  --shadow-sm: 0 1px 4px rgba(25, 58, 88, 0.12);
+  --shadow-hover: 0 18px 34px -18px rgba(25, 58, 88, 0.42);
+  --bg-image:
+    linear-gradient(rgba(24, 93, 168, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(24, 93, 168, 0.028) 1px, transparent 1px);
+  --bg-size: 20px 20px;
+}
+
 /* Reset & Basic styling */
 * {
   margin: 0;
@@ -1854,8 +1984,8 @@ h2 {
 .account-modal-layout {
   display: grid;
   grid-template-columns: 190px minmax(0, 1fr);
-  min-height: 500px;
-  max-height: calc(min(760px, 100dvh - 48px) - 85px);
+  height: min(620px, calc(100dvh - 134px));
+  min-height: 0;
 }
 
 .account-tabs {
@@ -4423,8 +4553,8 @@ body,
 
   .account-modal-layout {
     display: block;
+    height: calc(92dvh - 72px);
     min-height: 0;
-    max-height: calc(92dvh - 72px);
     overflow: hidden;
   }
 
