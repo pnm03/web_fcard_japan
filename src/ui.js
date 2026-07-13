@@ -70,7 +70,11 @@ let attendanceSession = null;
 let cleanupProjectVocabDragSort = null;
 let currentAuthSession = null;
 let currentAccountProfile = null;
-let accountModalScrollY = 0;
+let modalPageScrollY = 0;
+const modalScrollLockOwners = new Set();
+let hasCheckedReloadReview = false;
+let overdueReviewItems = [];
+let overdueReviewCheckedIds = new Set();
 let hasRestoredAfterAuth = false;
 let isPasswordRecoveryMode = false;
 const MS_PER_HOUR = 60 * 60 * 1000;
@@ -177,7 +181,7 @@ function getWeakReasonSummary(analysis, maxItems = 2) {
   return positiveReasons.slice(0, maxItems).map(reason => reason.label).join(", ");
 }
 
-function startQuizWithVocabIds(vocabIds, message = "") {
+function startQuizWithVocabIds(vocabIds, message = "", startImmediately = false) {
   if (!vocabIds || vocabIds.length === 0) {
     alert("Chưa có từ phù hợp để kiểm tra.");
     return;
@@ -202,6 +206,12 @@ function startQuizWithVocabIds(vocabIds, message = "") {
   savedConfig.answerSource = savedConfig.answerSource || "all";
   localStorage.setItem("nihongo_quiz_config", JSON.stringify(savedConfig));
 
+  if (startImmediately) {
+    quizConfigBackup = savedConfig;
+    startQuiz(savedConfig);
+    return;
+  }
+
   switchView("quiz-setup-view");
   if (message) {
     setTimeout(() => alert(message), 100);
@@ -214,6 +224,7 @@ export function initUI() {
   restoreSavedAccountTheme();
   setupAuthUI();
   setupAccountCenterUI();
+  setupReloadReviewReminder();
   setupNavigation();
   setupProjectActions();
   setupVocabActions();
@@ -239,6 +250,31 @@ export function initUI() {
   // Khởi tạo hiển thị trạng thái đồng bộ đám mây và chạy đồng bộ ngầm lần đầu
   setupCloudSyncUI();
   setupAppAuth();
+}
+
+function lockPageScroll(owner) {
+  if (!owner || modalScrollLockOwners.has(owner)) return;
+  if (modalScrollLockOwners.size === 0) {
+    modalPageScrollY = window.scrollY;
+    const scrollbarWidth = Math.max(0, window.innerWidth - document.documentElement.clientWidth);
+    document.body.style.top = `-${modalPageScrollY}px`;
+    document.body.style.paddingRight = scrollbarWidth ? `${scrollbarWidth}px` : "";
+    document.body.classList.add("modal-scroll-locked");
+  }
+  modalScrollLockOwners.add(owner);
+  document.body.classList.add(owner);
+}
+
+function unlockPageScroll(owner) {
+  if (!owner || !modalScrollLockOwners.has(owner)) return;
+  modalScrollLockOwners.delete(owner);
+  document.body.classList.remove(owner);
+  if (modalScrollLockOwners.size === 0) {
+    document.body.classList.remove("modal-scroll-locked");
+    document.body.style.top = "";
+    document.body.style.paddingRight = "";
+    window.scrollTo(0, modalPageScrollY);
+  }
 }
 
 function setAuthMode(mode) {
@@ -648,25 +684,14 @@ function openAccountModal(panelName = "personal") {
   setAccountPanel(panelName);
   setAppUserMenuOpen(false);
   const modal = document.getElementById("account-modal");
-  if (!document.body.classList.contains("account-modal-open")) {
-    accountModalScrollY = window.scrollY;
-    const scrollbarWidth = Math.max(0, window.innerWidth - document.documentElement.clientWidth);
-    document.body.style.top = `-${accountModalScrollY}px`;
-    document.body.style.paddingRight = scrollbarWidth ? `${scrollbarWidth}px` : "";
-    document.body.classList.add("account-modal-open");
-  }
+  lockPageScroll("account-modal-open");
   modal?.classList.add("active");
   window.setTimeout(() => modal?.querySelector("[data-account-tab].active")?.focus(), 80);
 }
 
 function closeAccountModal() {
   document.getElementById("account-modal")?.classList.remove("active");
-  if (document.body.classList.contains("account-modal-open")) {
-    document.body.classList.remove("account-modal-open");
-    document.body.style.top = "";
-    document.body.style.paddingRight = "";
-    window.scrollTo(0, accountModalScrollY);
-  }
+  unlockPageScroll("account-modal-open");
   if (currentAccountProfile) applyAccountTheme(currentAccountProfile.theme);
 }
 
@@ -862,6 +887,113 @@ function setupAccountCenterUI() {
   });
 }
 
+function updateOverdueReviewSelectionUI() {
+  const selectedCount = overdueReviewCheckedIds.size;
+  const totalCount = overdueReviewItems.length;
+  const countElement = document.getElementById("review-reminder-selected-count");
+  const selectAll = document.getElementById("review-reminder-select-all");
+  const startButton = document.getElementById("review-reminder-start-btn");
+
+  if (countElement) countElement.textContent = `${selectedCount}/${totalCount} từ được chọn`;
+  if (selectAll) {
+    selectAll.checked = totalCount > 0 && selectedCount === totalCount;
+    selectAll.indeterminate = selectedCount > 0 && selectedCount < totalCount;
+  }
+  if (startButton) {
+    startButton.disabled = selectedCount === 0;
+    startButton.textContent = selectedCount > 0 ? `Kiểm tra ${selectedCount} từ` : "Chọn từ để kiểm tra";
+  }
+}
+
+function renderOverdueReviewReminder() {
+  const list = document.getElementById("review-reminder-list");
+  const summary = document.getElementById("review-reminder-summary");
+  if (!list || !summary) return;
+
+  summary.textContent = `${overdueReviewItems.length} từ đã quá hạn ôn tập.`;
+  list.innerHTML = overdueReviewItems.map(vocab => {
+    const masteryScore = Math.max(0, Math.min(100, Math.round(Number(vocab.masteryScore) || 0)));
+    const scoreTone = masteryScore >= 70 ? "good" : masteryScore >= 40 ? "warning" : "danger";
+    const overdueText = formatSmartRelativeTime(vocab.nextReviewAt);
+    return `
+      <label class="review-reminder-row">
+        <input type="checkbox" data-review-reminder-id="${escapeHtml(vocab.id)}" checked>
+        <span class="review-reminder-meaning">${escapeHtml(vocab.meaning || "Chưa có nghĩa")}</span>
+        <span class="review-reminder-meta">
+          <span class="review-reminder-overdue">${escapeHtml(overdueText)}</span>
+          <span class="review-reminder-score ${scoreTone}">Điểm ${masteryScore}</span>
+        </span>
+      </label>
+    `;
+  }).join("");
+  updateOverdueReviewSelectionUI();
+}
+
+function closeOverdueReviewReminder() {
+  document.getElementById("review-reminder-modal")?.classList.remove("active");
+  unlockPageScroll("review-reminder-open");
+}
+
+function checkOverdueReviewOnReload() {
+  if (hasCheckedReloadReview || !currentAuthSession?.user) return;
+  hasCheckedReloadReview = true;
+  overdueReviewItems = getReviewDueVocab(1000, "overdue");
+  if (overdueReviewItems.length === 0) return;
+
+  overdueReviewCheckedIds = new Set(overdueReviewItems.map(vocab => vocab.id));
+  renderOverdueReviewReminder();
+  lockPageScroll("review-reminder-open");
+  const modal = document.getElementById("review-reminder-modal");
+  modal?.classList.add("active");
+  window.setTimeout(() => document.getElementById("review-reminder-start-btn")?.focus(), 100);
+}
+
+function setupReloadReviewReminder() {
+  const modal = document.getElementById("review-reminder-modal");
+  const closeButtons = [
+    document.getElementById("close-review-reminder-btn"),
+    document.getElementById("review-reminder-later-btn")
+  ];
+  closeButtons.forEach(button => button?.addEventListener("click", closeOverdueReviewReminder));
+
+  modal?.addEventListener("pointerdown", event => {
+    if (event.target === modal) closeOverdueReviewReminder();
+  });
+
+  document.getElementById("review-reminder-select-all")?.addEventListener("change", event => {
+    overdueReviewCheckedIds = event.target.checked
+      ? new Set(overdueReviewItems.map(vocab => vocab.id))
+      : new Set();
+    document.querySelectorAll("[data-review-reminder-id]").forEach(input => {
+      input.checked = event.target.checked;
+    });
+    updateOverdueReviewSelectionUI();
+  });
+
+  document.getElementById("review-reminder-list")?.addEventListener("change", event => {
+    const vocabId = event.target?.dataset?.reviewReminderId;
+    if (!vocabId) return;
+    if (event.target.checked) overdueReviewCheckedIds.add(vocabId);
+    else overdueReviewCheckedIds.delete(vocabId);
+    updateOverdueReviewSelectionUI();
+  });
+
+  document.getElementById("review-reminder-start-btn")?.addEventListener("click", () => {
+    const selectedIds = overdueReviewItems
+      .filter(vocab => overdueReviewCheckedIds.has(vocab.id))
+      .map(vocab => vocab.id);
+    if (selectedIds.length === 0) return;
+    closeOverdueReviewReminder();
+    startQuizWithVocabIds(selectedIds, "", true);
+  });
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && modal?.classList.contains("active")) {
+      closeOverdueReviewReminder();
+    }
+  });
+}
+
 function rerenderActiveViewAfterSync() {
   const activeView = localStorage.getItem("web_fcard_active_view") || "dashboard-view";
   if (activeView === "dashboard-view") {
@@ -893,17 +1025,23 @@ async function applyAuthSession(session, { restore = false } = {}) {
   updateAuthShell(currentAuthSession?.user || null);
 
   if (!currentAuthSession?.user) {
+    closeOverdueReviewReminder();
+    hasCheckedReloadReview = false;
     hasRestoredAfterAuth = false;
     setAuthMode("login");
     return;
   }
 
+  const shouldCheckOverdueAfterSync = !hasRestoredAfterAuth;
   await fetchAndSyncFromSupabase();
   if (restore || !hasRestoredAfterAuth) {
     restoreActiveView();
     hasRestoredAfterAuth = true;
   } else {
     rerenderActiveViewAfterSync();
+  }
+  if (shouldCheckOverdueAfterSync) {
+    window.setTimeout(checkOverdueReviewOnReload, 250);
   }
 }
 

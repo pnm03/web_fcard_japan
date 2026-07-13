@@ -970,6 +970,39 @@
 
       <!-- ================= MODALS SECTION ================= -->
 
+      <!-- Modal: Nhắc ôn từ quá hạn khi tải lại ứng dụng -->
+      <div class="modal-overlay review-reminder-overlay" id="review-reminder-modal">
+        <div class="modal-container review-reminder-modal" role="dialog" aria-modal="true" aria-labelledby="review-reminder-title">
+          <header class="review-reminder-header">
+            <div>
+              <p>Lịch ôn thông minh</p>
+              <h2 id="review-reminder-title">Đã đến lúc ôn lại</h2>
+            </div>
+            <button type="button" class="review-reminder-close" id="close-review-reminder-btn" aria-label="Đóng" title="Đóng">×</button>
+          </header>
+
+          <div class="review-reminder-intro">
+            <strong id="review-reminder-summary"></strong>
+            <span>Chọn những nghĩa bạn muốn kiểm tra ngay.</span>
+          </div>
+
+          <div class="review-reminder-toolbar">
+            <label>
+              <input type="checkbox" id="review-reminder-select-all" checked>
+              <span>Chọn tất cả</span>
+            </label>
+            <span id="review-reminder-selected-count">0 từ được chọn</span>
+          </div>
+
+          <div class="review-reminder-list" id="review-reminder-list"></div>
+
+          <footer class="review-reminder-actions">
+            <button type="button" class="btn btn-secondary" id="review-reminder-later-btn">Để sau</button>
+            <button type="button" class="btn btn-primary" id="review-reminder-start-btn">Kiểm tra</button>
+          </footer>
+        </div>
+      </div>
+
       <!-- Modal: Tài khoản -->
       <div class="modal-overlay account-modal-overlay" id="account-modal">
         <div class="modal-container account-modal" role="dialog" aria-modal="true" aria-labelledby="account-modal-title">
