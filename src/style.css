@@ -3316,9 +3316,14 @@ select.form-control {
 
 .report-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
   justify-content: center;
   margin-top: 24px;
+}
+
+.report-actions .btn {
+  min-width: 170px;
 }
 
 /* Animations */

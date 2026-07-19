@@ -77,6 +77,7 @@ let overdueReviewItems = [];
 let overdueReviewCheckedIds = new Set();
 let hasRestoredAfterAuth = false;
 let isPasswordRecoveryMode = false;
+let lastReportWrongVocabIds = [];
 const MS_PER_HOUR = 60 * 60 * 1000;
 const MS_PER_DAY = 24 * MS_PER_HOUR;
 let quizActiveSettings = {
@@ -110,42 +111,104 @@ export function cleanToKanaOnly(japaneseText) {
 // Cache giọng nói tiếng Nhật để phản hồi nhanh hơn khi bấm nút đọc
 let cachedJaVoice = null;
 let voicesCached = false;
+let speechRequestId = 0;
+let speechRetryTimer = null;
 
-function ensureJaVoiceCached() {
-  if (voicesCached) return;
-  if ('speechSynthesis' in window) {
-    const voices = window.speechSynthesis.getVoices();
-    if (voices.length > 0) {
-      cachedJaVoice = voices.find(voice => voice.lang.startsWith('ja') || voice.lang === 'ja_JP') || null;
-      voicesCached = true;
-    }
-  }
+function findBestJapaneseVoice(voices = []) {
+  const jaVoices = voices.filter(voice => {
+    const lang = String(voice.lang || "").toLowerCase().replace("_", "-");
+    return lang === "ja" || lang.startsWith("ja-");
+  });
+
+  return jaVoices.find(voice => /google|kyoko|nanami|haruka|ichiro|japan|日本/i.test(voice.name))
+    || jaVoices.find(voice => voice.localService)
+    || jaVoices[0]
+    || null;
 }
 
-export function speakJapanese(text, isManual = false) {
+function ensureJaVoiceCached(forceRefresh = false) {
+  if (!('speechSynthesis' in window)) return [];
+
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length === 0) {
+    voicesCached = false;
+    return voices;
+  }
+
+  const bestVoice = findBestJapaneseVoice(voices);
+  if (bestVoice || forceRefresh || !cachedJaVoice) {
+    cachedJaVoice = bestVoice;
+  }
+
+  // Chỉ coi cache là thật sự sẵn sàng khi đã bắt được voice tiếng Nhật.
+  voicesCached = Boolean(cachedJaVoice);
+  return voices;
+}
+
+function warmSpeechVoices() {
+  if (!('speechSynthesis' in window)) return;
+  ensureJaVoiceCached(true);
+  [80, 300, 900].forEach(delay => {
+    setTimeout(() => ensureJaVoiceCached(true), delay);
+  });
+}
+
+export function speakJapanese(text, isManual = false, retryCount = 0) {
   const isQuizActive = document.getElementById("quiz-active-view")?.classList.contains("active");
   if (!isManual && isQuizActive && typeof quizActiveSettings !== "undefined" && quizActiveSettings.disableTts) {
     return;
   }
 
   if ('speechSynthesis' in window) {
+    const synth = window.speechSynthesis;
+    const cleanText = String(text || "").replace(/\([^)]*\)/g, '').trim();
+    if (!cleanText) return;
+
+    const voices = ensureJaVoiceCached(retryCount > 0);
+    if (!voicesCached && voices.length === 0 && retryCount < 2) {
+      clearTimeout(speechRetryTimer);
+      speechRetryTimer = setTimeout(() => {
+        speakJapanese(cleanText, isManual, retryCount + 1);
+      }, retryCount === 0 ? 160 : 420);
+      return;
+    }
+
+    const requestId = ++speechRequestId;
     // Hủy các giọng đọc đang dang dở để tránh xếp hàng quá lâu
-    window.speechSynthesis.cancel();
-    
-    // Loại bỏ các chữ Latinh/Romaji/chú thích ở trong ngoặc (nếu có) để chỉ phát âm chữ Nhật
-    const cleanText = text.replace(/\([^)]*\)/g, '').trim();
+    synth.cancel();
+    synth.resume?.();
     
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = 'ja-JP';
     utterance.rate = 0.85; // giọng đọc hơi chậm một chút để nghe rõ hơn
     
-    // Sử dụng giọng đã cache để phản hồi nhanh hơn
-    ensureJaVoiceCached();
+    // Sử dụng giọng đã cache để phản hồi nhanh hơn. Sau reload Chrome đôi khi trả voice rỗng,
+    // nên nếu chưa có voice Nhật thì vẫn đọc bằng lang ja-JP và retry nhẹ khi engine báo lỗi.
     if (cachedJaVoice) {
       utterance.voice = cachedJaVoice;
     }
+
+    utterance.onerror = (event) => {
+      const errorCode = String(event.error || "");
+      const shouldRetry = retryCount < 2 && (
+        errorCode === "not-allowed"
+        || errorCode === "synthesis-failed"
+        || errorCode === "audio-busy"
+        || errorCode === "language-unavailable"
+        || errorCode === "voice-unavailable"
+      );
+
+      if (shouldRetry) {
+        setTimeout(() => speakJapanese(cleanText, isManual, retryCount + 1), 280);
+      }
+    };
     
-    window.speechSynthesis.speak(utterance);
+    setTimeout(() => {
+      if (requestId !== speechRequestId) return;
+      synth.resume?.();
+      synth.speak(utterance);
+      setTimeout(() => synth.resume?.(), 80);
+    }, retryCount > 0 ? 80 : 20);
   }
 }
 
@@ -238,13 +301,15 @@ export function initUI() {
   
   // Tải danh sách giọng nói speechSynthesis một cách chủ động (khắc phục lỗi Chrome trả về mảng rỗng lần đầu)
   if ('speechSynthesis' in window) {
-    window.speechSynthesis.getVoices();
-    // Cache giọng ngay khi voices sẵn sàng
-    window.speechSynthesis.onvoiceschanged = () => {
-      ensureJaVoiceCached();
+    warmSpeechVoices();
+    const refreshVoices = () => {
+      ensureJaVoiceCached(true);
     };
-    // Thử cache ngay (có thể đã sẵn sàng)
-    ensureJaVoiceCached();
+    if (typeof window.speechSynthesis.addEventListener === "function") {
+      window.speechSynthesis.addEventListener("voiceschanged", refreshVoices);
+    } else {
+      window.speechSynthesis.onvoiceschanged = refreshVoices;
+    }
   }
   
   // Khởi tạo hiển thị trạng thái đồng bộ đám mây và chạy đồng bộ ngầm lần đầu
@@ -4874,6 +4939,22 @@ function renderQuizReport(report) {
   if (statNeutral) statNeutral.textContent = report.correctRetryCount;
   if (statWrong) statWrong.textContent = report.wrongCount;
 
+  const retryWrongBtn = document.getElementById("report-retry-wrong-btn");
+  lastReportWrongVocabIds = Array.from(new Set(
+    (report.wrongWordsToReview || [])
+      .map(vocab => vocab?.id)
+      .filter(Boolean)
+  ));
+  if (retryWrongBtn) {
+    retryWrongBtn.disabled = lastReportWrongVocabIds.length === 0;
+    retryWrongBtn.textContent = lastReportWrongVocabIds.length > 0
+      ? `Kiểm Tra Lại ${lastReportWrongVocabIds.length} Từ Sai`
+      : "Không Có Từ Sai";
+    retryWrongBtn.title = lastReportWrongVocabIds.length > 0
+      ? "Tạo bài kiểm tra mới chỉ gồm các từ bạn đã trả lời sai."
+      : "Bài này không có từ sai hoàn toàn.";
+  }
+
   const evalEl = document.getElementById("report-evaluation-text");
   if (report.accuracy >= 90) {
     evalEl.textContent = "🥇 Tuyệt vời! Bạn ghi nhớ từ vựng cực kỳ tốt.";
@@ -4957,6 +5038,18 @@ function setupReportEvents() {
       switchView("quiz-setup-view");
     }
   };
+
+  const retryWrongBtn = document.getElementById("report-retry-wrong-btn");
+  if (retryWrongBtn) {
+    retryWrongBtn.onclick = () => {
+      if (!lastReportWrongVocabIds.length) {
+        alert("Bài này không có từ sai hoàn toàn để kiểm tra lại.");
+        return;
+      }
+
+      startQuizWithVocabIds(lastReportWrongVocabIds, "", true);
+    };
+  }
 }
 
 // 9. Tích hợp tính năng Xuất/Nhập dữ liệu dự án dạng JSON

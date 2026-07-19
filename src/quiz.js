@@ -599,18 +599,26 @@ export class QuizSession {
     let correctRetryCount = 0;
     let wrongCount = 0;
     let totalTimeSpent = 0;
+    const wrongVocabById = new Map();
 
     const details = this.questions.map(q => {
       totalTimeSpent += q.timeSpent;
       if (q.answerState === "correct") correctCount++;
       else if (q.answerState === "correct_retry") correctRetryCount++;
-      else if (q.answerState === "wrong") wrongCount++;
+      else if (q.answerState === "wrong") {
+        wrongCount++;
+        if (q.vocab?.id) {
+          wrongVocabById.set(q.vocab.id, q.vocab);
+        }
+      }
 
       // Xác định câu trả lời có bị coi là "Phản xạ chậm" hay không
       // Ngưỡng chậm: Trả lời mất trên 8 giây
       const isSlow = q.answerState.startsWith("correct") && q.timeSpent > 8.0;
 
       return {
+        id: q.vocab.id,
+        projectId: q.vocab.projectId,
         japanese: q.vocab.japanese,
         romaji: q.vocab.romaji,
         meaning: q.vocab.meaning,
@@ -640,7 +648,8 @@ export class QuizSession {
       // Đề xuất các từ cần ôn tập lại (những từ trả lời sai, đúng nhờ gợi ý, hoặc trả lời quá chậm)
       weakWordsToReview: this.questions
         .filter(q => q.answerState === "wrong" || q.answerState === "correct_retry" || q.timeSpent > 8.0)
-        .map(q => q.vocab)
+        .map(q => q.vocab),
+      wrongWordsToReview: Array.from(wrongVocabById.values())
     };
   }
 }
