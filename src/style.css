@@ -3054,6 +3054,15 @@ select.form-control {
   margin-bottom: 10px;
 }
 
+.quiz-answer-count-hint {
+  margin: 8px 0 0;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
 .quiz-question-word {
   font-family: var(--font-jp);
   font-size: 52px;

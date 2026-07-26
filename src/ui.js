@@ -40,7 +40,7 @@ import {
   updateAccountProfile,
   uploadAccountAvatar
 } from "./account.js";
-import { QuizSession } from "./quiz.js";
+import { QuizSession, getAcceptedMeaningAnswers } from "./quiz.js";
 import { 
   HIRAGANA_LIST, 
   KATAKANA_LIST, 
@@ -4521,7 +4521,18 @@ function renderCurrentQuestion() {
 
   const wordDisplay = document.getElementById("quiz-question-word-display");
   const promptEl = document.getElementById("quiz-question-prompt");
+  const answerCountHint = document.getElementById("quiz-answer-count-hint");
   const revealWordBtn = document.getElementById("quiz-reveal-word-btn");
+
+  if (answerCountHint) {
+    const acceptedAnswerCount = isQuizMeaningAnswerMode(question.mode)
+      ? getAcceptedMeaningAnswers(question.vocab.meaning).length
+      : 0;
+    answerCountHint.textContent = acceptedAnswerCount > 1
+      ? `Gợi ý: ${acceptedAnswerCount} đáp án`
+      : "";
+    answerCountHint.hidden = acceptedAnswerCount <= 1;
+  }
 
   wordDisplay.onclick = null;
   wordDisplay.onkeydown = null;

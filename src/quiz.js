@@ -7,6 +7,209 @@ export function normalizeString(str) {
     .replace(/\s+/g, " "); // thay thế nhiều dấu cách bằng 1 dấu cách
 }
 
+export function getAcceptedMeaningAnswers(meaning) {
+  const original = String(meaning || "").trim();
+  if (!original) return [];
+
+  const withoutNotes = original
+    .replace(/\([^()]*\)/g, " ")
+    .replace(/（[^（）]*）/g, " ")
+    .replace(/\s*[;；]\s*ví dụ.*$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const isExplanatoryDefinition = /^(?:hậu tố|đây là lời chào)|(?:thêm vào sau tên|không dùng khi|dùng kèm theo tên)/i.test(withoutNotes);
+  const commaGroups = isExplanatoryDefinition
+    ? [withoutNotes]
+    : withoutNotes.split(/\s*(?:,|，|;|；)\s*|\s+(?:hoặc|hay)\s+/i);
+
+  const conciseGroups = commaGroups.length > 1 && /cách nói|cách gọi|mang nghĩa/i.test(commaGroups[0])
+    ? commaGroups.filter(group => !/cách nói|cách gọi|mang nghĩa/i.test(group))
+    : commaGroups;
+
+  const expandSlashGroup = (group) => {
+    if (!group.includes("/")) return [group];
+
+    if (/\s\/|\/\s/.test(group)) {
+      return group.split(/\s*\/\s*/);
+    }
+
+    const parts = group.split("/").map(part => part.trim()).filter(Boolean);
+    if (parts.length < 2) return [group];
+
+    const firstMatch = parts[0].match(/^(.*\s)?([^\s]+)$/);
+    const lastMatch = parts[parts.length - 1].match(/^([^\s]+)(\s.*)?$/);
+    if (!firstMatch || !lastMatch || parts.slice(1, -1).some(part => /\s/.test(part))) {
+      return parts;
+    }
+
+    const prefix = firstMatch[1] || "";
+    const suffix = lastMatch[2] || "";
+    const options = [firstMatch[2], ...parts.slice(1, -1), lastMatch[1]];
+    return options.map(option => `${prefix}${option}${suffix}`);
+  };
+
+  const answers = conciseGroups
+    .flatMap(expandSlashGroup)
+    .map(answer => answer.trim().replace(/[.!?…]+$/g, ""))
+    .filter(Boolean);
+
+  return [...new Map(answers.map(answer => [removeVietnameseTones(normalizeString(answer)), answer])).values()];
+}
+
+const VIETNAMESE_NUMBER_FILLERS = new Set(["so", "con", "la", "bang", "gia", "tri"]);
+const VIETNAMESE_DIGIT_WORDS = new Map([
+  ["khong", 0],
+  ["mot", 1],
+  ["hai", 2],
+  ["ba", 3],
+  ["bon", 4],
+  ["tu", 4],
+  ["nam", 5],
+  ["lam", 5],
+  ["sau", 6],
+  ["bay", 7],
+  ["tam", 8],
+  ["chin", 9]
+]);
+
+function tokenizeVietnameseNumberAnswer(value) {
+  const normalized = removeVietnameseTones(String(value || "").normalize("NFKC").toLowerCase())
+    .replace(/[()[\]{}]/g, " ")
+    .replace(/[.,;:!?/\\|_+=~`'"“”‘’]/g, " ")
+    .replace(/[-–—]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return normalized ? normalized.split(" ") : [];
+}
+
+function stripVietnameseNumberFillers(tokens) {
+  const result = [...tokens];
+  while (result.length > 0 && VIETNAMESE_NUMBER_FILLERS.has(result[0])) {
+    result.shift();
+  }
+  return result;
+}
+
+function parseArabicIntegerTokens(tokens) {
+  if (!tokens.length || !tokens.every(token => /^\d+$/.test(token))) {
+    return null;
+  }
+
+  const value = Number(tokens.join(""));
+  return Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+function parseVietnameseDigitToken(token) {
+  return VIETNAMESE_DIGIT_WORDS.has(token) ? VIETNAMESE_DIGIT_WORDS.get(token) : null;
+}
+
+function parseVietnameseUnder100(tokens) {
+  if (!tokens.length) return null;
+
+  const numericValue = parseArabicIntegerTokens(tokens);
+  if (numericValue !== null && numericValue < 100) {
+    return numericValue;
+  }
+
+  if (tokens.length === 1) {
+    if (tokens[0] === "muoi") return 10;
+    return parseVietnameseDigitToken(tokens[0]);
+  }
+
+  if (tokens[0] === "muoi") {
+    const ones = parseVietnameseDigitToken(tokens[1]);
+    return ones !== null && tokens.length === 2 ? 10 + ones : null;
+  }
+
+  const tens = parseVietnameseDigitToken(tokens[0]);
+  if (tens !== null && tokens[1] === "muoi") {
+    if (tokens.length === 2) return tens * 10;
+    const ones = parseVietnameseDigitToken(tokens[2]);
+    return ones !== null && tokens.length === 3 ? tens * 10 + ones : null;
+  }
+
+  return null;
+}
+
+function parseVietnameseUnder1000(tokens) {
+  if (!tokens.length) return null;
+
+  const numericValue = parseArabicIntegerTokens(tokens);
+  if (numericValue !== null && numericValue < 1000) {
+    return numericValue;
+  }
+
+  const hundredIndex = tokens.indexOf("tram");
+  if (hundredIndex === -1) {
+    return parseVietnameseUnder100(tokens);
+  }
+
+  const hundredsTokens = tokens.slice(0, hundredIndex);
+  if (hundredsTokens.length !== 1) return null;
+
+  const hundreds = parseVietnameseDigitToken(hundredsTokens[0]);
+  if (hundreds === null) return null;
+
+  let restTokens = tokens.slice(hundredIndex + 1);
+  if (restTokens[0] === "linh" || restTokens[0] === "le") {
+    restTokens = restTokens.slice(1);
+  }
+
+  if (!restTokens.length) return hundreds * 100;
+
+  const rest = parseVietnameseUnder100(restTokens);
+  return rest !== null ? hundreds * 100 + rest : null;
+}
+
+function parseVietnameseNumberWords(tokens) {
+  let remaining = [...tokens];
+  let total = 0;
+  let foundScale = false;
+
+  const scales = [
+    { names: ["ty"], value: 1000000000 },
+    { names: ["trieu"], value: 1000000 },
+    { names: ["nghin", "ngan"], value: 1000 }
+  ];
+
+  for (const scale of scales) {
+    const index = remaining.findIndex(token => scale.names.includes(token));
+    if (index === -1) continue;
+
+    const segment = remaining.slice(0, index);
+    const segmentValue = segment.length ? parseVietnameseUnder1000(segment) : 1;
+    if (segmentValue === null) return null;
+
+    total += segmentValue * scale.value;
+    remaining = remaining.slice(index + 1);
+    foundScale = true;
+  }
+
+  if (remaining.length) {
+    const rest = parseVietnameseUnder1000(remaining);
+    if (rest === null) return null;
+    total += rest;
+  }
+
+  return foundScale || total > 0 || tokens.includes("khong") ? total : null;
+}
+
+function parseVietnameseNumberAnswer(value) {
+  const tokens = stripVietnameseNumberFillers(tokenizeVietnameseNumberAnswer(value));
+  if (!tokens.length) return null;
+
+  const numericValue = parseArabicIntegerTokens(tokens);
+  if (numericValue !== null) return numericValue;
+
+  if (tokens.some(token => /^\d+$/.test(token))) {
+    return parseVietnameseNumberWords(tokens);
+  }
+
+  return parseVietnameseNumberWords(tokens);
+}
+
 export function isSmartVietnameseMatch(userAnswer, correctAnswer) {
   const normUser = normalizeString(userAnswer);
   const normCorrect = normalizeString(correctAnswer);
@@ -16,6 +219,12 @@ export function isSmartVietnameseMatch(userAnswer, correctAnswer) {
   const normUserNoTone = removeVietnameseTones(normUser);
   const normCorrectNoTone = removeVietnameseTones(normCorrect);
   if (normUserNoTone === normCorrectNoTone) return true;
+
+  const userNumber = parseVietnameseNumberAnswer(normUser);
+  const correctNumber = parseVietnameseNumberAnswer(normCorrect);
+  if (userNumber !== null && correctNumber !== null && userNumber === correctNumber) {
+    return true;
+  }
 
   // Danh sách các lượng từ / từ chỉ loại có thể được lược bỏ trong tiếng Việt
   const classifiers = [
@@ -448,7 +657,9 @@ export class QuizSession {
     if (!question) return false;
 
     if (isMeaningAnswerMode(question.mode)) {
-      return isSmartVietnameseMatch(userAnswer, question.vocab.meaning);
+      const fullMeaning = question.vocab.meaning;
+      return isSmartVietnameseMatch(userAnswer, fullMeaning)
+        || getAcceptedMeaningAnswers(fullMeaning).some(answer => isSmartVietnameseMatch(userAnswer, answer));
     }
     if (question.mode === "meaning_to_japanese") {
       return isJapaneseAnswerMatch(userAnswer, question.vocab);
