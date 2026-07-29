@@ -40,7 +40,7 @@ import {
   updateAccountProfile,
   uploadAccountAvatar
 } from "./account.js";
-import { QuizSession, getAcceptedMeaningAnswers } from "./quiz.js";
+import { QuizSession } from "./quiz.js";
 import { 
   HIRAGANA_LIST, 
   KATAKANA_LIST, 
@@ -4320,6 +4320,39 @@ function getQuizCorrectAnswerForDisplay(question) {
   return question.vocab.romaji;
 }
 
+function getMultiMeaningProgress(question) {
+  const answers = Array.isArray(question?.requiredMeaningAnswers)
+    ? question.requiredMeaningAnswers
+    : [];
+  const completed = Array.isArray(question?.completedMeaningAnswerIndexes)
+    ? question.completedMeaningAnswerIndexes.length
+    : 0;
+
+  return {
+    total: answers.length,
+    completed,
+    remaining: Math.max(0, answers.length - completed)
+  };
+}
+
+function updateMultiMeaningNote(question, message = "", tone = "") {
+  const note = document.getElementById("quiz-answer-count-hint");
+  if (!note) return;
+
+  const progress = getMultiMeaningProgress(question);
+  note.className = "quiz-answer-count-hint";
+
+  if (!isQuizMeaningAnswerMode(question?.mode) || progress.total <= 1) {
+    note.textContent = "";
+    note.hidden = true;
+    return;
+  }
+
+  note.hidden = false;
+  note.textContent = message || `Nhập đủ ${progress.total} nghĩa · Đã đúng ${progress.completed}/${progress.total}`;
+  if (tone) note.classList.add(`is-${tone}`);
+}
+
 function showWrongAnswerSheet(correctAnswer, allowPracticeRepeat = false) {
   const bottomSheet = document.getElementById("quiz-bottom-sheet");
   const bottomSheetText = document.getElementById("quiz-bottom-sheet-correct-text");
@@ -4521,18 +4554,9 @@ function renderCurrentQuestion() {
 
   const wordDisplay = document.getElementById("quiz-question-word-display");
   const promptEl = document.getElementById("quiz-question-prompt");
-  const answerCountHint = document.getElementById("quiz-answer-count-hint");
   const revealWordBtn = document.getElementById("quiz-reveal-word-btn");
 
-  if (answerCountHint) {
-    const acceptedAnswerCount = isQuizMeaningAnswerMode(question.mode)
-      ? getAcceptedMeaningAnswers(question.vocab.meaning).length
-      : 0;
-    answerCountHint.textContent = acceptedAnswerCount > 1
-      ? `Gợi ý: ${acceptedAnswerCount} đáp án`
-      : "";
-    answerCountHint.hidden = acceptedAnswerCount <= 1;
-  }
+  updateMultiMeaningNote(question);
 
   wordDisplay.onclick = null;
   wordDisplay.onkeydown = null;
@@ -4635,11 +4659,55 @@ function handleQuizAnswerSubmit() {
 
   const result = activeQuizSession.submitAnswer(answer);
 
-  if (result.status === "correct") {
+  if (result.status === "meaning_progress") {
+    playFeedbackSound(true);
+    inputEl.classList.remove("input-wrong", "shake");
+    inputEl.classList.add("input-correct", "pulse-success");
+    inputEl.value = "";
+    inputEl.placeholder = `Nhập một nghĩa khác · còn ${result.remaining}...`;
+    updateMultiMeaningNote(
+      question,
+      `Đã đúng ${result.completed}/${result.total} · Còn ${result.remaining} nghĩa`,
+      "success"
+    );
+
+    setTimeout(() => {
+      inputEl.classList.remove("input-correct", "pulse-success");
+      focusQuizAnswerInput(inputEl, { delayed: false });
+    }, 260);
+    return;
+  } else if (result.status === "meaning_retry" || result.status === "meaning_duplicate") {
+    const isDuplicate = result.status === "meaning_duplicate";
+    if (!isDuplicate) playFeedbackSound(false);
+
+    inputEl.classList.remove("input-correct", "pulse-success");
+    inputEl.classList.add(isDuplicate ? "input-duplicate" : "input-wrong", "shake");
+    inputEl.value = "";
+    inputEl.placeholder = isDuplicate
+      ? "Nghĩa này đã nhập rồi, hãy nhập nghĩa khác..."
+      : "Chưa đúng, thử một nghĩa còn lại...";
+    updateMultiMeaningNote(
+      question,
+      isDuplicate
+        ? `Nghĩa này đã nhập rồi · Còn ${result.remaining} nghĩa`
+        : `Chưa đúng · Đã đúng ${result.completed}/${result.total}`,
+      isDuplicate ? "warning" : "error"
+    );
+
+    setTimeout(() => {
+      inputEl.classList.remove("input-wrong", "input-duplicate", "shake");
+      focusQuizAnswerInput(inputEl, { delayed: false });
+    }, 420);
+    return;
+  } else if (result.status === "correct") {
     playFeedbackSound(true);
     inputEl.classList.add("input-correct");
     inputEl.classList.add("pulse-success");
     inputEl.disabled = true;
+
+    if (result.total > 1) {
+      updateMultiMeaningNote(question, `Hoàn thành ${result.total}/${result.total} nghĩa`, "success");
+    }
 
     if (quizTimerInterval) clearInterval(quizTimerInterval);
 

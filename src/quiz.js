@@ -582,6 +582,10 @@ export class QuizSession {
         activeMode = modes[Math.floor(Math.random() * modes.length)];
       }
 
+      const requiredMeaningAnswers = isMeaningAnswerMode(activeMode)
+        ? getAcceptedMeaningAnswers(vocab.meaning)
+        : [];
+
       return {
         sessionQuestionId: `q-${index}-${Date.now()}`,
         vocab: vocab,
@@ -592,6 +596,9 @@ export class QuizSession {
         timeSpent: 0,
         hintShown: "",
         promptRevealed: false,
+        requiredMeaningAnswers,
+        completedMeaningAnswerIndexes: [],
+        meaningAnswerHadMistake: false,
         practiceRepeatUsed: false,
         practiceRepeatActive: false,
         practiceRepeatAttempts: 0
@@ -709,6 +716,78 @@ export class QuizSession {
     };
   }
 
+  submitMultiMeaningAnswer(question, userAnswer) {
+    const requiredAnswers = question.requiredMeaningAnswers;
+    const completedIndexes = question.completedMeaningAnswerIndexes;
+    const completedSet = new Set(completedIndexes);
+    const matchedIndex = requiredAnswers.findIndex((answer, index) => (
+      !completedSet.has(index) && isSmartVietnameseMatch(userAnswer, answer)
+    ));
+
+    if (matchedIndex === -1) {
+      const duplicateIndex = requiredAnswers.findIndex((answer, index) => (
+        completedSet.has(index) && isSmartVietnameseMatch(userAnswer, answer)
+      ));
+
+      if (duplicateIndex !== -1) {
+        return {
+          status: "meaning_duplicate",
+          isCorrect: false,
+          completed: completedIndexes.length,
+          total: requiredAnswers.length,
+          remaining: requiredAnswers.length - completedIndexes.length
+        };
+      }
+
+      question.meaningAnswerHadMistake = true;
+      return {
+        status: "meaning_retry",
+        isCorrect: false,
+        completed: completedIndexes.length,
+        total: requiredAnswers.length,
+        remaining: requiredAnswers.length - completedIndexes.length
+      };
+    }
+
+    completedIndexes.push(matchedIndex);
+    const completed = completedIndexes.length;
+    const total = requiredAnswers.length;
+
+    if (completed < total) {
+      return {
+        status: "meaning_progress",
+        isCorrect: true,
+        completed,
+        total,
+        remaining: total - completed,
+        matchedAnswer: requiredAnswers[matchedIndex]
+      };
+    }
+
+    const wasRetry = question.meaningAnswerHadMistake || question.promptRevealed;
+    question.answerState = wasRetry ? "correct_retry" : "correct";
+
+    updateVocabStats(
+      question.vocab.projectId,
+      question.vocab.id,
+      !wasRetry,
+      question.timeSpent,
+      question.answerState
+    );
+
+    return {
+      status: "correct",
+      isCorrect: true,
+      wasRetry,
+      attempts: question.attempts,
+      correctAnswer: question.vocab.meaning,
+      timeSpent: question.timeSpent,
+      completed,
+      total,
+      remaining: 0
+    };
+  }
+
   // Gửi câu trả lời
   submitAnswer(userAnswer) {
     const question = this.getCurrentQuestion();
@@ -725,6 +804,14 @@ export class QuizSession {
     question.timeSpent += currentAttemptTimeSec;
     // Reset mốc thời gian để nếu nhập lại lần 2 thì cộng dồn tiếp
     this.questionStartTime = now;
+
+    if (
+      isMeaningAnswerMode(question.mode)
+      && Array.isArray(question.requiredMeaningAnswers)
+      && question.requiredMeaningAnswers.length > 1
+    ) {
+      return this.submitMultiMeaningAnswer(question, userAnswer);
+    }
 
     // Lấy đáp án đúng và chuẩn hóa
     let correctAnswer = "";
