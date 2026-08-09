@@ -4659,7 +4659,40 @@ function handleQuizAnswerSubmit() {
 
   const result = activeQuizSession.submitAnswer(answer);
 
-  if (result.status === "meaning_progress") {
+  if (result.status === "meaning_near" || result.status === "near_match") {
+    inputEl.classList.remove("input-correct", "input-wrong", "pulse-success");
+    inputEl.classList.add("input-duplicate", "shake");
+    inputEl.value = "";
+    inputEl.placeholder = "Gần đúng, kiểm tra chính tả và nhập lại...";
+
+    if (result.status === "meaning_near") {
+      updateMultiMeaningNote(
+        question,
+        `Gần đúng · Đã đúng ${result.completed}/${result.total} · Nhập lại cho chính xác`,
+        "warning"
+      );
+    } else {
+      const hintContainer = document.getElementById("quiz-hint-container");
+      const hintLabel = document.getElementById("quiz-hint-label-text");
+      const hintText = document.getElementById("quiz-hint-text");
+      const revealBtn = document.getElementById("quiz-reveal-correct-btn");
+      if (hintLabel) hintLabel.textContent = "Gần đúng: ";
+      if (hintText) hintText.textContent = "Kiểm tra chính tả rồi nhập lại, lượt này không bị trừ.";
+      if (revealBtn) revealBtn.style.display = "none";
+      if (hintContainer) {
+        hintContainer.style.background = "var(--warning-soft)";
+        hintContainer.style.borderColor = "var(--warning)";
+        hintContainer.style.color = "var(--warning)";
+        hintContainer.style.display = "flex";
+      }
+    }
+
+    setTimeout(() => {
+      inputEl.classList.remove("input-duplicate", "shake");
+      focusQuizAnswerInput(inputEl, { delayed: false });
+    }, 420);
+    return;
+  } else if (result.status === "meaning_progress") {
     playFeedbackSound(true);
     inputEl.classList.remove("input-wrong", "shake");
     inputEl.classList.add("input-correct", "pulse-success");
@@ -4676,6 +4709,23 @@ function handleQuizAnswerSubmit() {
       focusQuizAnswerInput(inputEl, { delayed: false });
     }, 260);
     return;
+  } else if (result.status === "meaning_revealed") {
+    playFeedbackSound(false);
+    inputEl.classList.remove("input-correct", "input-duplicate", "pulse-success");
+    inputEl.classList.add("input-wrong", "shake");
+    inputEl.value = "";
+    inputEl.placeholder = `Nhập nghĩa tiếp theo · còn ${result.remaining}...`;
+    updateMultiMeaningNote(
+      question,
+      `Đáp án: ${result.revealedAnswer} · Còn ${result.remaining} nghĩa`,
+      "error"
+    );
+
+    setTimeout(() => {
+      inputEl.classList.remove("input-wrong", "shake");
+      focusQuizAnswerInput(inputEl, { delayed: false });
+    }, 650);
+    return;
   } else if (result.status === "meaning_retry" || result.status === "meaning_duplicate") {
     const isDuplicate = result.status === "meaning_duplicate";
     if (!isDuplicate) playFeedbackSound(false);
@@ -4690,7 +4740,7 @@ function handleQuizAnswerSubmit() {
       question,
       isDuplicate
         ? `Nghĩa này đã nhập rồi · Còn ${result.remaining} nghĩa`
-        : `Chưa đúng · Đã đúng ${result.completed}/${result.total}`,
+        : `Chưa đúng ${result.attempt}/${result.maxAttempts} · Gợi ý: ${result.hint}`,
       isDuplicate ? "warning" : "error"
     );
 
@@ -4708,6 +4758,9 @@ function handleQuizAnswerSubmit() {
     if (result.total > 1) {
       updateMultiMeaningNote(question, `Hoàn thành ${result.total}/${result.total} nghĩa`, "success");
     }
+
+    const activeHintContainer = document.getElementById("quiz-hint-container");
+    if (activeHintContainer) activeHintContainer.style.display = "none";
 
     if (quizTimerInterval) clearInterval(quizTimerInterval);
 
@@ -4818,6 +4871,10 @@ function handleQuizAnswerSubmit() {
 
     const hintContainer = document.getElementById("quiz-hint-container");
     if (hintContainer) hintContainer.style.display = "none";
+
+    if (result.total > 1 && result.wasRevealed) {
+      updateMultiMeaningNote(question, "Chưa thuộc đủ các nghĩa · Đã hiển thị đáp án", "error");
+    }
 
     // Trượt bottom sheet lên hiển thị đáp án đúng
     showWrongAnswerSheet(result.correctAnswer, activeQuizSession.canPracticeRepeatCurrentQuestion());

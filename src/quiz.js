@@ -275,6 +275,73 @@ export function isSmartVietnameseMatch(userAnswer, correctAnswer) {
   return false;
 }
 
+function normalizeVietnameseTypoText(value) {
+  return removeVietnameseTones(String(value || "").normalize("NFKC").toLowerCase())
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getLevenshteinDistance(left, right) {
+  if (left === right) return 0;
+  if (!left.length) return right.length;
+  if (!right.length) return left.length;
+
+  let previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+
+  for (let leftIndex = 1; leftIndex <= left.length; leftIndex++) {
+    const current = [leftIndex];
+    for (let rightIndex = 1; rightIndex <= right.length; rightIndex++) {
+      const substitutionCost = left[leftIndex - 1] === right[rightIndex - 1] ? 0 : 1;
+      current[rightIndex] = Math.min(
+        current[rightIndex - 1] + 1,
+        previous[rightIndex] + 1,
+        previous[rightIndex - 1] + substitutionCost
+      );
+    }
+    previous = current;
+  }
+
+  return previous[right.length];
+}
+
+export function getVietnameseAnswerMatch(userAnswer, correctAnswer) {
+  if (isSmartVietnameseMatch(userAnswer, correctAnswer)) return "correct";
+
+  const normalizedUser = normalizeVietnameseTypoText(userAnswer);
+  const normalizedCorrect = normalizeVietnameseTypoText(correctAnswer);
+  const correctLength = normalizedCorrect.replace(/\s/g, "").length;
+
+  if (!normalizedUser || !normalizedCorrect || correctLength < 4) return "wrong";
+  if (/\d/.test(normalizedUser) || /\d/.test(normalizedCorrect)) return "wrong";
+
+  const threshold = correctLength <= 7 ? 1 : 2;
+  if (Math.abs(normalizedUser.length - normalizedCorrect.length) > threshold) return "wrong";
+
+  return getLevenshteinDistance(normalizedUser, normalizedCorrect) <= threshold
+    ? "near"
+    : "wrong";
+}
+
+function getClosestMeaningAnswerIndex(userAnswer, answers, candidateIndexes) {
+  const normalizedUser = normalizeVietnameseTypoText(userAnswer);
+  let closestIndex = candidateIndexes[0] ?? -1;
+  let closestDistance = Number.POSITIVE_INFINITY;
+
+  candidateIndexes.forEach(index => {
+    const distance = getLevenshteinDistance(
+      normalizedUser,
+      normalizeVietnameseTypoText(answers[index])
+    );
+    if (distance < closestDistance) {
+      closestDistance = distance;
+      closestIndex = index;
+    }
+  });
+
+  return closestIndex;
+}
+
 function getJapaneseDisplayText(japaneseText) {
   if (!japaneseText) return "";
 
@@ -598,6 +665,9 @@ export class QuizSession {
         promptRevealed: false,
         requiredMeaningAnswers,
         completedMeaningAnswerIndexes: [],
+        revealedMeaningAnswerIndexes: [],
+        meaningAnswerAttempts: requiredMeaningAnswers.map(() => 0),
+        activeMeaningAnswerIndex: null,
         meaningAnswerHadMistake: false,
         practiceRepeatUsed: false,
         practiceRepeatActive: false,
@@ -720,11 +790,19 @@ export class QuizSession {
     const requiredAnswers = question.requiredMeaningAnswers;
     const completedIndexes = question.completedMeaningAnswerIndexes;
     const completedSet = new Set(completedIndexes);
-    const matchedIndex = requiredAnswers.findIndex((answer, index) => (
-      !completedSet.has(index) && isSmartVietnameseMatch(userAnswer, answer)
+    const pendingIndexes = requiredAnswers
+      .map((_, index) => index)
+      .filter(index => !completedSet.has(index));
+    const lockedIndex = pendingIndexes.includes(question.activeMeaningAnswerIndex)
+      ? question.activeMeaningAnswerIndex
+      : null;
+    const candidateIndexes = lockedIndex === null ? pendingIndexes : [lockedIndex];
+
+    const matchedIndex = candidateIndexes.find(index => (
+      getVietnameseAnswerMatch(userAnswer, requiredAnswers[index]) === "correct"
     ));
 
-    if (matchedIndex === -1) {
+    if (matchedIndex === undefined) {
       const duplicateIndex = requiredAnswers.findIndex((answer, index) => (
         completedSet.has(index) && isSmartVietnameseMatch(userAnswer, answer)
       ));
@@ -739,17 +817,68 @@ export class QuizSession {
         };
       }
 
+      const nearIndex = candidateIndexes.find(index => (
+        getVietnameseAnswerMatch(userAnswer, requiredAnswers[index]) === "near"
+      ));
+      if (nearIndex !== undefined) {
+        question.activeMeaningAnswerIndex = nearIndex;
+        question.attempts = Math.max(0, question.attempts - 1);
+        return {
+          status: "meaning_near",
+          isCorrect: false,
+          completed: completedIndexes.length,
+          total: requiredAnswers.length,
+          remaining: requiredAnswers.length - completedIndexes.length
+        };
+      }
+
+      const targetIndex = lockedIndex ?? getClosestMeaningAnswerIndex(
+        userAnswer,
+        requiredAnswers,
+        pendingIndexes
+      );
+      question.activeMeaningAnswerIndex = targetIndex;
+      question.meaningAnswerAttempts[targetIndex] = (question.meaningAnswerAttempts[targetIndex] || 0) + 1;
       question.meaningAnswerHadMistake = true;
-      return {
-        status: "meaning_retry",
-        isCorrect: false,
-        completed: completedIndexes.length,
-        total: requiredAnswers.length,
-        remaining: requiredAnswers.length - completedIndexes.length
-      };
+
+      const maxAttempts = this.allowRetry ? 2 : 1;
+      if (question.meaningAnswerAttempts[targetIndex] < maxAttempts) {
+        const hint = generateHint(requiredAnswers[targetIndex], question.mode);
+        question.hintShown = hint;
+        return {
+          status: "meaning_retry",
+          isCorrect: false,
+          completed: completedIndexes.length,
+          total: requiredAnswers.length,
+          remaining: requiredAnswers.length - completedIndexes.length,
+          attempt: question.meaningAnswerAttempts[targetIndex],
+          maxAttempts,
+          hint
+        };
+      }
+
+      completedIndexes.push(targetIndex);
+      question.revealedMeaningAnswerIndexes.push(targetIndex);
+      question.activeMeaningAnswerIndex = null;
+
+      const completed = completedIndexes.length;
+      const total = requiredAnswers.length;
+      if (completed < total) {
+        return {
+          status: "meaning_revealed",
+          isCorrect: false,
+          completed,
+          total,
+          remaining: total - completed,
+          revealedAnswer: requiredAnswers[targetIndex]
+        };
+      }
+
+      return this.finishMultiMeaningQuestion(question);
     }
 
     completedIndexes.push(matchedIndex);
+    question.activeMeaningAnswerIndex = null;
     const completed = completedIndexes.length;
     const total = requiredAnswers.length;
 
@@ -764,21 +893,29 @@ export class QuizSession {
       };
     }
 
+    return this.finishMultiMeaningQuestion(question);
+  }
+
+  finishMultiMeaningQuestion(question) {
+    const completed = question.completedMeaningAnswerIndexes.length;
+    const total = question.requiredMeaningAnswers.length;
+    const wasRevealed = question.revealedMeaningAnswerIndexes.length > 0;
     const wasRetry = question.meaningAnswerHadMistake || question.promptRevealed;
-    question.answerState = wasRetry ? "correct_retry" : "correct";
+    question.answerState = wasRevealed ? "wrong" : (wasRetry ? "correct_retry" : "correct");
 
     updateVocabStats(
       question.vocab.projectId,
       question.vocab.id,
-      !wasRetry,
+      question.answerState === "correct",
       question.timeSpent,
       question.answerState
     );
 
     return {
-      status: "correct",
-      isCorrect: true,
+      status: wasRevealed ? "wrong" : "correct",
+      isCorrect: !wasRevealed,
       wasRetry,
+      wasRevealed,
       attempts: question.attempts,
       correctAnswer: question.vocab.meaning,
       timeSpent: question.timeSpent,
@@ -818,7 +955,27 @@ export class QuizSession {
     let isCorrect = false;
 
     correctAnswer = this.getCorrectAnswerForQuestion(question);
-    isCorrect = this.isAnswerCorrectForQuestion(question, userAnswer);
+    if (isMeaningAnswerMode(question.mode)) {
+      const meaningCandidates = [
+        question.vocab.meaning,
+        ...getAcceptedMeaningAnswers(question.vocab.meaning)
+      ];
+      const meaningMatches = meaningCandidates.map(candidate => (
+        getVietnameseAnswerMatch(userAnswer, candidate)
+      ));
+      if (meaningMatches.includes("near") && !meaningMatches.includes("correct")) {
+        question.attempts = Math.max(0, question.attempts - 1);
+        return {
+          status: "near_match",
+          isCorrect: false,
+          correctAnswer,
+          timeSpent: question.timeSpent
+        };
+      }
+      isCorrect = meaningMatches.includes("correct");
+    } else {
+      isCorrect = this.isAnswerCorrectForQuestion(question, userAnswer);
+    }
 
     if (isCorrect) {
       // Trả lời đúng
