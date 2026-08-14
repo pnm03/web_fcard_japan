@@ -22,6 +22,7 @@ import {
   setOnSyncStateChange,
   setCloudUser,
   markVocabAsMaxDifficulty,
+  updateVocabRescueCard,
   setAttendanceUser,
   clearCurrentUserLocalData,
   getAttendanceStats,
@@ -29,6 +30,7 @@ import {
   ATTENDANCE_FREEZE_COST,
   ATTENDANCE_FREEZE_MAX
 } from "./storage.js";
+import { buildRescueCardModel, shouldShowRescueCard } from "./adaptive-learning.js";
 import { supabase } from "./supabase.js";
 import {
   ACCOUNT_THEMES,
@@ -41,6 +43,13 @@ import {
   uploadAccountAvatar
 } from "./account.js";
 import { QuizSession } from "./quiz.js";
+import {
+  recordGoalQuizReport,
+  renderDashboardGoalWidget,
+  renderLearningGoalsView,
+  setupLearningGoalsUI
+} from "./goal-ui.js";
+import { clearLearningGoalsForUser, syncLearningGoalsFromCloud } from "./goals.js";
 import { 
   HIRAGANA_LIST, 
   KATAKANA_LIST, 
@@ -78,6 +87,9 @@ let overdueReviewCheckedIds = new Set();
 let hasRestoredAfterAuth = false;
 let isPasswordRecoveryMode = false;
 let lastReportWrongVocabIds = [];
+let activeGoalQuizContext = null;
+let lastCompletedGoalContext = null;
+let lastGoalQuizResult = null;
 const MS_PER_HOUR = 60 * 60 * 1000;
 const MS_PER_DAY = 24 * MS_PER_HOUR;
 let quizActiveSettings = {
@@ -288,7 +300,13 @@ export function initUI() {
   setupAuthUI();
   setupAccountCenterUI();
   setupReloadReviewReminder();
+  setupDesktopReviewEvents();
   setupNavigation();
+  setupLearningGoalsUI({
+    startQuiz,
+    switchView,
+    speakJapanese
+  });
   setupProjectActions();
   setupVocabActions();
   setupQuizConfigEvents();
@@ -376,6 +394,9 @@ function getFriendlyAuthError(error, fallback) {
 }
 
 function getAuthRedirectUrl() {
+  if ("__TAURI_INTERNALS__" in window) {
+    return "https://web-fcard-japan.vercel.app/";
+  }
   return `${window.location.origin}${window.location.pathname}`;
 }
 
@@ -937,6 +958,7 @@ function setupAccountCenterUI() {
     try {
       await deleteOwnAccount();
       clearCurrentUserLocalData(userId);
+      clearLearningGoalsForUser(userId);
       localStorage.removeItem("nihongo_account_theme");
       applyAccountTheme("paper");
       await supabase.auth.signOut({ scope: "local" });
@@ -1059,6 +1081,25 @@ function setupReloadReviewReminder() {
   });
 }
 
+function setupDesktopReviewEvents() {
+  window.addEventListener("nihongo:desktop-review-requested", () => {
+    if (!currentAuthSession?.user) return;
+
+    overdueReviewItems = getReviewDueVocab(1000, "overdue");
+    if (overdueReviewItems.length === 0) {
+      switchView("smart-review-view");
+      renderSmartReviewView();
+      return;
+    }
+
+    overdueReviewCheckedIds = new Set(overdueReviewItems.map(vocab => vocab.id));
+    renderOverdueReviewReminder();
+    lockPageScroll("review-reminder-open");
+    document.getElementById("review-reminder-modal")?.classList.add("active");
+    window.setTimeout(() => document.getElementById("review-reminder-start-btn")?.focus(), 100);
+  });
+}
+
 function rerenderActiveViewAfterSync() {
   const activeView = localStorage.getItem("web_fcard_active_view") || "dashboard-view";
   if (activeView === "dashboard-view") {
@@ -1071,6 +1112,8 @@ function rerenderActiveViewAfterSync() {
     renderWeakVocabView();
   } else if (activeView === "smart-review-view") {
     renderSmartReviewView();
+  } else if (activeView === "learning-goals-view") {
+    renderLearningGoalsView();
   } else if (activeView === "quiz-setup-view") {
     setupQuizConfig();
   }
@@ -1099,6 +1142,7 @@ async function applyAuthSession(session, { restore = false } = {}) {
 
   const shouldCheckOverdueAfterSync = !hasRestoredAfterAuth;
   await fetchAndSyncFromSupabase();
+  await syncLearningGoalsFromCloud();
   if (restore || !hasRestoredAfterAuth) {
     restoreActiveView();
     hasRestoredAfterAuth = true;
@@ -1307,6 +1351,8 @@ export function switchView(viewId) {
     renderWeakVocabView();
   } else if (viewId === "smart-review-view") {
     renderSmartReviewView();
+  } else if (viewId === "learning-goals-view") {
+    renderLearningGoalsView();
   } else if (viewId === "quiz-setup-view") {
     setupQuizConfig();
   } else if (viewId === "dictionary-view") {
@@ -1346,6 +1392,7 @@ function renderDashboard() {
   document.getElementById("stat-accuracy").textContent = accuracy + "%";
 
   renderDashboardReviewSchedule();
+  renderDashboardGoalWidget();
 
   // Hiển thị danh sách từ yếu xem trước (Weak Vocab Preview)
   const weakVocab = getWeakVocab(null, 5); // Lấy tối đa 5 từ yếu nhất
@@ -4280,6 +4327,7 @@ function setupQuizConfigEvents() {
 
 // 7. Khu vực kiểm tra đang diễn ra (Quiz Active Arena)
 function startQuiz(config) {
+  activeGoalQuizContext = config.goalContext || null;
   activeQuizSession = new QuizSession(config);
   
   if (activeQuizSession.questions.length === 0) {
@@ -4381,6 +4429,41 @@ function showWrongAnswerSheet(correctAnswer, allowPracticeRepeat = false) {
     const quizBox = document.getElementById("quiz-box");
     if (quizBox) quizBox.scrollTop = 0;
   }, 100);
+}
+
+function hideQuizRescueCard() {
+  const card = document.getElementById("quiz-rescue-card");
+  if (card) card.hidden = true;
+}
+
+function showQuizRescueCard(question) {
+  const card = document.getElementById("quiz-rescue-card");
+  if (!card || !question?.vocab) return;
+  const model = buildRescueCardModel(question.vocab);
+  const allWords = getProjects().flatMap(project => project.vocab);
+  const confusionNames = model.confusionPairIds
+    .map(id => allWords.find(word => word.id === id))
+    .filter(Boolean)
+    .map(word => `${word.japanese} (${word.romaji})`);
+  card.hidden = false;
+  document.getElementById("quiz-rescue-example").value = model.example;
+  document.getElementById("quiz-rescue-translation").value = model.translation;
+  document.getElementById("quiz-rescue-mnemonic").value = model.mnemonic;
+  const confusions = document.getElementById("quiz-rescue-confusions");
+  confusions.hidden = confusionNames.length === 0;
+  confusions.textContent = confusionNames.length ? `Dễ nhầm với: ${confusionNames.join(" · ")}` : "";
+  document.getElementById("quiz-rescue-speak-btn").onclick = () => speakJapanese(cleanToKanaOnly(question.vocab.japanese), true);
+  document.getElementById("quiz-rescue-save-btn").onclick = () => {
+    const updated = updateVocabRescueCard(question.vocab.projectId, question.vocab.id, {
+      example: document.getElementById("quiz-rescue-example").value.trim(),
+      translation: document.getElementById("quiz-rescue-translation").value.trim(),
+      mnemonic: document.getElementById("quiz-rescue-mnemonic").value.trim(),
+      rescueCount: Number(question.vocab.rescueCard?.rescueCount || 0) + 1,
+      lastShownAt: Date.now()
+    });
+    if (updated) question.vocab.rescueCard = updated.rescueCard;
+    document.getElementById("quiz-rescue-save-btn").textContent = "Đã lưu";
+  };
 }
 
 function startPracticeRepeatCurrentQuestion() {
@@ -4505,6 +4588,7 @@ function renderCurrentQuestion() {
     finishQuiz();
     return;
   }
+  hideQuizRescueCard();
 
   const total = activeQuizSession.questions.length;
   const current = activeQuizSession.currentIndex + 1;
@@ -4821,10 +4905,12 @@ function handleQuizAnswerSubmit() {
         inputEl.disabled = true;
 
         // Đánh dấu từ này là độ khó tối đa (100) và tăng wrongCount thêm 2
-        markVocabAsMaxDifficulty(question.vocab.projectId, question.vocab.id, question.timeSpent);
+        const updatedVocab = markVocabAsMaxDifficulty(question.vocab.projectId, question.vocab.id, question.timeSpent, question.mode);
+        if (updatedVocab) Object.assign(question.vocab, updatedVocab);
 
         // Thiết lập trạng thái sai trong QuizSession
         question.answerState = "wrong";
+        question.answerSignal = "revealed";
         question.attempts = 2;
 
         if (quizTimerInterval) clearInterval(quizTimerInterval);
@@ -4840,6 +4926,7 @@ function handleQuizAnswerSubmit() {
 
         // Trượt bottom sheet lên hiển thị đáp án đúng
         showWrongAnswerSheet(correctAnswer, activeQuizSession.canPracticeRepeatCurrentQuestion());
+        showQuizRescueCard(question);
 
         // Ẩn các nút hành động cũ để bắt buộc tương tác qua bottom sheet
         document.getElementById("quiz-submit-btn").style.display = "none";
@@ -4878,6 +4965,9 @@ function handleQuizAnswerSubmit() {
 
     // Trượt bottom sheet lên hiển thị đáp án đúng
     showWrongAnswerSheet(result.correctAnswer, activeQuizSession.canPracticeRepeatCurrentQuestion());
+    if (shouldShowRescueCard(question.vocab, activeGoalQuizContext ? (lastGoalQuizResult?.goal?.reviewLogs || []) : [])) {
+      showQuizRescueCard(question);
+    }
 
     // Ẩn các nút hành động cũ
     document.getElementById("quiz-submit-btn").style.display = "none";
@@ -4949,7 +5039,11 @@ function finishQuiz() {
   document.getElementById("quiz-progress-fill").style.width = `100%`;
 
   const report = activeQuizSession.getReport();
-  renderQuizReport(report);
+  lastGoalQuizResult = activeGoalQuizContext
+    ? recordGoalQuizReport(activeGoalQuizContext, report)
+    : null;
+  lastCompletedGoalContext = activeGoalQuizContext;
+  renderQuizReport(report, lastGoalQuizResult);
   switchView("quiz-report-view");
 
   if (!quizActiveSettings.disableConfetti) {
@@ -5063,7 +5157,11 @@ function setupQuizActiveEvents() {
 }
 
 // 8. Render Báo cáo kết quả kiểm tra (Quiz Report View)
-function renderQuizReport(report) {
+function renderQuizReport(report, goalResult = null) {
+  const backButton = document.getElementById("report-back-home-btn");
+  const restartButton = document.getElementById("report-restart-quiz-btn");
+  if (backButton) backButton.textContent = goalResult?.goal ? "Về mục tiêu" : "Về Trang Chủ";
+  if (restartButton) restartButton.textContent = goalResult?.goal ? "Xem kế hoạch tiếp theo" : "Làm Lại Bài Này";
   document.getElementById("report-score-text").textContent = `${report.correctCount} / ${report.totalQuestions}`;
   document.getElementById("report-accuracy-text").textContent = `${report.accuracy}% CHÍNH XÁC`;
 
@@ -5104,6 +5202,14 @@ function renderQuizReport(report) {
   } else {
     evalEl.textContent = "⚠️ Cần cố gắng nhiều hơn! Hãy ôn tập lại các từ chưa nhớ.";
     evalEl.style.color = "var(--error)";
+  }
+
+  if (goalResult?.goal) {
+    const recoveryText = goalResult.recoveryCount > 0
+      ? ` Hệ thống đã chèn một lượt học bù cho ${goalResult.recoveryCount} từ cần củng cố.`
+      : " Không cần thêm lượt học bù.";
+    evalEl.textContent = `Buổi mục tiêu đã hoàn tất: ${goalResult.goal.progress.verified}/${goalResult.goal.progress.total} từ đã được xác nhận.${recoveryText}`;
+    evalEl.style.color = goalResult.recoveryCount > 0 ? "var(--warning)" : "var(--good)";
   }
 
   document.getElementById("report-total-time").textContent = `${Math.round(report.totalTimeSpent)} giây`;
@@ -5164,10 +5270,20 @@ function renderQuizReport(report) {
 
 function setupReportEvents() {
   document.getElementById("report-back-home-btn").onclick = () => {
+    if (lastCompletedGoalContext?.goalId) {
+      switchView("learning-goals-view");
+      renderLearningGoalsView(lastCompletedGoalContext.goalId);
+      return;
+    }
     switchView("dashboard-view");
   };
 
   document.getElementById("report-restart-quiz-btn").onclick = () => {
+    if (lastCompletedGoalContext?.goalId) {
+      switchView("learning-goals-view");
+      renderLearningGoalsView(lastCompletedGoalContext.goalId);
+      return;
+    }
     if (quizConfigBackup) {
       startQuiz(quizConfigBackup);
     } else {

@@ -1,4 +1,10 @@
 import { supabase } from "./supabase.js";
+import {
+  MEMORY_MODES,
+  Rating,
+  normalizeModeMemoryStates,
+  scheduleVocabWithFsrs
+} from "./fsrs-scheduler.js";
 
 // Khởi tạo dữ liệu mẫu nếu chưa có dữ liệu trong localStorage
 const DEFAULT_PROJECTS = [
@@ -80,6 +86,18 @@ const LEARNING_VOCAB_COLUMNS = [
   "ease_factor",
   "memory_stability",
   "memory_difficulty",
+  "fsrs_state",
+  "fsrs_due_at",
+  "fsrs_last_review_at",
+  "fsrs_reps",
+  "fsrs_lapses",
+  "fsrs_scheduled_days",
+  "fsrs_elapsed_days",
+  "fsrs_learning_steps",
+  "fsrs_stability",
+  "fsrs_difficulty",
+  "mode_memory_states",
+  "rescue_card",
   "updated_at"
 ];
 
@@ -143,6 +161,43 @@ function normalizeAnswerState(value, fallback = "unanswered") {
   return allowed.has(value) ? value : fallback;
 }
 
+function normalizeAnswerSignal(value, answerState = "unanswered") {
+  const allowed = new Set([
+    "exact",
+    "accepted_variant",
+    "typo",
+    "wrong_knowledge",
+    "revealed",
+    "slow"
+  ]);
+  if (allowed.has(value)) return value;
+  if (answerState === "revealed") return "revealed";
+  if (answerState === "wrong") return "wrong_knowledge";
+  return answerState === "correct" || answerState === "correct_retry" ? "exact" : "";
+}
+
+function normalizeRescueCard(value) {
+  let parsed = value;
+  if (typeof value === "string" && value.trim()) {
+    try {
+      parsed = JSON.parse(value);
+    } catch {
+      parsed = {};
+    }
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) parsed = {};
+  return {
+    example: typeof parsed.example === "string" ? parsed.example.slice(0, 300) : "",
+    translation: typeof parsed.translation === "string" ? parsed.translation.slice(0, 300) : "",
+    mnemonic: typeof parsed.mnemonic === "string" ? parsed.mnemonic.slice(0, 500) : "",
+    confusionPairIds: Array.isArray(parsed.confusionPairIds)
+      ? [...new Set(parsed.confusionPairIds.filter(id => typeof id === "string"))].slice(0, 12)
+      : [],
+    rescueCount: toNonNegativeInt(parsed.rescueCount, 0),
+    lastShownAt: normalizeTimestampToMs(parsed.lastShownAt)
+  };
+}
+
 function normalizeAnswerHistory(value) {
   let parsed = value;
   if (typeof value === "string" && value.trim()) {
@@ -161,6 +216,7 @@ function normalizeAnswerHistory(value) {
       state: normalizeAnswerState(item.state ?? item.answerState, "unanswered"),
       timeSpentSec: Math.max(0, toFiniteNumber(item.timeSpentSec ?? item.time_spent_sec ?? item.timeSpent, 0)),
       mode: typeof item.mode === "string" ? item.mode : "",
+      signal: normalizeAnswerSignal(item.signal ?? item.answerSignal, item.state ?? item.answerState),
       userAnswer: typeof item.userAnswer === "string" ? item.userAnswer : ""
     }))
     .filter(item => item.at > 0 && item.state !== "unanswered")
@@ -168,12 +224,14 @@ function normalizeAnswerHistory(value) {
     .slice(-50);
 }
 
-function appendAnswerHistory(vocab, answerState, timeSpentSec, at = Date.now()) {
+function appendAnswerHistory(vocab, answerState, timeSpentSec, at = Date.now(), mode = "", signal = "") {
   const history = normalizeAnswerHistory(vocab.answerHistory ?? vocab.answer_history);
   history.push({
     at,
     state: normalizeAnswerState(answerState),
-    timeSpentSec: Math.max(0, toFiniteNumber(timeSpentSec, 0))
+    timeSpentSec: Math.max(0, toFiniteNumber(timeSpentSec, 0)),
+    mode: MEMORY_MODES.includes(mode) ? mode : "",
+    signal: normalizeAnswerSignal(signal, answerState)
   });
   return history.slice(-50);
 }
@@ -306,87 +364,59 @@ function classifyReviewGrade(vocab, answerState, timeSpentSec) {
   return "good";
 }
 
-function calculateReviewSchedule(vocab, answerState, timeSpentSec, now = Date.now()) {
+function calculateReviewSchedule(
+  vocab,
+  answerState,
+  timeSpentSec,
+  now = Date.now(),
+  retention = 0.9,
+  mode = "",
+  answerSignal = "",
+  fsrsParameters = null
+) {
   const grade = classifyReviewGrade(vocab, answerState, timeSpentSec);
-  const currentInterval = toFiniteNumber(vocab.reviewIntervalHours, 0);
-  const currentStage = toNonNegativeInt(vocab.reviewStage, 0);
   const currentEase = clampNumber(toFiniteNumber(vocab.easeFactor, 2.5), 1.3, 3.2);
-  const lapseCount = toNonNegativeInt(vocab.lapseCount, 0);
-  const difficultyScore = clampNumber(toFiniteNumber(vocab.difficultyScore, 0), 0, 100);
-  const masteryScore = clampNumber(toFiniteNumber(vocab.masteryScore, 0), 0, 100);
-
-  let intervalHours = currentInterval;
-  let reviewStage = currentStage;
   let easeFactor = currentEase;
-  let nextLapseCount = lapseCount;
   let reason = "";
 
   if (grade === "again") {
-    intervalHours = 10 / 60;
-    reviewStage = 0;
     easeFactor = clampNumber(easeFactor - 0.2, 1.3, 3.2);
-    nextLapseCount += 1;
     reason = "Sai hoặc phải xem đáp án";
   } else if (grade === "hard") {
-    intervalHours = currentInterval > 0
-      ? Math.max(12, Math.min(currentInterval * 1.25, 72))
-      : 12;
-    reviewStage = Math.max(1, currentStage);
     easeFactor = clampNumber(easeFactor - 0.12, 1.3, 3.2);
     reason = answerState === "correct_retry" ? "Đúng sau gợi ý" : "Đúng nhưng phản xạ còn chậm/khó";
   } else if (grade === "easy") {
-    if (currentStage <= 0) {
-      intervalHours = 72;
-    } else if (currentInterval <= 0) {
-      intervalHours = 72;
-    } else {
-      intervalHours = currentInterval * (easeFactor + 0.45);
-    }
-    reviewStage = currentStage + 2;
     easeFactor = clampNumber(easeFactor + 0.08, 1.3, 3.2);
     reason = "Đúng nhanh, tăng khoảng cách ôn";
   } else {
-    if (currentStage <= 0) {
-      intervalHours = 24;
-    } else if (currentStage === 1) {
-      intervalHours = 72;
-    } else if (currentInterval <= 0) {
-      intervalHours = 72;
-    } else {
-      intervalHours = currentInterval * easeFactor;
-    }
-    reviewStage = currentStage + 1;
     reason = "Đúng, cần kiểm tra lại theo đường cong lãng quên";
   }
 
-  if (answerState === "correct" && difficultyScore >= 60 && intervalHours > 72) {
-    intervalHours = 72;
-    reason = "Từ khó vừa trả lời đúng, kiểm tra lại sớm";
+  const fsrsSchedule = scheduleVocabWithFsrs(vocab, answerState, timeSpentSec, now, retention, {
+    mode,
+    answerSignal,
+    parameters: fsrsParameters
+  });
+  if (fsrsSchedule.rating === null) {
+    return {
+      grade: "typo",
+      reviewReason: "Gõ gần đúng, chưa thay đổi trí nhớ",
+      easeFactor: Number(easeFactor.toFixed(2)),
+      modeMemoryStates: fsrsSchedule.modeMemoryStates
+    };
   }
-
-  if (masteryScore < 60 && intervalHours > 24) {
-    intervalHours = 24;
-    reason = "Điểm thuộc còn thấp";
-  }
-
-  intervalHours = clampNumber(intervalHours, 10 / 60, 24 * 90);
-  const stabilityDays = Math.max(0.1, intervalHours / 24);
-  const memoryDifficulty = clampNumber(
-    5 + (difficultyScore / 20) + nextLapseCount * 0.7 - (vocab.streakCorrect || 0) * 0.25,
-    1,
-    10
-  );
+  const fsrsGrade = {
+    [Rating.Again]: "again",
+    [Rating.Hard]: "hard",
+    [Rating.Good]: "good",
+    [Rating.Easy]: "easy"
+  }[fsrsSchedule.rating] || grade;
 
   return {
-    grade,
-    nextReviewAt: now + hoursToMs(intervalHours),
-    reviewIntervalHours: Number(intervalHours.toFixed(2)),
-    reviewStage,
-    lapseCount: nextLapseCount,
+    ...fsrsSchedule,
+    grade: fsrsGrade,
     reviewReason: reason,
-    easeFactor: Number(easeFactor.toFixed(2)),
-    memoryStability: Number(stabilityDays.toFixed(2)),
-    memoryDifficulty: Number(memoryDifficulty.toFixed(2))
+    easeFactor: Number(easeFactor.toFixed(2))
   };
 }
 
@@ -422,6 +452,11 @@ function calculateMasteryScore(vocab) {
 function normalizeVocab(vocab, fallbackOrderIndex = 0) {
   const correctCount = toNonNegativeInt(vocab.correctCount ?? vocab.correct_count);
   const wrongCount = toNonNegativeInt(vocab.wrongCount ?? vocab.wrong_count);
+  const legacyReviewCount = correctCount + wrongCount;
+  const storedFsrsReps = toNonNegativeInt(vocab.fsrsReps ?? vocab.fsrs_reps);
+  const storedFsrsStability = toFiniteNumber(vocab.fsrsStability ?? vocab.fsrs_stability, 0);
+  const storedFsrsLastReviewAt = normalizeTimestampToMs(vocab.fsrsLastReviewAt ?? vocab.fsrs_last_review_at);
+  const hasFsrsHistory = storedFsrsReps > 0 || storedFsrsStability > 0 || storedFsrsLastReviewAt > 0;
   const historyTimes = normalizeHistoryTimes(vocab.historyTimes ?? vocab.history_times);
   const answerHistory = normalizeAnswerHistory(vocab.answerHistory ?? vocab.answer_history);
   const lastTimeSpent = toFiniteNumber(vocab.lastTimeSpent ?? vocab.last_time_spent_sec, 0);
@@ -446,7 +481,23 @@ function normalizeVocab(vocab, fallbackOrderIndex = 0) {
     reviewReason: typeof (vocab.reviewReason ?? vocab.review_reason) === "string" ? (vocab.reviewReason ?? vocab.review_reason) : "",
     easeFactor: clampNumber(toFiniteNumber(vocab.easeFactor ?? vocab.ease_factor, 2.5), 1.3, 3.2),
     memoryStability: toFiniteNumber(vocab.memoryStability ?? vocab.memory_stability, 0),
-    memoryDifficulty: clampNumber(toFiniteNumber(vocab.memoryDifficulty ?? vocab.memory_difficulty, 5), 1, 10)
+    memoryDifficulty: clampNumber(toFiniteNumber(vocab.memoryDifficulty ?? vocab.memory_difficulty, 5), 1, 10),
+    fsrsState: hasFsrsHistory
+      ? toNonNegativeInt(vocab.fsrsState ?? vocab.fsrs_state, 2)
+      : (legacyReviewCount > 0 ? 2 : 0),
+    fsrsDueAt: normalizeTimestampToMs(vocab.fsrsDueAt ?? vocab.fsrs_due_at ?? vocab.nextReviewAt ?? vocab.next_review_at),
+    fsrsLastReviewAt: normalizeTimestampToMs(vocab.fsrsLastReviewAt ?? vocab.fsrs_last_review_at ?? vocab.lastTested ?? vocab.last_tested_at),
+    fsrsReps: hasFsrsHistory ? storedFsrsReps : legacyReviewCount,
+    fsrsLapses: toNonNegativeInt(vocab.fsrsLapses ?? vocab.fsrs_lapses, vocab.lapseCount ?? vocab.lapse_count),
+    fsrsScheduledDays: toNonNegativeInt(vocab.fsrsScheduledDays ?? vocab.fsrs_scheduled_days),
+    fsrsElapsedDays: toNonNegativeInt(vocab.fsrsElapsedDays ?? vocab.fsrs_elapsed_days),
+    fsrsLearningSteps: toNonNegativeInt(vocab.fsrsLearningSteps ?? vocab.fsrs_learning_steps),
+    fsrsStability: hasFsrsHistory
+      ? storedFsrsStability
+      : toFiniteNumber(vocab.memoryStability ?? vocab.memory_stability, 0),
+    fsrsDifficulty: clampNumber(toFiniteNumber(vocab.fsrsDifficulty ?? vocab.fsrs_difficulty ?? vocab.memoryDifficulty ?? vocab.memory_difficulty, 5), 1, 10),
+    modeMemoryStates: normalizeModeMemoryStates(vocab.modeMemoryStates ?? vocab.mode_memory_states),
+    rescueCard: normalizeRescueCard(vocab.rescueCard ?? vocab.rescue_card)
   };
 
   normalized.masteryScore = Math.round(clampNumber(
@@ -562,6 +613,18 @@ function buildVocabUpsertPayload(vocab, projectId) {
     ease_factor: normalized.easeFactor,
     memory_stability: normalized.memoryStability,
     memory_difficulty: normalized.memoryDifficulty,
+    fsrs_state: normalized.fsrsState,
+    fsrs_due_at: toDbTimestamp(normalized.fsrsDueAt),
+    fsrs_last_review_at: toDbTimestamp(normalized.fsrsLastReviewAt),
+    fsrs_reps: normalized.fsrsReps,
+    fsrs_lapses: normalized.fsrsLapses,
+    fsrs_scheduled_days: normalized.fsrsScheduledDays,
+    fsrs_elapsed_days: normalized.fsrsElapsedDays,
+    fsrs_learning_steps: normalized.fsrsLearningSteps,
+    fsrs_stability: normalized.fsrsStability,
+    fsrs_difficulty: normalized.fsrsDifficulty,
+    mode_memory_states: normalized.modeMemoryStates,
+    rescue_card: normalized.rescueCard,
     updated_at: new Date().toISOString()
   };
 
@@ -859,7 +922,19 @@ export function addVocabToProject(projectId, vocabData) {
     reviewReason: "",
     easeFactor: 2.5,
     memoryStability: 0,
-    memoryDifficulty: 5
+    memoryDifficulty: 5,
+    fsrsState: 0,
+    fsrsDueAt: 0,
+    fsrsLastReviewAt: 0,
+    fsrsReps: 0,
+    fsrsLapses: 0,
+    fsrsScheduledDays: 0,
+    fsrsElapsedDays: 0,
+    fsrsLearningSteps: 0,
+    fsrsStability: 0,
+    fsrsDifficulty: 5
+    ,modeMemoryStates: {}
+    ,rescueCard: normalizeRescueCard({})
   };
 
   projects[projectIndex].vocab.push(newVocab);
@@ -984,7 +1059,17 @@ export function deleteVocabFromProject(projectId, vocabId) {
   return true;
 }
 
-export function updateVocabStats(projectId, vocabId, isCorrect, timeSpentSec, answerState = null) {
+export function updateVocabStats(
+  projectId,
+  vocabId,
+  isCorrect,
+  timeSpentSec,
+  answerState = null,
+  desiredRetention = 0.9,
+  mode = "",
+  answerSignal = "",
+  fsrsParameters = null
+) {
   const projects = getProjects();
   const projectIndex = projects.findIndex(p => p.id === projectId);
   if (projectIndex === -1) return null;
@@ -998,6 +1083,7 @@ export function updateVocabStats(projectId, vocabId, isCorrect, timeSpentSec, an
     answerState || (isCorrect ? "correct" : "wrong"),
     isCorrect ? "correct" : "wrong"
   );
+  const normalizedSignal = normalizeAnswerSignal(answerSignal, normalizedAnswerState);
 
   vocab.timesSeen = (vocab.timesSeen || 0) + 1;
   vocab.lastTested = Date.now();
@@ -1010,7 +1096,15 @@ export function updateVocabStats(projectId, vocabId, isCorrect, timeSpentSec, an
       vocab.historyTimes = vocab.historyTimes.slice(-20);
     }
   }
-  vocab.answerHistory = appendAnswerHistory(vocab, normalizedAnswerState, normalizedTimeSpent, vocab.lastTested);
+  vocab.answerHistory = appendAnswerHistory(
+    vocab,
+    normalizedAnswerState,
+    normalizedTimeSpent,
+    vocab.lastTested,
+    mode,
+    normalizedSignal,
+    fsrsParameters
+  );
 
   if (normalizedAnswerState === "correct") {
     vocab.correctCount += 1;
@@ -1042,7 +1136,16 @@ export function updateVocabStats(projectId, vocabId, isCorrect, timeSpentSec, an
 
   vocab.difficultyScore = Math.round(clampNumber(currentDifficulty, 0, 100));
   vocab.masteryScore = calculateMasteryScore(vocab);
-  Object.assign(vocab, calculateReviewSchedule(vocab, normalizedAnswerState, normalizedTimeSpent, vocab.lastTested));
+  const schedule = calculateReviewSchedule(
+    vocab,
+    normalizedAnswerState,
+    normalizedTimeSpent,
+    vocab.lastTested,
+    Number.isFinite(Number(desiredRetention)) ? Number(desiredRetention) : 0.9,
+    mode,
+    normalizedSignal
+  );
+  Object.assign(vocab, schedule);
   projects[projectIndex].vocab[vocabIndex] = vocab;
 
   saveProjects(projects);
@@ -1063,7 +1166,7 @@ export function updateVocabStats(projectId, vocabId, isCorrect, timeSpentSec, an
   return vocab;
 }
 
-export function markVocabAsMaxDifficulty(projectId, vocabId, timeSpentSec = 0) {
+export function markVocabAsMaxDifficulty(projectId, vocabId, timeSpentSec = 0, mode = "") {
   const projects = getProjects();
   const projectIndex = projects.findIndex(p => p.id === projectId);
   if (projectIndex === -1) return null;
@@ -1085,9 +1188,9 @@ export function markVocabAsMaxDifficulty(projectId, vocabId, timeSpentSec = 0) {
       vocab.historyTimes = vocab.historyTimes.slice(-20);
     }
   }
-  vocab.answerHistory = appendAnswerHistory(vocab, "revealed", vocab.lastTimeSpent, vocab.lastTested);
+  vocab.answerHistory = appendAnswerHistory(vocab, "revealed", vocab.lastTimeSpent, vocab.lastTested, mode, "revealed");
   vocab.masteryScore = calculateMasteryScore(vocab);
-  Object.assign(vocab, calculateReviewSchedule(vocab, "revealed", vocab.lastTimeSpent, vocab.lastTested));
+  Object.assign(vocab, calculateReviewSchedule(vocab, "revealed", vocab.lastTimeSpent, vocab.lastTested, 0.9, mode, "revealed"));
   projects[projectIndex].vocab[vocabIndex] = vocab;
 
   saveProjects(projects);
@@ -1105,6 +1208,23 @@ export function markVocabAsMaxDifficulty(projectId, vocabId, timeSpentSec = 0) {
     if (error) throw error;
   });
 
+  return vocab;
+}
+
+export function updateVocabRescueCard(projectId, vocabId, rescuePatch = {}) {
+  const projects = getProjects();
+  const projectIndex = projects.findIndex(project => project.id === projectId);
+  if (projectIndex === -1) return null;
+  const vocabIndex = projects[projectIndex].vocab.findIndex(vocab => vocab.id === vocabId);
+  if (vocabIndex === -1) return null;
+  const vocab = normalizeVocab(projects[projectIndex].vocab[vocabIndex]);
+  vocab.rescueCard = normalizeRescueCard({ ...vocab.rescueCard, ...rescuePatch });
+  projects[projectIndex].vocab[vocabIndex] = vocab;
+  saveProjects(projects);
+  safeSync(async () => {
+    const { error } = await supabase.from("vocab").upsert(buildVocabUpsertPayload(vocab, projectId));
+    if (error) throw error;
+  });
   return vocab;
 }
 
@@ -1196,7 +1316,19 @@ export async function fetchAndSyncFromSupabase() {
           review_reason: v.review_reason,
           ease_factor: v.ease_factor,
           memory_stability: v.memory_stability,
-          memory_difficulty: v.memory_difficulty
+          memory_difficulty: v.memory_difficulty,
+          fsrs_state: v.fsrs_state,
+          fsrs_due_at: v.fsrs_due_at,
+          fsrs_last_review_at: v.fsrs_last_review_at,
+          fsrs_reps: v.fsrs_reps,
+          fsrs_lapses: v.fsrs_lapses,
+          fsrs_scheduled_days: v.fsrs_scheduled_days,
+          fsrs_elapsed_days: v.fsrs_elapsed_days,
+          fsrs_learning_steps: v.fsrs_learning_steps,
+           fsrs_stability: v.fsrs_stability,
+           fsrs_difficulty: v.fsrs_difficulty,
+           mode_memory_states: v.mode_memory_states,
+           rescue_card: v.rescue_card
         }));
       return {
         id: p.id,

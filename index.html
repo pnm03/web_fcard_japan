@@ -302,6 +302,9 @@
           <button class="nav-btn" data-target="smart-review-view" id="nav-smart-review">
             Lịch ôn
           </button>
+          <button class="nav-btn" data-target="learning-goals-view" id="nav-learning-goals">
+            Mục tiêu
+          </button>
           <button class="nav-btn" data-target="kana-setup-view" id="nav-kana">
             Luyện chữ cái
           </button>
@@ -382,6 +385,8 @@
             <div id="dashboard-review-overview"></div>
           </div>
 
+          <div id="dashboard-goal-widget" class="goal-dashboard-widget"></div>
+
           <!-- Section: Quick Actions / Weak Words Summary -->
           <div class="glass-panel" style="margin-top: 2rem;">
             <div class="project-list-header">
@@ -410,6 +415,19 @@
           <div id="smart-review-root">
             <!-- Smart review dashboard sẽ được render tại đây -->
           </div>
+        </section>
+
+        <!-- ================= VIEW 12: DEADLINE LEARNING GOALS ================= -->
+        <section id="learning-goals-view" class="view-section">
+          <div class="goal-page-header">
+            <div>
+              <span class="goal-page-kicker">Deadline learning</span>
+              <h1>Mục tiêu học</h1>
+              <p>Biến một nhóm từ thành kế hoạch gọi lại cách quãng, có kiểm tra chốt và lịch nhắc riêng.</p>
+            </div>
+            <button class="btn btn-primary" id="open-create-goal-btn">Tạo mục tiêu</button>
+          </div>
+          <div id="learning-goals-root"></div>
         </section>
 
         <!-- ================= VIEW 2: PROJECTS LIST ================= -->
@@ -886,6 +904,16 @@
                 <div class="quiz-bottom-sheet-title">❌ Chưa chính xác! Đáp án đúng là:</div>
                 <div class="quiz-bottom-sheet-correct" id="quiz-bottom-sheet-correct-text">つき</div>
               </div>
+              <aside class="quiz-rescue-card" id="quiz-rescue-card" hidden>
+                <div class="quiz-rescue-heading"><span>Gỡ điểm kẹt</span><button type="button" class="btn btn-secondary btn-icon" id="quiz-rescue-speak-btn" title="Nghe lại">♪</button></div>
+                <div class="quiz-rescue-grid">
+                  <label>Ví dụ ngắn<input type="text" id="quiz-rescue-example" placeholder="Một câu bạn đã gặp"></label>
+                  <label>Nghĩa câu<input type="text" id="quiz-rescue-translation" placeholder="Dịch ngắn gọn"></label>
+                </div>
+                <label>Mẹo nhớ<input type="text" id="quiz-rescue-mnemonic" placeholder="Liên tưởng riêng của bạn"></label>
+                <p class="quiz-rescue-confusions" id="quiz-rescue-confusions" hidden></p>
+                <button type="button" class="btn btn-secondary" id="quiz-rescue-save-btn">Lưu mẹo nhớ</button>
+              </aside>
               <div class="quiz-bottom-sheet-actions">
                 <button class="btn btn-secondary" id="quiz-practice-repeat-btn" style="display: none;">Làm lại để nhớ</button>
                 <button class="btn btn-primary" id="quiz-bottom-sheet-next-btn" style="width: 100%; padding: 0.8rem; margin: 0; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 1rem;">Tiếp tục (Enter)</button>
@@ -971,6 +999,155 @@
       </main>
 
       <!-- ================= MODALS SECTION ================= -->
+
+      <!-- Modal: Tạo mục tiêu học theo deadline -->
+      <div class="modal-overlay goal-create-overlay" id="goal-create-modal">
+        <div class="modal-container goal-create-modal" role="dialog" aria-modal="true" aria-labelledby="goal-create-title">
+          <header class="goal-create-header">
+            <div>
+              <span>Tạo chiến dịch học</span>
+              <h2 id="goal-create-title">Bạn muốn thuộc những từ nào?</h2>
+            </div>
+            <button type="button" class="modal-close-btn" id="close-create-goal-btn" aria-label="Đóng" title="Đóng">×</button>
+          </header>
+
+          <form id="goal-create-form" class="goal-create-form">
+            <div class="goal-create-grid">
+              <section class="goal-create-column goal-create-words">
+                <div class="goal-section-heading">
+                  <div>
+                    <span class="goal-step-index">01</span>
+                    <h3>Chọn từ</h3>
+                  </div>
+                  <strong id="goal-selected-count">0 từ</strong>
+                </div>
+                <div class="goal-word-toolbar">
+                  <input type="search" class="form-control" id="goal-word-search" placeholder="Tìm tiếng Nhật, Romaji hoặc nghĩa...">
+                  <button type="button" class="btn btn-secondary" id="goal-select-all-btn">Chọn tất cả</button>
+                  <button type="button" class="btn btn-secondary" id="goal-clear-all-btn">Bỏ chọn</button>
+                </div>
+                <div class="goal-word-picker" id="goal-word-picker"></div>
+              </section>
+
+              <section class="goal-create-column goal-create-settings">
+                <div class="goal-section-heading">
+                  <div>
+                    <span class="goal-step-index">02</span>
+                    <h3>Deadline & tiêu chuẩn</h3>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="goal-title-input">Tên mục tiêu</label>
+                  <input type="text" class="form-control" id="goal-title-input" maxlength="80" placeholder="Ví dụ: Thuộc 15 từ bài 1">
+                </div>
+
+                <div class="form-group">
+                  <label>Thời hạn</label>
+                  <div class="goal-segmented" id="goal-duration-options">
+                    <button type="button" data-hours="today">Hôm nay</button>
+                    <button type="button" data-hours="24" class="active">1 ngày</button>
+                    <button type="button" data-hours="72">3 ngày</button>
+                    <button type="button" data-hours="168">1 tuần</button>
+                    <button type="button" data-hours="custom">Tùy chỉnh</button>
+                  </div>
+                  <input type="datetime-local" class="form-control goal-custom-deadline" id="goal-custom-deadline" hidden>
+                  <input type="hidden" id="goal-duration-hours" value="24">
+                </div>
+
+                <div class="goal-settings-pair">
+                  <div class="form-group">
+                    <label for="goal-daily-minutes">Thời gian/ngày</label>
+                    <select class="form-control" id="goal-daily-minutes">
+                      <option value="15">15 phút</option>
+                      <option value="30" selected>30 phút</option>
+                      <option value="45">45 phút</option>
+                      <option value="60">60 phút</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="goal-retention">Mức nhớ mục tiêu</label>
+                    <select class="form-control" id="goal-retention">
+                      <option value="0.85">Tương đối · 85%</option>
+                      <option value="0.9" selected>Nhớ chắc · 90%</option>
+                      <option value="0.95">Rất chắc · 95%</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="goal-life-settings">
+                  <div class="goal-section-heading compact">
+                    <div><h3>Giờ sinh hoạt</h3><small>Lịch tránh giờ ngủ và ưu tiên ôn trước ngủ, sau thức dậy.</small></div>
+                  </div>
+                  <div class="goal-settings-pair">
+                    <div class="form-group">
+                      <label for="goal-wake-time">Thức dậy</label>
+                      <input type="time" class="form-control" id="goal-wake-time" value="06:30">
+                    </div>
+                    <div class="form-group">
+                      <label for="goal-sleep-time">Đi ngủ</label>
+                      <input type="time" class="form-control" id="goal-sleep-time" value="23:00">
+                    </div>
+                  </div>
+                  <div class="goal-settings-pair">
+                    <div class="form-group">
+                      <label for="goal-notification-limit">Thông báo tối đa/ngày</label>
+                      <select class="form-control" id="goal-notification-limit">
+                        <option value="3">3 lần</option>
+                        <option value="5" selected>5 lần</option>
+                        <option value="8">8 lần</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label for="goal-snooze-minutes">Nhắc lại sau</label>
+                      <select class="form-control" id="goal-snooze-minutes">
+                        <option value="15">15 phút</option>
+                        <option value="30" selected>30 phút</option>
+                        <option value="60">1 giờ</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label for="goal-availability">Khung giờ ngày thường</label>
+                    <input type="text" class="form-control" id="goal-availability" value="07:00-08:00, 12:00-13:30, 19:00-22:30" placeholder="07:00-08:00, 19:00-22:30">
+                  </div>
+                  <div class="form-group">
+                    <label for="goal-weekend-availability">Khung giờ cuối tuần</label>
+                    <input type="text" class="form-control" id="goal-weekend-availability" value="08:00-11:30, 14:00-17:00, 19:00-22:30" placeholder="08:00-11:30, 19:00-22:30">
+                    <small class="goal-field-note">Nhập nhiều khung, ngăn cách bằng dấu phẩy.</small>
+                  </div>
+                </div>
+
+                <fieldset class="goal-mode-fieldset">
+                  <legend>Dạng phải vượt qua</legend>
+                  <label><input type="checkbox" name="goal-mode" value="meaning_to_romaji" checked><span>Nghĩa → Romaji</span></label>
+                  <label><input type="checkbox" name="goal-mode" value="jp_to_meaning" checked><span>Tiếng Nhật → Nghĩa</span></label>
+                  <label><input type="checkbox" name="goal-mode" value="audio_to_meaning"><span>Âm thanh → Nghĩa</span></label>
+                  <label><input type="checkbox" name="goal-mode" value="meaning_to_japanese"><span>Nghĩa → Tiếng Nhật</span></label>
+                </fieldset>
+              </section>
+
+              <aside class="goal-create-preview">
+                <div class="goal-section-heading">
+                  <div>
+                    <span class="goal-step-index">03</span>
+                    <h3>Kế hoạch dự kiến</h3>
+                  </div>
+                </div>
+                <div id="goal-plan-preview"></div>
+              </aside>
+            </div>
+
+            <footer class="goal-create-actions">
+              <p id="goal-create-message" aria-live="polite"></p>
+              <div>
+                <button type="button" class="btn btn-secondary" id="cancel-create-goal-btn">Hủy</button>
+                <button type="submit" class="btn btn-primary" id="create-goal-submit-btn">Tạo kế hoạch học</button>
+              </div>
+            </footer>
+          </form>
+        </div>
+      </div>
 
       <!-- Modal: Nhắc ôn từ quá hạn khi tải lại ứng dụng -->
       <div class="modal-overlay review-reminder-overlay" id="review-reminder-modal">
@@ -1133,6 +1310,33 @@
                       <span class="account-toggle" aria-hidden="true"></span>
                     </label>
                   </div>
+
+                  <fieldset class="account-theme-fieldset desktop-only" id="desktop-settings-fieldset">
+                    <legend>Ứng dụng desktop</legend>
+                    <div class="account-preference-list desktop-preference-list">
+                      <label class="account-toggle-row">
+                        <span>
+                          <strong>Thông báo Windows</strong>
+                          <small>Nhắc khi có từ quá hạn trong lúc ứng dụng đang chạy nền.</small>
+                        </span>
+                        <input type="checkbox" id="desktop-notifications-enabled">
+                        <span class="account-toggle" aria-hidden="true"></span>
+                      </label>
+                      <label class="account-toggle-row">
+                        <span>
+                          <strong>Khởi động cùng Windows</strong>
+                          <small>Mở ẩn dưới khay hệ thống để lịch ôn luôn hoạt động.</small>
+                        </span>
+                        <input type="checkbox" id="desktop-autostart-enabled">
+                        <span class="account-toggle" aria-hidden="true"></span>
+                      </label>
+                    </div>
+                    <div class="desktop-settings-footer">
+                      <small>Đóng cửa sổ sẽ thu nhỏ ứng dụng xuống khay hệ thống.</small>
+                      <button type="button" class="btn btn-secondary" id="desktop-test-notification-btn">Gửi thử thông báo</button>
+                    </div>
+                    <span class="account-message" id="desktop-settings-message" aria-live="polite"></span>
+                  </fieldset>
 
                   <div class="account-form-actions">
                     <span class="account-message" id="account-settings-message" aria-live="polite"></span>

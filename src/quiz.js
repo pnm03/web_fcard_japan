@@ -1,4 +1,6 @@
-import { getProjectById, getProjects, updateVocabStats, removeVietnameseTones } from "./storage.js";
+import { getProjectById, getProjects, updateVocabRescueCard, updateVocabStats, removeVietnameseTones } from "./storage.js";
+import { getRomajiAnswerMatch, interleaveQuestionSeeds } from "./quiz-signals.js";
+export { getRomajiAnswerMatch, interleaveQuestionSeeds } from "./quiz-signals.js";
 
 export function normalizeString(str) {
   return str
@@ -365,6 +367,19 @@ function normalizeJapaneseAnswer(str) {
     .replace(/[、。，．・]/g, "");
 }
 
+
+function getJapaneseAnswerMatch(userAnswer, vocab) {
+  const normalizedUser = normalizeJapaneseAnswer(userAnswer);
+  if (!normalizedUser) return "wrong";
+  const candidates = getJapaneseAnswerCandidates(vocab).map(normalizeJapaneseAnswer).filter(Boolean);
+  if (candidates.includes(normalizedUser)) return "correct";
+  const closest = candidates.reduce((best, candidate) => Math.min(
+    best,
+    getLevenshteinDistance(normalizedUser, candidate)
+  ), Number.POSITIVE_INFINITY);
+  return normalizedUser.length >= 3 && closest <= 1 ? "near" : "wrong";
+}
+
 function getJapaneseAnswerCandidates(vocab) {
   const raw = vocab?.japanese || "";
   const display = getJapaneseDisplayText(raw);
@@ -376,12 +391,7 @@ function getJapaneseAnswerCandidates(vocab) {
 }
 
 function isJapaneseAnswerMatch(userAnswer, vocab) {
-  const normalizedUser = normalizeJapaneseAnswer(userAnswer);
-  if (!normalizedUser) return false;
-
-  return getJapaneseAnswerCandidates(vocab).some(candidate => {
-    return normalizeJapaneseAnswer(candidate) === normalizedUser;
-  });
+  return getJapaneseAnswerMatch(userAnswer, vocab) === "correct";
 }
 
 function maskJapaneseAnswer(answer) {
@@ -448,9 +458,18 @@ export class QuizSession {
     this.vocabIds = config.vocabIds || []; // Danh sách từ vựng được chọn cụ thể
     this.questionCount = parseInt(config.questionCount) || 10;
     this.quizMode = config.quizMode || "mixed";
+    this.quizModes = Array.isArray(config.quizModes) && config.quizModes.length
+      ? [...new Set(config.quizModes)]
+      : ["meaning_to_romaji", "romaji_to_meaning", "jp_to_meaning", "meaning_to_japanese", "audio_to_meaning"];
+    this.ensureModeCoverage = config.ensureModeCoverage === true;
     this.order = config.order || "random"; // 'sequential', 'random'
     this.allowRetry = config.allowRetry !== false; // mặc định cho phép retry
     this.repeatWrongPractice = config.repeatWrongPractice === true;
+    this.sessionType = config.goalContext?.sessionType || "standard";
+    this.desiredRetention = Number.isFinite(Number(config.desiredRetention))
+      ? Number(config.desiredRetention)
+      : 0.9;
+    this.fsrsParameters = config.fsrsParameters?.active ? config.fsrsParameters : null;
 
     this.vocabPool = [];
     this.questions = [];
@@ -640,13 +659,29 @@ export class QuizSession {
       }
     }
 
+    if (this.ensureModeCoverage) {
+      selectedList = this.vocabPool.flatMap(vocab => (
+        this.quizModes.map(mode => ({ vocab, forcedMode: mode }))
+      ));
+      if (this.order === "random") {
+        for (let i = selectedList.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [selectedList[i], selectedList[j]] = [selectedList[j], selectedList[i]];
+        }
+      }
+    }
+
+    if (this.order === "random" && selectedList.length > 2) {
+      selectedList = interleaveQuestionSeeds(selectedList, this.quizModes, this.quizMode);
+    }
+
     // Tạo các câu hỏi với chế độ tương ứng
-    this.questions = selectedList.map((vocab, index) => {
+    this.questions = selectedList.map((seed, index) => {
+      const vocab = seed?.vocab || seed;
       // Xác định chế độ của câu hỏi này
-      let activeMode = this.quizMode;
+      let activeMode = seed?.forcedMode || this.quizMode;
       if (this.quizMode === "mixed") {
-        const modes = ["meaning_to_romaji", "romaji_to_meaning", "jp_to_meaning", "meaning_to_japanese", "audio_to_meaning"];
-        activeMode = modes[Math.floor(Math.random() * modes.length)];
+        activeMode = seed?.forcedMode || this.quizModes[Math.floor(Math.random() * this.quizModes.length)];
       }
 
       const requiredMeaningAnswers = isMeaningAnswerMode(activeMode)
@@ -669,6 +704,8 @@ export class QuizSession {
         meaningAnswerAttempts: requiredMeaningAnswers.map(() => 0),
         activeMeaningAnswerIndex: null,
         meaningAnswerHadMistake: false,
+        answerSignal: "",
+        typoCount: 0,
         practiceRepeatUsed: false,
         practiceRepeatActive: false,
         practiceRepeatAttempts: 0
@@ -741,7 +778,26 @@ export class QuizSession {
     if (question.mode === "meaning_to_japanese") {
       return isJapaneseAnswerMatch(userAnswer, question.vocab);
     }
-    return normalizeString(userAnswer) === normalizeString(question.vocab.romaji);
+    return getRomajiAnswerMatch(userAnswer, question.vocab.romaji) !== "wrong";
+  }
+
+  recordConfusionPair(question, userAnswer) {
+    const other = this.vocabPool.find(candidate => {
+      if (!candidate?.id || candidate.id === question.vocab.id) return false;
+      if (isMeaningAnswerMode(question.mode)) {
+        return getAcceptedMeaningAnswers(candidate.meaning).some(answer => isSmartVietnameseMatch(userAnswer, answer));
+      }
+      if (question.mode === "meaning_to_japanese") return isJapaneseAnswerMatch(userAnswer, candidate);
+      return getRomajiAnswerMatch(userAnswer, candidate.romaji) !== "wrong";
+    });
+    if (!other) return null;
+    const currentIds = [...new Set([...(question.vocab.rescueCard?.confusionPairIds || []), other.id])];
+    const otherIds = [...new Set([...(other.rescueCard?.confusionPairIds || []), question.vocab.id])];
+    const current = updateVocabRescueCard(question.vocab.projectId, question.vocab.id, { confusionPairIds: currentIds });
+    const counterpart = updateVocabRescueCard(other.projectId, other.id, { confusionPairIds: otherIds });
+    if (current) question.vocab.rescueCard = current.rescueCard;
+    if (counterpart) other.rescueCard = counterpart.rescueCard;
+    return other.id;
   }
 
   canPracticeRepeatCurrentQuestion() {
@@ -822,6 +878,7 @@ export class QuizSession {
       ));
       if (nearIndex !== undefined) {
         question.activeMeaningAnswerIndex = nearIndex;
+        question.typoCount += 1;
         question.attempts = Math.max(0, question.attempts - 1);
         return {
           status: "meaning_near",
@@ -902,14 +959,28 @@ export class QuizSession {
     const wasRevealed = question.revealedMeaningAnswerIndexes.length > 0;
     const wasRetry = question.meaningAnswerHadMistake || question.promptRevealed;
     question.answerState = wasRevealed ? "wrong" : (wasRetry ? "correct_retry" : "correct");
+    question.answerSignal = wasRevealed
+      ? "revealed"
+      : question.meaningAnswerHadMistake
+        ? "wrong_knowledge"
+        : question.typoCount > 0
+          ? "typo"
+          : question.timeSpent > 8
+            ? "slow"
+            : "exact";
 
-    updateVocabStats(
+    const updatedVocab = updateVocabStats(
       question.vocab.projectId,
       question.vocab.id,
       question.answerState === "correct",
       question.timeSpent,
-      question.answerState
+      question.answerState,
+      this.desiredRetention,
+      question.mode,
+      question.answerSignal,
+      this.fsrsParameters
     );
+    if (updatedVocab) Object.assign(question.vocab, updatedVocab);
 
     return {
       status: wasRevealed ? "wrong" : "correct",
@@ -965,6 +1036,7 @@ export class QuizSession {
       ));
       if (meaningMatches.includes("near") && !meaningMatches.includes("correct")) {
         question.attempts = Math.max(0, question.attempts - 1);
+        question.typoCount += 1;
         return {
           status: "near_match",
           isCorrect: false,
@@ -973,23 +1045,50 @@ export class QuizSession {
         };
       }
       isCorrect = meaningMatches.includes("correct");
+      if (isCorrect) {
+        const exactMeaning = meaningCandidates.some(candidate => normalizeString(userAnswer) === normalizeString(candidate));
+        question.answerSignal = exactMeaning ? "exact" : "accepted_variant";
+      }
     } else {
-      isCorrect = this.isAnswerCorrectForQuestion(question, userAnswer);
+      const match = question.mode === "meaning_to_japanese"
+        ? getJapaneseAnswerMatch(userAnswer, question.vocab)
+        : getRomajiAnswerMatch(userAnswer, question.vocab.romaji);
+      if (match === "near") {
+        question.attempts = Math.max(0, question.attempts - 1);
+        question.typoCount += 1;
+        return {
+          status: "near_match",
+          isCorrect: false,
+          correctAnswer,
+          timeSpent: question.timeSpent
+        };
+      }
+      isCorrect = match === "correct" || match === "variant";
+      if (isCorrect) question.answerSignal = match === "variant" ? "accepted_variant" : "exact";
     }
 
     if (isCorrect) {
       // Trả lời đúng
       const wasRetry = question.attempts > 1 || question.promptRevealed;
       question.answerState = wasRetry ? "correct_retry" : "correct";
+      if (question.promptRevealed) question.answerSignal = "revealed";
+      else if (wasRetry) question.answerSignal = "wrong_knowledge";
+      else if (question.typoCount > 0) question.answerSignal = "typo";
+      else if (question.timeSpent > 8) question.answerSignal = "slow";
       
       // Cập nhật thống kê vào localStorage
-      updateVocabStats(
+      const updatedVocab = updateVocabStats(
         question.vocab.projectId,
         question.vocab.id,
         !wasRetry, // isCorrect
         question.timeSpent, // tổng thời gian qua các lượt thử
-        question.answerState
+        question.answerState,
+        this.desiredRetention,
+        question.mode,
+        question.answerSignal,
+        this.fsrsParameters
       );
+      if (updatedVocab) Object.assign(question.vocab, updatedVocab);
 
       return {
         status: "correct",
@@ -1016,15 +1115,22 @@ export class QuizSession {
       } else {
         // Sai hoàn toàn (hết lượt hoặc không bật retry)
         question.answerState = "wrong";
+        question.answerSignal = "wrong_knowledge";
+        question.confusedWithVocabId = this.recordConfusionPair(question, userAnswer);
 
         // Cập nhật thống kê vào localStorage (sai)
-        updateVocabStats(
+        const updatedVocab = updateVocabStats(
           question.vocab.projectId,
           question.vocab.id,
           false, // isCorrect
           question.timeSpent,
-          "wrong"
+          "wrong",
+          this.desiredRetention,
+          question.mode,
+          question.answerSignal,
+          this.fsrsParameters
         );
+        if (updatedVocab) Object.assign(question.vocab, updatedVocab);
 
         return {
           status: "wrong",
@@ -1080,6 +1186,9 @@ export class QuizSession {
         projectName: q.vocab.projectName,
         mode: q.mode,
         promptRevealed: q.promptRevealed,
+        answerSignal: q.answerSignal || (q.answerState === "wrong" ? "wrong_knowledge" : "exact"),
+        typoCount: q.typoCount || 0,
+        confusedWithVocabId: q.confusedWithVocabId || "",
         userAnswers: q.userAnswers,
         answerState: q.answerState,
         timeSpent: q.timeSpent,
