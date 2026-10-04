@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nihongo Prompt Box</title>
+  <style>
+    :root {
+      --bg-glass: rgba(15, 20, 32, 0.94);
+      --border-glass: rgba(255, 255, 255, 0.16);
+      --text-main: #f8fafc;
+      --text-sub: #94a3b8;
+      --accent: #38bdf8;
+      --radius-pill: 26px;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+    html, body {
+      background: transparent;
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Meiryo", sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px;
+    }
+    .prompt-capsule {
+      -webkit-app-region: drag;
+      cursor: grab;
+      width: 100%;
+      height: 100%;
+      background: var(--bg-glass);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-pill);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      padding: 0 10px 0 6px;
+      gap: 6px;
+      position: relative;
+    }
+    .prompt-capsule:active {
+      cursor: grabbing;
+    }
+    .drag-dots {
+      color: var(--text-sub);
+      font-size: 13px;
+      letter-spacing: -2px;
+      opacity: 0.5;
+      padding: 0 2px;
+      flex-shrink: 0;
+    }
+    .word-content {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1px;
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow: hidden;
+      line-height: 1.2;
+    }
+    .word-text {
+      font-size: 14.5px;
+      font-weight: 700;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      letter-spacing: 0.01em;
+      transition: font-size 0.15s ease;
+    }
+    .word-sub {
+      font-size: 10.5px;
+      color: var(--text-sub);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      opacity: 0.85;
+      font-family: inherit;
+    }
+    .speak-btn {
+      -webkit-app-region: no-drag;
+      background: none;
+      border: none;
+      color: var(--text-sub);
+      cursor: pointer;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px;
+      border-radius: 6px;
+      opacity: 0.65;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .speak-btn:hover {
+      opacity: 1;
+      color: var(--accent);
+    }
+    .counter-badge {
+      -webkit-app-region: no-drag;
+      font-size: 10px;
+      font-weight: 600;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.16);
+      border: 1px solid rgba(56, 189, 248, 0.32);
+      padding: 2px 7px;
+      border-radius: 12px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="prompt-capsule" id="prompt-box" title="Kéo để di chuyển ô hiển thị">
+    <div class="drag-dots">⋮⋮</div>
+    <div class="word-content">
+      <span class="word-text" id="display-word">Đang chờ...</span>
+      <span class="word-sub" id="display-sub"></span>
+    </div>
+    <button class="speak-btn" id="speak-btn" title="Phát âm (Tab)">🔊</button>
+    <div class="counter-badge" id="counter-badge">0/0</div>
+  </div>
+
+  <script type="module" src="/src/widget-prompt.js"></script>
+</body>
+</html>

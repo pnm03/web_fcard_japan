@@ -185,13 +185,127 @@
           padding: 30px 22px;
         }
       }
+
+      /* Chế độ Modal Đăng nhập khi đang ở Local Mode */
+      body.auth-modal-open .auth-shell {
+        display: flex !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        z-index: 10000 !important;
+        background: rgba(28, 26, 23, 0.72) !important;
+        backdrop-filter: blur(4px) !important;
+        overflow-y: auto !important;
+      }
+
+      .auth-card {
+        position: relative;
+      }
+
+      .auth-modal-close-btn {
+        position: absolute;
+        top: 14px;
+        right: 16px;
+        background: transparent;
+        border: none;
+        font-size: 20px;
+        font-weight: bold;
+        color: #736d64;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 6px;
+        line-height: 1;
+        display: none;
+        transition: all 0.15s ease;
+      }
+
+      body.auth-modal-open .auth-modal-close-btn,
+      body.auth-ready .auth-modal-close-btn {
+        display: block;
+      }
+
+      .auth-modal-close-btn:hover {
+        color: #b5482e;
+        background: #eae6dc;
+      }
+
+      .auth-local-skip-wrapper {
+        margin-top: 18px;
+        text-align: center;
+      }
+
+      .auth-skip-local-btn {
+        width: 100%;
+        background: #eae6dc !important;
+        color: #2c2723 !important;
+        border: 1px solid #c7c0b2 !important;
+        font-size: 13.5px !important;
+        font-weight: 600 !important;
+        padding: 10px 14px !important;
+        border-radius: 8px !important;
+        cursor: pointer !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        transition: all 0.2s ease !important;
+      }
+
+      .auth-skip-local-btn:hover {
+        background: #dfd9cc !important;
+        border-color: #b8b09f !important;
+        transform: translateY(-1px);
+      }
+
+      .auth-skip-local-desc {
+        font-size: 11.5px;
+        color: #736d64;
+        margin-top: 6px;
+        line-height: 1.4;
+      }
+
+      .sync-status.status-local {
+        border-color: #c7c0b2;
+        background: rgba(28, 26, 23, 0.05);
+        color: #56514a;
+        cursor: pointer;
+      }
+
+      .sync-status.status-local:hover {
+        background: rgba(28, 26, 23, 0.09);
+        border-color: #b5482e;
+        color: #b5482e;
+      }
     </style>
   </head>
-  <body class="auth-loading">
+  <body>
+    <script>
+      (function() {
+        try {
+          var isDesktop = Boolean(
+            window.electronAPI?.isElectron ||
+            navigator.userAgent.includes("Electron") ||
+            "__TAURI_INTERNALS__" in window ||
+            "__TAURI__" in window
+          );
+          var isLocal = isDesktop || localStorage.getItem("nihongo_local_mode") === "true";
+          if (isLocal) {
+            document.body.classList.add("auth-ready");
+          } else {
+            document.body.classList.add("auth-loading");
+          }
+        } catch (e) {
+          document.body.classList.add("auth-ready");
+        }
+      })();
+    </script>
     <div id="app">
       <!-- Auth Gate -->
       <section id="auth-view" class="auth-shell" aria-label="Đăng nhập Nihongo Flashcard">
         <div class="auth-card">
+          <button type="button" class="auth-modal-close-btn" id="auth-modal-close-btn" aria-label="Đóng" title="Đóng và tiếp tục dùng Chế độ Local">✕</button>
           <div class="auth-panel active" data-auth-panel="login">
             <button type="button" class="auth-back-btn" data-auth-switch="login">← NIHONGO FLASHCARD</button>
             <h1>Chào mừng trở lại</h1>
@@ -212,6 +326,14 @@
             <div class="auth-links">
               <button type="button" data-auth-switch="register">Chưa có tài khoản? Đăng ký ngay</button>
               <button type="button" data-auth-switch="reset">Quên mật khẩu?</button>
+            </div>
+            <div class="auth-local-skip-wrapper">
+              <button type="button" id="auth-skip-local-btn" class="btn auth-skip-local-btn">
+                <span>💻</span> Dùng ngay chế độ Local (Offline / Không cần đăng nhập)
+              </button>
+              <div class="auth-skip-local-desc">
+                Học flashcard, làm quiz và lưu tiến độ trực tiếp trên máy này
+              </div>
             </div>
           </div>
 
@@ -314,6 +436,9 @@
           <button class="nav-btn" data-target="quiz-setup-view" id="nav-quiz-setup">
             Kiểm tra
           </button>
+          <button class="nav-btn" id="open-stealth-widget-btn" title="Mở Popup Mini ghim góc màn hình để học kín đáo" style="color: var(--accent, #b5482e); font-weight: 600;">
+            📌 Mini Widget
+          </button>
         </nav>
         <div class="app-user-menu" id="app-user-menu">
           <button
@@ -330,9 +455,10 @@
             <span id="app-user-email"></span>
           </button>
           <div class="app-user-dropdown" id="app-user-dropdown" role="menu" aria-hidden="true">
+            <button type="button" id="app-login-btn" role="menuitem" style="color: var(--accent, #b5482e); font-weight: 600; display: none;">☁️ Đăng nhập đồng bộ Cloud</button>
             <button type="button" data-account-panel="personal" role="menuitem">Thông tin cá nhân</button>
             <button type="button" data-account-panel="security" role="menuitem">Bảo mật</button>
-            <button type="button" data-account-panel="settings" role="menuitem">Cài đặt</button>
+            <button type="button" data-account-panel="settings" role="menuitem">Cài đặt giao diện</button>
             <div class="app-user-dropdown-divider" aria-hidden="true"></div>
             <button type="button" id="app-signout-btn" role="menuitem">Đăng xuất</button>
           </div>
@@ -347,6 +473,27 @@
           <div class="dashboard-banner">
             <h1 id="welcome-text">Kính chào Học viên!</h1>
             <p>Chào mừng bạn đến với Nihongo Flashcard. Hãy luyện tập đều đặn hàng ngày để nâng cao phản xạ tiếng Nhật và ghi nhớ từ vựng lâu hơn.</p>
+          </div>
+
+          <!-- Section: Chế độ Ghim 2 Ô Mini (Văn Phòng Stealth) -->
+          <div class="stealth-banner-card glass-panel" style="margin-top: 1.5rem; background: linear-gradient(135deg, rgba(2, 132, 199, 0.08), rgba(56, 189, 248, 0.14)); border: 1.5px solid rgba(56, 189, 248, 0.45); border-radius: 14px; padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; box-shadow: 0 4px 16px rgba(2, 132, 199, 0.1);">
+            <div style="max-width: 580px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 26px;">📌</span>
+                <h2 style="margin: 0; font-size: 1.25rem; color: #0284c7; font-weight: 700;">Chế Độ Popup Ghim 2 Ô Mini (Văn Phòng Stealth)</h2>
+              </div>
+              <p style="margin: 6px 0 0; color: var(--text-muted); font-size: 0.92rem; line-height: 1.5;">
+                Thu nhỏ giao diện thành <strong>2 ô nhỏ độc lập ghim đè lên mọi ứng dụng</strong> (Word, Excel, trình duyệt, IDE...): 1 ô hiển thị câu hỏi và 1 ô gõ đáp án & Enter để gửi đi. Học kín đáo ngay trong giờ làm!
+              </p>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <button type="button" class="btn" id="dashboard-quick-stealth-btn" style="background: linear-gradient(135deg, #0284c7, #38bdf8); color: #0f172a; font-weight: 700; border: none; border-radius: 10px; padding: 12px 20px; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(56, 189, 248, 0.35);">
+                <span>⚡ Bật Ngay 2 Ô Ghim Màn Hình</span>
+              </button>
+              <button type="button" class="btn btn-secondary" id="dashboard-setup-stealth-btn" style="border-radius: 10px; padding: 12px 18px; cursor: pointer; font-weight: 600;">
+                ⚙️ Chọn Từ & Cài Đặt Kiểu Test
+              </button>
+            </div>
           </div>
 
           <div class="dashboard-grid">
@@ -844,9 +991,42 @@
               </label>
             </div>
 
-            <button class="btn btn-primary" id="start-quiz-session-btn" style="width: 100%; padding: 1rem; font-size: 1.1rem; margin-top: 1rem;">
-              Bắt đầu kiểm tra
+            <!-- Cài đặt tự động nhắc lại từ sai định kỳ (Popup 2 ô) -->
+            <div class="stealth-reminder-card" style="margin-top: 1.1rem; padding: 12px 14px; background: rgba(56, 189, 248, 0.06); border: 1px dashed rgba(56, 189, 248, 0.35); border-radius: 12px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                <label class="checkbox-control-group" style="margin-bottom: 0; font-weight: 600; color: #38bdf8;">
+                  <input type="checkbox" id="stealth-reminder-enabled">
+                  <span>⏰ Tự động nhắc từ sai định kỳ (Popup 2 ô)</span>
+                </label>
+                <span class="badge" id="stealth-wrong-pool-badge" style="font-size: 11px; background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 10px;">0 từ sai</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-sub); margin-top: 6px;">
+                <span>Cứ mỗi:</span>
+                <select id="stealth-reminder-interval" class="form-control" style="width: auto; padding: 3px 8px; height: 30px; font-size: 0.85rem; border-radius: 8px;">
+                  <option value="5">5 phút</option>
+                  <option value="10" selected>10 phút</option>
+                  <option value="15">15 phút</option>
+                  <option value="20">20 phút</option>
+                  <option value="30">30 phút</option>
+                  <option value="60">60 phút (1 giờ)</option>
+                </select>
+                <span>hiện popup ngẫu nhiên 1 từ đã làm sai</span>
+              </div>
+              <p style="margin-top: 6px; font-size: 0.75rem; color: var(--ink-faint); line-height: 1.35; margin-bottom: 0;">
+                * Cứ sau X phút, 2 ô mini sẽ tự động bật lên 1 từ bạn từng sai để gõ ôn lại nhanh mà không ảnh hưởng công việc.
+              </p>
+            </div>
+
+            <button class="btn btn-primary" id="start-quiz-session-btn" style="width: 100%; padding: 0.95rem; font-size: 1.05rem; margin-top: 1rem;">
+              Bắt đầu kiểm tra (Toàn màn hình)
             </button>
+
+            <button class="btn btn-accent" id="start-stealth-quiz-btn" style="width: 100%; padding: 0.95rem; font-size: 1.05rem; margin-top: 0.65rem; display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, #0284c7, #38bdf8); color: #0f172a; font-weight: 700; border: none; border-radius: 12px; box-shadow: 0 4px 14px rgba(56, 189, 248, 0.35); cursor: pointer;">
+              <span>📌 Bắt đầu Ghim 2 Ô Mini (Văn Phòng Stealth)</span>
+            </button>
+            <p style="color: var(--ink-faint); font-size: 0.75rem; text-align: center; margin-top: 0.35rem; line-height: 1.35;">
+              * Thu nhỏ ứng dụng, hiện 2 ô mini độc lập (1 ô hiển thị chữ & số từ còn lại, 1 ô gõ đáp án) để vừa làm việc vừa luyện phản xạ. Có thể di chuyển cả 2 ô tự do trên màn hình.
+            </p>
           </div>
         </section>
 
@@ -881,8 +1061,12 @@
              </div>
 
             <!-- Input area -->
-            <div class="quiz-input-box">
+            <div class="quiz-input-box" style="position: relative;">
               <input type="text" class="quiz-input" id="quiz-answer-input" placeholder="Gõ câu trả lời tại đây..." autocomplete="off">
+              <button type="button" class="quiz-ime-badge mode-kana" id="quiz-ime-badge" title="Bộ gõ tự động: Nhấp hoặc ấn F2 để đổi (Kana / Bàn phím thường)">
+                <span id="quiz-ime-badge-icon">あ</span>
+                <span id="quiz-ime-badge-text">Kana</span>
+              </button>
             </div>
 
             <!-- Hint Box (shown on retry) -->

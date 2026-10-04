@@ -1,5 +1,6 @@
 import { getProjectById, getProjects, updateVocabRescueCard, updateVocabStats, removeVietnameseTones } from "./storage.js";
 import { getRomajiAnswerMatch, interleaveQuestionSeeds } from "./quiz-signals.js";
+import { romajiToHiragana } from "./kana-ime.js";
 export { getRomajiAnswerMatch, interleaveQuestionSeeds } from "./quiz-signals.js";
 
 export function normalizeString(str) {
@@ -386,8 +387,10 @@ function getJapaneseAnswerCandidates(vocab) {
   const withoutAnnotation = raw.replace(/\([^)]+\)/g, "").replace(/（[^）]+）/g, "").trim();
   const annotationMatch = raw.match(/\(([^)]+)\)/) || raw.match(/（([^）]+)）/);
   const annotation = annotationMatch ? annotationMatch[1].trim() : "";
+  const hiraganaFromRomaji = vocab?.romaji ? romajiToHiragana(vocab.romaji) : "";
+  const rawRomaji = vocab?.romaji || "";
 
-  return [...new Set([display, withoutAnnotation, annotation, raw].filter(Boolean))];
+  return [...new Set([display, withoutAnnotation, annotation, hiraganaFromRomaji, rawRomaji, raw].filter(Boolean))];
 }
 
 function isJapaneseAnswerMatch(userAnswer, vocab) {
@@ -673,6 +676,38 @@ export class QuizSession {
 
     if (this.order === "random" && selectedList.length > 2) {
       selectedList = interleaveQuestionSeeds(selectedList, this.quizModes, this.quizMode);
+    }
+
+    // === BẢO ĐẢM TUYỆT ĐỐI KHÔNG 2 CÂU HỎI LIÊN TIẾP CÙNG TỪ (FINAL PASS) ===
+    if (this.order === "random" && selectedList.length > 1) {
+      const getSeedId = s => (s?.vocab?.id || s?.id);
+      for (let i = 1; i < selectedList.length; i++) {
+        if (getSeedId(selectedList[i]) === getSeedId(selectedList[i - 1])) {
+          let swapped = false;
+          for (let j = i + 1; j < selectedList.length; j++) {
+            const candidateId = getSeedId(selectedList[j]);
+            const nextIId = i + 1 < selectedList.length ? getSeedId(selectedList[i + 1]) : null;
+            if (candidateId !== getSeedId(selectedList[i - 1]) && candidateId !== nextIId) {
+              [selectedList[i], selectedList[j]] = [selectedList[j], selectedList[i]];
+              swapped = true;
+              break;
+            }
+          }
+          if (!swapped) {
+            for (let j = 0; j < i - 1; j++) {
+              const prevJId = j > 0 ? getSeedId(selectedList[j - 1]) : null;
+              const nextJId = getSeedId(selectedList[j + 1]);
+              const curId = getSeedId(selectedList[i]);
+              if (getSeedId(selectedList[j]) !== curId && prevJId !== curId && nextJId !== curId) {
+                const item = selectedList.splice(i, 1)[0];
+                selectedList.splice(j + 1, 0, item);
+                swapped = true;
+                break;
+              }
+            }
+          }
+        }
+      }
     }
 
     // Tạo các câu hỏi với chế độ tương ứng

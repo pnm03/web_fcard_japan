@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Nihongo Flashcard",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "identifier": "app.nihongo.flashcard",
   "build": {
     "frontendDist": "../dist",
@@ -12,12 +12,14 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Nihongo Flashcard",
         "width": 1280,
         "height": 850,
         "minWidth": 960,
         "minHeight": 680,
         "center": true,
+        "visible": true,
         "resizable": true,
         "fullscreen": false
       }

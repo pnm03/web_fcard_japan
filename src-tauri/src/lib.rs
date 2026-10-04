@@ -219,10 +219,20 @@ mod tests {
 }
 
 fn show_main_window(app: &tauri::AppHandle) {
-    if let Some(window) = app.get_webview_window("main") {
-        let _ = window.show();
-        let _ = window.unminimize();
-        let _ = window.set_focus();
+    let windows = app.webview_windows();
+    if windows.is_empty() {
+        log::warn!("No WebView window is available to show");
+    }
+    for (label, window) in windows {
+        if let Err(error) = window.show() {
+            log::error!("Could not show WebView window {label}: {error}");
+        }
+        if let Err(error) = window.unminimize() {
+            log::error!("Could not restore WebView window {label}: {error}");
+        }
+        if let Err(error) = window.set_focus() {
+            log::error!("Could not focus WebView window {label}: {error}");
+        }
     }
 }
 
@@ -231,9 +241,15 @@ pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![update_learning_schedule])
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
+            log::info!("A second app launch requested the main window");
             show_main_window(app);
         }))
         .plugin(tauri_plugin_notification::init())
+        .plugin(
+            tauri_plugin_log::Builder::default()
+                .level(log::LevelFilter::Info)
+                .build(),
+        )
         .plugin(
             tauri_plugin_autostart::Builder::new()
                 .app_name("Nihongo Flashcard")
@@ -241,14 +257,6 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
-            if cfg!(debug_assertions) {
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::default()
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
-            }
-
             let schedule_path = app.path().app_data_dir()?.join("learning-schedule.json");
             let native_schedule = Arc::new(Mutex::new(load_schedule(&schedule_path)));
             app.manage(SchedulerState {
@@ -299,10 +307,15 @@ pub fn run() {
             }
             tray.build(app)?;
 
-            if std::env::args().any(|arg| arg == "--hidden") {
-                if let Some(window) = app.get_webview_window("main") {
+            let starts_hidden = std::env::args().any(|arg| arg == "--hidden");
+            if starts_hidden {
+                for window in app.webview_windows().values() {
                     window.hide()?;
                 }
+                log::info!("Desktop app started hidden by autostart");
+            } else {
+                show_main_window(app.handle());
+                log::info!("Desktop app started with its main window visible");
             }
 
             Ok(())

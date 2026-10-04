@@ -34,3 +34,5 @@ src-tauri/target/
 .vercel
 supabase/.temp/
 backups/
+release/
+tmp/

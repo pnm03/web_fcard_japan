@@ -59,11 +59,13 @@ import {
   getKanaKey,
   isKanaRomajiMatch
 } from "./kana.js";
+import { bindKanaInput, romajiToHiragana } from "./kana-ime.js";
 
 
 // Khai báo các biến trạng thái giao diện toàn cục
 let currentProjectId = null;
 let activeQuizSession = null;
+let quizKanaImeController = null;
 let quizTimerInterval = null;
 let currentQuestionTime = 0;
 let quizConfigBackup = null; // Dùng để làm lại bài kiểm tra
@@ -293,9 +295,45 @@ function startQuizWithVocabIds(vocabIds, message = "", startImmediately = false)
   }
 }
 
+export function isDesktopApp() {
+  if (typeof window === "undefined") return false;
+  return Boolean(
+    window.electronAPI?.isElectron ||
+    (typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.includes("Electron")) ||
+    "__TAURI_INTERNALS__" in window ||
+    "__TAURI__" in window
+  );
+}
+
+export function isLocalMode() {
+  if (isDesktopApp()) return true;
+  try {
+    return localStorage.getItem("nihongo_local_mode") === "true";
+  } catch (e) {
+    return true;
+  }
+}
+
+export function openAuthModal(mode = "login") {
+  setAuthMode(mode);
+  document.body.classList.add("auth-modal-open");
+}
+
+export function closeAuthModal() {
+  document.body.classList.remove("auth-modal-open");
+}
+
 // Khởi tạo các sự kiện giao diện
 export function initUI() {
-  document.body.classList.add("auth-loading");
+  if (isLocalMode()) {
+    document.body.classList.remove("auth-loading");
+    document.body.classList.remove("auth-required");
+    document.body.classList.add("auth-ready");
+    setAttendanceUser({ id: "local-user", email: "local@device" });
+    updateAuthShell(null);
+  } else {
+    document.body.classList.add("auth-loading");
+  }
   restoreSavedAccountTheme();
   setupAuthUI();
   setupAccountCenterUI();
@@ -505,6 +543,7 @@ function setupAuthUI() {
       setAuthMessage("login", "Email hoặc mật khẩu chưa đúng. Kiểm tra lại giúp mình nhé.", "error");
     } else {
       setAuthMessage("login", "Đăng nhập thành công. Đang đồng bộ dữ liệu...", "success");
+      closeAuthModal();
     }
   });
 
@@ -537,6 +576,7 @@ function setupAuthUI() {
       setAuthMessage("register", getFriendlyAuthError(error, "Chưa tạo được tài khoản."), "error");
     } else if (data.session) {
       setAuthMessage("register", "Tạo tài khoản thành công. Đang mở app...", "success");
+      closeAuthModal();
     } else {
       setAuthMessage("register", "Đã gửi email xác nhận. Mở email rồi quay lại đăng nhập nhé.", "success");
     }
@@ -586,6 +626,7 @@ function setupAuthUI() {
     clearPendingPasswordRecovery();
     window.history.replaceState({}, document.title, getAuthRedirectUrl());
     setAuthMessage("update-password", "Đã đổi mật khẩu. Đang mở app...", "success");
+    closeAuthModal();
     const { data } = await supabase.auth.getSession();
     await applyAuthSession(data?.session || currentAuthSession, { restore: true });
   });
@@ -611,6 +652,48 @@ function setupAuthUI() {
     setAppUserMenuOpen(false);
     await supabase.auth.signOut();
   });
+
+  // Nút mở modal đăng nhập từ menu
+  document.getElementById("app-login-btn")?.addEventListener("click", () => {
+    setAppUserMenuOpen(false);
+    openAuthModal("login");
+  });
+
+  // Nút đóng modal Auth để quay lại chế độ Local
+  document.getElementById("auth-modal-close-btn")?.addEventListener("click", () => {
+    closeAuthModal();
+  });
+
+  // Nút bỏ qua đăng nhập và dùng chế độ Local ngay
+  document.getElementById("auth-skip-local-btn")?.addEventListener("click", () => {
+    localStorage.setItem("nihongo_local_mode", "true");
+    closeAuthModal();
+    applyAuthSession(null, { restore: true });
+  });
+
+  // Click vào logo / back ở màn hình đăng nhập chính
+  document.querySelector('.auth-panel[data-auth-panel="login"] .auth-back-btn')?.addEventListener("click", () => {
+    if (isLocalMode() || document.body.classList.contains("auth-modal-open")) {
+      closeAuthModal();
+      if (!hasRestoredAfterAuth) {
+        applyAuthSession(null, { restore: true });
+      }
+    }
+  });
+}
+
+function updateUserDropdownState(isLoggedIn) {
+  const loginBtn = document.getElementById("app-login-btn");
+  const signoutBtn = document.getElementById("app-signout-btn");
+  const personalBtn = document.querySelector('[data-account-panel="personal"]');
+  const securityBtn = document.querySelector('[data-account-panel="security"]');
+  const divider = document.querySelector(".app-user-dropdown-divider");
+
+  if (loginBtn) loginBtn.style.display = isLoggedIn ? "none" : "block";
+  if (signoutBtn) signoutBtn.style.display = isLoggedIn ? "block" : "none";
+  if (personalBtn) personalBtn.style.display = isLoggedIn ? "block" : "none";
+  if (securityBtn) securityBtn.style.display = isLoggedIn ? "block" : "none";
+  if (divider) divider.style.display = isLoggedIn ? "block" : "none";
 }
 
 function setAppUserMenuOpen(isOpen) {
@@ -648,25 +731,60 @@ function setAccountAvatar(imageEl, fallbackEl, avatarUrl, displayName) {
 function updateAuthShell(user) {
   const isLoggedIn = !!user;
   document.body.classList.remove("auth-loading");
-  document.body.classList.toggle("auth-required", !isLoggedIn);
-  document.body.classList.toggle("auth-ready", isLoggedIn);
 
-  currentAccountProfile = user ? getAccountProfile(user) : null;
-  if (currentAccountProfile) applyAccountTheme(currentAccountProfile.theme);
+  if (isLoggedIn) {
+    document.body.classList.remove("auth-required");
+    document.body.classList.add("auth-ready");
 
-  const email = user?.email || "";
-  const emailEl = document.getElementById("app-user-email");
-  if (emailEl) {
-    emailEl.textContent = currentAccountProfile?.displayName || "";
-    emailEl.title = email;
+    currentAccountProfile = getAccountProfile(user);
+    if (currentAccountProfile) applyAccountTheme(currentAccountProfile.theme);
+
+    const email = user?.email || "";
+    const emailEl = document.getElementById("app-user-email");
+    if (emailEl) {
+      emailEl.textContent = currentAccountProfile?.displayName || email;
+      emailEl.title = email;
+    }
+
+    setAccountAvatar(
+      document.getElementById("app-user-avatar-image"),
+      document.getElementById("app-user-avatar-fallback"),
+      currentAccountProfile?.avatarUrl || "",
+      currentAccountProfile?.displayName || email
+    );
+
+    updateUserDropdownState(true);
+  } else if (isLocalMode()) {
+    document.body.classList.remove("auth-required");
+    document.body.classList.add("auth-ready");
+
+    currentAccountProfile = {
+      displayName: "Chế độ Local (Offline)",
+      email: "local@device",
+      avatarUrl: ""
+    };
+    restoreSavedAccountTheme();
+
+    const emailEl = document.getElementById("app-user-email");
+    if (emailEl) {
+      emailEl.textContent = "Chế độ Local";
+      emailEl.title = "Dữ liệu lưu trữ offline trên máy tính";
+    }
+
+    setAccountAvatar(
+      document.getElementById("app-user-avatar-image"),
+      document.getElementById("app-user-avatar-fallback"),
+      "",
+      "💻"
+    );
+
+    updateUserDropdownState(false);
+  } else {
+    document.body.classList.add("auth-required");
+    document.body.classList.remove("auth-ready");
+    currentAccountProfile = null;
+    updateUserDropdownState(false);
   }
-
-  setAccountAvatar(
-    document.getElementById("app-user-avatar-image"),
-    document.getElementById("app-user-avatar-fallback"),
-    currentAccountProfile?.avatarUrl || "",
-    currentAccountProfile?.displayName || ""
-  );
 }
 
 function setAccountMessage(id, message = "", type = "") {
@@ -733,7 +851,11 @@ function renderAccountThemeOptions(selectedTheme) {
 
 function populateAccountModal() {
   const user = currentAuthSession?.user;
-  if (!user) return;
+  if (!user) {
+    const currentTheme = localStorage.getItem("nihongo_account_theme") || "traditional";
+    renderAccountThemeOptions(currentTheme);
+    return;
+  }
   currentAccountProfile = getAccountProfile(user);
 
   const displayNameInput = document.getElementById("account-display-name");
@@ -765,7 +887,10 @@ function populateAccountModal() {
 }
 
 function openAccountModal(panelName = "personal") {
-  if (!currentAuthSession?.user) return;
+  if (!currentAuthSession?.user && panelName !== "settings") {
+    openAuthModal("login");
+    return;
+  }
   populateAccountModal();
   setAccountPanel(panelName);
   setAppUserMenuOpen(false);
@@ -1022,7 +1147,7 @@ function closeOverdueReviewReminder() {
 }
 
 function checkOverdueReviewOnReload() {
-  if (hasCheckedReloadReview || !currentAuthSession?.user) return;
+  if (hasCheckedReloadReview || (!currentAuthSession?.user && !isLocalMode())) return;
   hasCheckedReloadReview = true;
   overdueReviewItems = getReviewDueVocab(1000, "overdue");
   if (overdueReviewItems.length === 0) return;
@@ -1083,7 +1208,7 @@ function setupReloadReviewReminder() {
 
 function setupDesktopReviewEvents() {
   window.addEventListener("nihongo:desktop-review-requested", () => {
-    if (!currentAuthSession?.user) return;
+    if (!currentAuthSession?.user && !isLocalMode()) return;
 
     overdueReviewItems = getReviewDueVocab(1000, "overdue");
     if (overdueReviewItems.length === 0) {
@@ -1129,10 +1254,16 @@ async function applyAuthSession(session, { restore = false } = {}) {
   currentAuthSession = session || null;
   attendanceSession = currentAuthSession;
   setCloudUser(currentAuthSession?.user || null);
-  setAttendanceUser(currentAuthSession?.user || null);
-  updateAuthShell(currentAuthSession?.user || null);
 
-  if (!currentAuthSession?.user) {
+  if (currentAuthSession?.user) {
+    setAttendanceUser(currentAuthSession.user);
+    updateAuthShell(currentAuthSession.user);
+  } else if (isLocalMode()) {
+    setAttendanceUser({ id: "local-user", email: "local@device" });
+    updateAuthShell(null);
+  } else {
+    setAttendanceUser(null);
+    updateAuthShell(null);
     closeOverdueReviewReminder();
     hasCheckedReloadReview = false;
     hasRestoredAfterAuth = false;
@@ -1141,8 +1272,13 @@ async function applyAuthSession(session, { restore = false } = {}) {
   }
 
   const shouldCheckOverdueAfterSync = !hasRestoredAfterAuth;
-  await fetchAndSyncFromSupabase();
-  await syncLearningGoalsFromCloud();
+  if (currentAuthSession?.user) {
+    await fetchAndSyncFromSupabase();
+    await syncLearningGoalsFromCloud();
+  } else {
+    updateSyncStatusForLocal();
+  }
+
   if (restore || !hasRestoredAfterAuth) {
     restoreActiveView();
     hasRestoredAfterAuth = true;
@@ -1205,12 +1341,32 @@ async function setupAppAuth() {
       });
     });
   } catch (error) {
-    console.error("Không thể khởi tạo đăng nhập:", error);
+    console.warn("Không kết nối được Supabase Auth (hoặc đang offline):", error);
     setCloudUser(null);
-    setAttendanceUser(null);
-    updateAuthShell(null);
-    setAuthMessage("login", "Chưa kết nối được Supabase Auth. Kiểm tra cấu hình rồi thử lại nhé.", "error");
+    if (isLocalMode()) {
+      setAttendanceUser({ id: "local-user", email: "local@device" });
+      updateAuthShell(null);
+      if (!hasRestoredAfterAuth) {
+        restoreActiveView();
+        hasRestoredAfterAuth = true;
+      }
+    } else {
+      setAttendanceUser(null);
+      updateAuthShell(null);
+      setAuthMessage("login", "Chưa kết nối được Supabase Auth. Bạn có thể chọn 'Dùng ngay chế độ Local' để học offline.", "error");
+    }
   }
+}
+
+function updateSyncStatusForLocal() {
+  const syncStatusEl = document.getElementById("cloud-sync-status");
+  if (!syncStatusEl) return;
+  const iconEl = syncStatusEl.querySelector(".sync-icon");
+  const textEl = syncStatusEl.querySelector(".sync-text");
+  syncStatusEl.className = "sync-status status-local";
+  if (iconEl) iconEl.textContent = "💻";
+  if (textEl) textEl.textContent = "Chế độ Local (Offline)";
+  syncStatusEl.title = "Đang chạy chế độ Local offline. Bấm để đăng nhập đồng bộ dữ liệu.";
 }
 
 function setupCloudSyncUI() {
@@ -1219,6 +1375,18 @@ function setupCloudSyncUI() {
   
   const iconEl = syncStatusEl.querySelector(".sync-icon");
   const textEl = syncStatusEl.querySelector(".sync-text");
+
+  syncStatusEl.addEventListener("click", () => {
+    if (!currentAuthSession?.user) {
+      openAuthModal("login");
+    } else {
+      fetchAndSyncFromSupabase().catch(console.error);
+    }
+  });
+
+  if (isLocalMode() && !currentAuthSession?.user) {
+    updateSyncStatusForLocal();
+  }
   
   setOnSyncStateChange((state) => {
     syncStatusEl.className = "sync-status"; // reset classes
@@ -1236,9 +1404,13 @@ function setupCloudSyncUI() {
       iconEl.textContent = "⚠️";
       textEl.textContent = "Lỗi đồng bộ";
     } else if (state === "auth") {
-      syncStatusEl.classList.add("status-error");
-      iconEl.textContent = "🔒";
-      textEl.textContent = "Cần đăng nhập";
+      if (isLocalMode() || !currentAuthSession?.user) {
+        updateSyncStatusForLocal();
+      } else {
+        syncStatusEl.classList.add("status-error");
+        iconEl.textContent = "🔒";
+        textEl.textContent = "Cần đăng nhập";
+      }
     }
   });
 }
@@ -1247,14 +1419,26 @@ async function setupAttendanceAuth() {
   try {
     const { data } = await supabase.auth.getSession();
     attendanceSession = data?.session || null;
-    setAttendanceUser(attendanceSession?.user || null);
+    if (attendanceSession?.user) {
+      setAttendanceUser(attendanceSession.user);
+    } else if (isLocalMode()) {
+      setAttendanceUser({ id: "local-user", email: "local@device" });
+    } else {
+      setAttendanceUser(null);
+    }
     if (document.getElementById("attendance-view")?.classList.contains("active")) {
       renderAttendanceView();
     }
 
     supabase.auth.onAuthStateChange((_event, session) => {
       attendanceSession = session || null;
-      setAttendanceUser(attendanceSession?.user || null);
+      if (attendanceSession?.user) {
+        setAttendanceUser(attendanceSession.user);
+      } else if (isLocalMode()) {
+        setAttendanceUser({ id: "local-user", email: "local@device" });
+      } else {
+        setAttendanceUser(null);
+      }
       if (document.getElementById("attendance-view")?.classList.contains("active")) {
         renderAttendanceView();
       }
@@ -1262,7 +1446,11 @@ async function setupAttendanceAuth() {
   } catch (e) {
     console.warn("Không thể kiểm tra trạng thái đăng nhập Supabase:", e);
     attendanceSession = null;
-    setAttendanceUser(null);
+    if (isLocalMode()) {
+      setAttendanceUser({ id: "local-user", email: "local@device" });
+    } else {
+      setAttendanceUser(null);
+    }
   }
 
   window.addEventListener("attendance:updated", () => {
@@ -1278,9 +1466,24 @@ function setupNavigation() {
   navButtons.forEach(btn => {
     btn.addEventListener("click", () => {
       const targetView = btn.getAttribute("data-target");
-      switchView(targetView);
+      if (targetView) {
+        switchView(targetView);
+      }
     });
   });
+
+  const stealthNavBtn = document.getElementById("open-stealth-widget-btn");
+  if (stealthNavBtn) {
+    stealthNavBtn.addEventListener("click", () => {
+      switchView("quiz-setup-view");
+      const stealthBtn = document.getElementById("start-stealth-quiz-btn");
+      if (stealthBtn) {
+        stealthBtn.scrollIntoView({ behavior: "smooth", block: "center" });
+        stealthBtn.classList.add("highlight-pulse");
+        setTimeout(() => stealthBtn.classList.remove("highlight-pulse"), 2500);
+      }
+    });
+  }
 
   document.getElementById("logo-btn").addEventListener("click", (e) => {
     e.preventDefault();
@@ -1458,11 +1661,32 @@ function renderDashboard() {
     });
   }
 
-  // Đăng ký sự kiện nút Ôn tập từ yếu nhanh từ dashboard
-  document.getElementById("dashboard-start-weak-btn").onclick = () => {
-    switchView("weak-vocab-view");
-  };
-}
+    // Đăng ký sự kiện nút Ôn tập từ yếu nhanh từ dashboard
+    document.getElementById("dashboard-start-weak-btn").onclick = () => {
+      switchView("weak-vocab-view");
+    };
+
+    // Đăng ký sự kiện nút Stealth 2 Ô Mini từ dashboard
+    const quickStealthBtn = document.getElementById("dashboard-quick-stealth-btn");
+    if (quickStealthBtn) {
+      quickStealthBtn.onclick = () => {
+        launchQuickStealthQuiz(10);
+      };
+    }
+
+    const setupStealthBtn = document.getElementById("dashboard-setup-stealth-btn");
+    if (setupStealthBtn) {
+      setupStealthBtn.onclick = () => {
+        switchView("quiz-setup-view");
+        const stealthBtn = document.getElementById("start-stealth-quiz-btn");
+        if (stealthBtn) {
+          stealthBtn.scrollIntoView({ behavior: "smooth", block: "center" });
+          stealthBtn.classList.add("highlight-pulse");
+          setTimeout(() => stealthBtn.classList.remove("highlight-pulse"), 2500);
+        }
+      };
+    }
+  }
 
 function renderDashboardReviewSchedule() {
   const container = document.getElementById("dashboard-review-overview");
@@ -2980,6 +3204,10 @@ function setupVocabActions() {
   const openVocabModalBtn = document.getElementById("open-add-vocab-modal-btn");
   const closeVocabModalBtn = document.getElementById("close-vocab-modal-btn");
   const vocabForm = document.getElementById("vocab-form");
+  const vocabJapaneseInput = document.getElementById("vocab-modal-japanese");
+  if (vocabJapaneseInput) {
+    bindKanaInput(vocabJapaneseInput, { mode: "kana" });
+  }
 
   openVocabModalBtn.addEventListener("click", () => {
     document.getElementById("vocab-modal-title").textContent = "➕ Thêm Từ Vựng Mới";
@@ -3958,6 +4186,25 @@ function setupQuizConfig(preselectedProjectId = null) {
     answerSourceSelect.value = restoredAnswerSource;
   }
 
+  const stealthReminderCb = document.getElementById("stealth-reminder-enabled");
+  const stealthReminderInterval = document.getElementById("stealth-reminder-interval");
+  try {
+    const savedReminder = JSON.parse(localStorage.getItem("nihongo_stealth_reminder_config") || "null");
+    if (savedReminder) {
+      if (stealthReminderCb && savedReminder.enabled !== undefined) {
+        stealthReminderCb.checked = savedReminder.enabled;
+      }
+      if (stealthReminderInterval && savedReminder.intervalMinutes) {
+        stealthReminderInterval.value = String(savedReminder.intervalMinutes);
+      }
+    } else {
+      if (stealthReminderCb) stealthReminderCb.checked = true;
+      if (stealthReminderInterval) stealthReminderInterval.value = "10";
+    }
+  } catch (e) {}
+
+  syncWrongVocabPoolToElectron();
+
   const modeCard = document.querySelector(`.radio-card input[name="quiz-mode"][value="${restoredQuizMode}"]`);
   if (modeCard) {
     modeCard.closest(".radio-card").click();
@@ -4323,6 +4570,255 @@ function setupQuizConfigEvents() {
       startQuiz(config);
     });
   }
+
+  // Nút bắt đầu kiểm tra chế độ Ghim 2 Ô Mini (Stealth Mode)
+  const startStealthQuizBtn = document.getElementById("start-stealth-quiz-btn");
+  if (startStealthQuizBtn) {
+    startStealthQuizBtn.addEventListener("click", () => {
+      const selectedMode = document.querySelector('input[name="quiz-mode"]:checked')?.value || "meaning_to_romaji";
+      const selectedOrder = document.querySelector('input[name="quiz-order"]:checked')?.value || "random";
+      const count = parseInt(document.getElementById("quiz-setup-count").value) || 10;
+      const allowRetry = document.getElementById("quiz-setup-retry")?.checked ?? true;
+      const repeatWrongPractice = document.getElementById("quiz-setup-repeat-wrong")?.checked || false;
+      const answerSource = document.getElementById("quiz-setup-answer-source")?.value || "all";
+
+      if (quizSelectedVocabIds.length === 0) {
+        alert("Vui lòng chọn ít nhất 1 từ vựng để kiểm tra!");
+        return;
+      }
+
+      if (count <= 0) {
+        alert("Số lượng câu hỏi phải lớn hơn 0!");
+        return;
+      }
+
+      const config = {
+        vocabIds: quizSelectedVocabIds,
+        questionCount: count,
+        quizMode: selectedMode,
+        order: selectedOrder,
+        allowRetry: allowRetry,
+        repeatWrongPractice: repeatWrongPractice,
+        answerSource: answerSource
+      };
+
+      localStorage.setItem("nihongo_quiz_config", JSON.stringify(config));
+      startStealthQuizSession(config);
+    });
+  }
+
+  // Lắng nghe thay đổi cài đặt nhắc từ sai định kỳ
+  const stealthReminderCb = document.getElementById("stealth-reminder-enabled");
+  const stealthReminderInterval = document.getElementById("stealth-reminder-interval");
+
+  function saveStealthReminderConfig() {
+    const enabled = stealthReminderCb ? stealthReminderCb.checked : false;
+    const intervalMinutes = stealthReminderInterval ? parseInt(stealthReminderInterval.value) || 10 : 10;
+    const config = { enabled, intervalMinutes };
+    localStorage.setItem("nihongo_stealth_reminder_config", JSON.stringify(config));
+    if (window.electronAPI && window.electronAPI.setWrongReminderConfig) {
+      window.electronAPI.setWrongReminderConfig(config);
+    }
+  }
+
+  if (stealthReminderCb) {
+    stealthReminderCb.addEventListener("change", saveStealthReminderConfig);
+  }
+  if (stealthReminderInterval) {
+    stealthReminderInterval.addEventListener("change", saveStealthReminderConfig);
+  }
+}
+
+// Đồng bộ danh sách các từ đã làm sai / từ yếu sang Electron để phục vụ nhắc nhở định kỳ
+export function syncWrongVocabPoolToElectron() {
+  if (typeof window === "undefined") return;
+  try {
+    const projects = getProjects();
+    const wrongMap = new Map();
+
+    const weakList = getWeakVocab(null, 100);
+    weakList.forEach(v => {
+      if (v && v.id) {
+        wrongMap.set(v.id, {
+          id: v.id,
+          projectId: v.projectId,
+          japanese: v.japanese,
+          romaji: v.romaji,
+          meaning: v.meaning,
+          wrongCount: v.wrongCount || 1,
+          mode: "meaning_to_romaji"
+        });
+      }
+    });
+
+    projects.forEach(p => {
+      (p.vocab || []).forEach(v => {
+        if (v.wrongCount > 0 || v.lastAnswerState === "wrong") {
+          wrongMap.set(v.id, {
+            id: v.id,
+            projectId: p.id,
+            japanese: v.japanese,
+            romaji: v.romaji,
+            meaning: v.meaning,
+            wrongCount: v.wrongCount || 1,
+            mode: "meaning_to_romaji"
+          });
+        }
+      });
+    });
+
+    const pool = Array.from(wrongMap.values());
+    const badge = typeof document !== "undefined" ? document.getElementById("stealth-wrong-pool-badge") : null;
+    if (badge) {
+      badge.textContent = `${pool.length} từ sai`;
+    }
+
+    if (window.electronAPI && window.electronAPI.syncWrongWords) {
+      window.electronAPI.syncWrongWords(pool);
+    }
+  } catch (err) {
+    console.error("syncWrongVocabPoolToElectron error:", err);
+  }
+}
+
+export function launchQuickStealthQuiz(count = 10) {
+  const projects = getProjects();
+  const allVocabs = [];
+  projects.forEach(p => {
+    if (p.vocab) {
+      p.vocab.forEach(v => {
+        allVocabs.push({ ...v, projectId: p.id, projectName: p.name });
+      });
+    }
+  });
+
+  if (allVocabs.length === 0) {
+    alert("Chưa có từ vựng nào! Hãy thêm từ vựng hoặc tạo dự án trước nhé.");
+    return;
+  }
+
+  // Ưu tiên các từ đến hạn ôn tập (SRS), nếu không có thì lấy ngẫu nhiên
+  const dueVocabs = getReviewDueVocab(count, "overdue");
+  let selectedVocabs = [];
+  if (dueVocabs.length > 0) {
+    selectedVocabs = dueVocabs.slice(0, count);
+  } else {
+    const shuffled = [...allVocabs].sort(() => Math.random() - 0.5);
+    selectedVocabs = shuffled.slice(0, Math.min(count, allVocabs.length));
+  }
+
+  const config = {
+    vocabIds: selectedVocabs.map(v => v.id),
+    questionCount: selectedVocabs.length,
+    quizMode: "meaning_to_romaji",
+    order: "random",
+    allowRetry: true,
+    repeatWrongPractice: false,
+    answerSource: "all"
+  };
+
+  startStealthQuizSession(config);
+}
+
+export function startStealthQuizSession(config) {
+  const session = new QuizSession(config);
+  if (!session.questions || session.questions.length === 0) {
+    alert("Lỗi khi khởi tạo bài kiểm tra! Vui lòng kiểm tra lại danh sách từ vựng đã chọn.");
+    return;
+  }
+
+  const questions = session.questions.map((q) => {
+    const vocab = q.vocab || {};
+    const mode = q.mode || q.activeMode || config.quizMode || "meaning_to_romaji";
+
+    let prompt = vocab.japanese || "";
+    let subPrompt = vocab.romaji ? `[${vocab.romaji}]` : "";
+    let expectedAnswer = vocab.meaning || "";
+
+    if (mode === "meaning_to_romaji") {
+      prompt = vocab.meaning || "Từ vựng";
+      subPrompt = "Gõ Romaji";
+      expectedAnswer = vocab.romaji || "";
+    } else if (mode === "meaning_to_japanese") {
+      prompt = vocab.meaning || "Từ vựng";
+      subPrompt = "Gõ chữ Nhật";
+      const hiragana = vocab.romaji ? romajiToHiragana(vocab.romaji, { finalize: true }) : "";
+      const candidates = [vocab.japanese, hiragana, vocab.romaji].filter(Boolean);
+      expectedAnswer = Array.from(new Set(candidates)).join(", ");
+    } else if (mode === "jp_to_meaning") {
+      prompt = vocab.japanese || "";
+      subPrompt = vocab.romaji ? `[${vocab.romaji}]` : "";
+      expectedAnswer = vocab.meaning || "";
+    } else if (mode === "romaji_to_meaning") {
+      prompt = vocab.romaji || "";
+      subPrompt = vocab.japanese ? `[${vocab.japanese}]` : "";
+      expectedAnswer = vocab.meaning || "";
+    } else if (mode === "audio_to_meaning") {
+      prompt = "🔊 Nghe phát âm";
+      subPrompt = vocab.romaji ? `[${vocab.romaji}]` : "";
+      expectedAnswer = vocab.meaning || "";
+    }
+
+    return {
+      id: vocab.id,
+      projectId: vocab.projectId || q.projectId,
+      japanese: vocab.japanese || "",
+      romaji: vocab.romaji || "",
+      meaning: vocab.meaning || "",
+      mode,
+      prompt,
+      subPrompt,
+      expectedAnswer
+    };
+  });
+
+  if (window.electronAPI && window.electronAPI.startStealthQuiz) {
+    window.electronAPI.startStealthQuiz({
+      questions,
+      mode: config.quizMode,
+      allowRetry: config.allowRetry !== false,
+      repeatWrongPractice: config.repeatWrongPractice === true,
+      total: questions.length
+    });
+  } else {
+    startQuiz(config);
+  }
+}
+
+// Lắng nghe hoàn thành quiz stealth từ electron
+if (typeof window !== "undefined" && window.electronAPI && window.electronAPI.onStealthQuizCompleted) {
+  window.electronAPI.onStealthQuizCompleted(({ results, isWrongReminder }) => {
+    if (Array.isArray(results) && results.length > 0) {
+      const correctCount = results.filter(r => r.isCorrect).length;
+      recordStudyActivity(results.length, correctCount);
+      results.forEach(r => {
+        if (r.projectId && r.vocabId) {
+          try {
+            updateVocabStats(r.projectId, r.vocabId, r.isCorrect, 3);
+          } catch (e) {}
+        }
+      });
+      syncWrongVocabPoolToElectron();
+      if (!isWrongReminder) {
+        alert(`🎉 Đã hoàn thành bài kiểm tra 2 ô mini!\nĐúng: ${correctCount}/${results.length} câu.`);
+      }
+      renderDashboard();
+    }
+  });
+}
+
+// Lắng nghe kết quả khi người dùng trả lời câu hỏi nhắc từ sai định kỳ
+if (typeof window !== "undefined" && window.electronAPI && window.electronAPI.onWrongReminderAnswered) {
+  window.electronAPI.onWrongReminderAnswered(({ vocabId, projectId, isCorrect }) => {
+    if (vocabId && projectId) {
+      try {
+        updateVocabStats(projectId, vocabId, isCorrect, 3);
+        recordStudyActivity(1, isCorrect ? 1 : 0);
+        syncWrongVocabPoolToElectron();
+        renderDashboard();
+      } catch (e) {}
+    }
+  });
 }
 
 // 7. Khu vực kiểm tra đang diễn ra (Quiz Active Arena)
@@ -4582,6 +5078,39 @@ function focusQuizAnswerInput(inputEl, { delayed = true } = {}) {
   });
 }
 
+function updateQuizImeBadge(mode, isControllerActive) {
+  const badge = document.getElementById("quiz-ime-badge");
+  const icon = document.getElementById("quiz-ime-badge-icon");
+  const text = document.getElementById("quiz-ime-badge-text");
+  if (!badge || !icon || !text) return;
+
+  badge.className = "quiz-ime-badge";
+
+  if (mode === "meaning_to_japanese") {
+    if (isControllerActive) {
+      badge.classList.add("mode-kana");
+      icon.textContent = "あ";
+      text.textContent = "Kana";
+      badge.title = "Bộ gõ tự động tiếng Nhật (Romaji → Kana). Nhấp hoặc ấn F2 để gõ trực tiếp";
+    } else {
+      badge.classList.add("mode-raw");
+      icon.textContent = "A";
+      text.textContent = "Trực tiếp";
+      badge.title = "Bộ gõ trực tiếp (dùng bàn phím hệ điều hành). Nhấp hoặc ấn F2 để bật lại gõ Kana";
+    }
+  } else if (mode === "meaning_to_romaji" || mode === "japanese_to_romaji") {
+    badge.classList.add("mode-romaji");
+    icon.textContent = "🔤";
+    text.textContent = "Romaji";
+    badge.title = "Chế độ gõ Romaji (chữ Latin không dấu)";
+  } else {
+    badge.classList.add("mode-vietnamese");
+    icon.textContent = "🇻🇳";
+    text.textContent = "Tiếng Việt";
+    badge.title = "Chế độ gõ nghĩa Tiếng Việt (hỗ trợ cả có dấu và không dấu)";
+  }
+}
+
 function renderCurrentQuestion() {
   const question = activeQuizSession.getCurrentQuestion();
   if (!question) {
@@ -4627,8 +5156,28 @@ function renderCurrentQuestion() {
   inputEl.disabled = false;
   inputEl.lang = question.mode === "meaning_to_japanese" ? "ja" : "vi";
   inputEl.placeholder = question.mode === "meaning_to_japanese"
-    ? "Nhập chữ Nhật (Kana/Kanji)..."
+    ? "Nhập chữ Nhật (gõ kasa tự ra かさ)..."
     : (isQuizMeaningAnswerMode(question.mode) ? "Nhập nghĩa tiếng Việt (không dấu)..." : "Nhập cách đọc bằng Romaji...");
+
+  if (!quizKanaImeController && inputEl) {
+    quizKanaImeController = bindKanaInput(inputEl, {
+      mode: question.mode === "meaning_to_japanese" ? "kana" : "raw",
+      onStateChange: ({ isEnabled, mode }) => {
+        const q = activeQuizSession?.getCurrentQuestion();
+        updateQuizImeBadge(q?.mode, isEnabled && mode === "kana");
+      }
+    });
+  }
+
+  if (quizKanaImeController) {
+    if (question.mode === "meaning_to_japanese") {
+      quizKanaImeController.setMode("kana");
+      updateQuizImeBadge(question.mode, true);
+    } else {
+      quizKanaImeController.setMode("raw");
+      updateQuizImeBadge(question.mode, false);
+    }
+  }
   
   setTimeout(() => {
     focusQuizAnswerInput(inputEl);
@@ -4724,6 +5273,10 @@ function renderCurrentQuestion() {
 function handleQuizAnswerSubmit() {
   answerJustSubmitted = true;
   setTimeout(() => { answerJustSubmitted = false; }, 150);
+
+  if (quizKanaImeController) {
+    quizKanaImeController.finalize();
+  }
 
   const inputEl = document.getElementById("quiz-answer-input");
   const answer = inputEl.value.trim();
@@ -5056,11 +5609,24 @@ function setupQuizActiveEvents() {
   const nextBtn = document.getElementById("quiz-next-btn");
   const inputEl = document.getElementById("quiz-answer-input");
   const sheetNextBtn = document.getElementById("quiz-bottom-sheet-next-btn");
+  const imeBadge = document.getElementById("quiz-ime-badge");
 
   submitBtn.onclick = handleQuizAnswerSubmit;
   nextBtn.onclick = goToNextQuestion;
   if (sheetNextBtn) {
     sheetNextBtn.onclick = goToNextQuestion;
+  }
+
+  if (imeBadge) {
+    imeBadge.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const question = activeQuizSession?.getCurrentQuestion();
+      if (question?.mode === "meaning_to_japanese" && quizKanaImeController) {
+        quizKanaImeController.toggleMode();
+      }
+      if (inputEl) inputEl.focus();
+    };
   }
 
   inputEl.addEventListener("keydown", (e) => {
