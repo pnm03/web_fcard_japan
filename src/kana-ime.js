@@ -92,6 +92,11 @@ export const HIRAGANA_MAP = {
 export function normalizeTelexAccents(str) {
   if (!str) return "";
   return str
+    .replace(/ưa/gi, "wa")
+    .replace(/ươ/gi, "wo")
+    .replace(/([bcdfghjklmnpqrstvwxyz])ư/gi, "$1u")
+    .replace(/^ư/gi, "w")
+    .replace(/\sư/gi, " w")
     .replace(/[àáạảãâầấậẩẫăằắặẳẵ]/gi, "a")
     .replace(/[èéẹẻẽêềếệểễ]/gi, "e")
     .replace(/[ìíịỉĩ]/gi, "i")
@@ -200,8 +205,6 @@ export function bindKanaInput(inputEl, options = {}) {
 
   let isEnabled = options.enabled !== false;
   let mode = options.mode || "kana"; // "kana" | "raw"
-  let isComposing = false;
-
   function update() {
     if (!isEnabled || mode !== "kana") return;
     const original = inputEl.value;
@@ -219,16 +222,21 @@ export function bindKanaInput(inputEl, options = {}) {
   }
 
   const handleInput = () => {
-    if (isComposing) return;
     update();
   };
 
-  const handleCompositionStart = () => {
-    isComposing = true;
+  const handleCompositionUpdate = () => {
+    update();
   };
 
   const handleCompositionEnd = () => {
-    isComposing = false;
+    update();
+  };
+
+  const handleKeyUp = (e) => {
+    if (e.key && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Shift", "Control", "Alt", "Meta", "Escape", "Tab"].includes(e.key)) {
+      return;
+    }
     update();
   };
 
@@ -240,12 +248,12 @@ export function bindKanaInput(inputEl, options = {}) {
       return;
     }
 
-    // Khi ấn phím Space: tự động finalize âm 'n' nếu có
+    // Khi ấn phím Space: nếu chuỗi kết thúc bằng âm 'n' lẻ thì biến ngay thành 'ん'
     if (e.key === " " && isEnabled && mode === "kana") {
       const val = inputEl.value;
       if (val.endsWith("n")) {
         e.preventDefault();
-        const finalized = val.slice(0, -1) + "ん ";
+        const finalized = val.slice(0, -1) + "ん";
         inputEl.value = finalized;
         inputEl.setSelectionRange(finalized.length, finalized.length);
       }
@@ -253,8 +261,9 @@ export function bindKanaInput(inputEl, options = {}) {
   };
 
   inputEl.addEventListener("input", handleInput);
-  inputEl.addEventListener("compositionstart", handleCompositionStart);
+  inputEl.addEventListener("compositionupdate", handleCompositionUpdate);
   inputEl.addEventListener("compositionend", handleCompositionEnd);
+  inputEl.addEventListener("keyup", handleKeyUp);
   inputEl.addEventListener("keydown", handleKeyDown);
 
   const controller = {
@@ -300,8 +309,9 @@ export function bindKanaInput(inputEl, options = {}) {
     },
     destroy() {
       inputEl.removeEventListener("input", handleInput);
-      inputEl.removeEventListener("compositionstart", handleCompositionStart);
+      inputEl.removeEventListener("compositionupdate", handleCompositionUpdate);
       inputEl.removeEventListener("compositionend", handleCompositionEnd);
+      inputEl.removeEventListener("keyup", handleKeyUp);
       inputEl.removeEventListener("keydown", handleKeyDown);
     }
   };
