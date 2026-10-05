@@ -38,22 +38,8 @@ if (!gotTheLock) {
 }
 log('SingleInstanceLock acquired.');
 
-const { pathToFileURL } = require('url');
-
-let romajiToHiragana = null;
-try {
-  const kanaImePath = path.join(__dirname, '../src/kana-ime.js');
-  if (fs.existsSync(kanaImePath)) {
-    import(pathToFileURL(kanaImePath).href).then((m) => {
-      romajiToHiragana = m.romajiToHiragana;
-      log('Loaded kana-ime successfully in main process');
-    }).catch((err) => {
-      log('Failed to import kana-ime: ' + err.message);
-    });
-  }
-} catch (e) {
-  log('Error resolving kana-ime path: ' + e.message);
-}
+const { romajiToHiragana } = require('./kana-helper.cjs');
+log('Loaded kana-helper successfully in main process');
 
 let mainWindow = null;
 let promptWindow = null;
@@ -138,51 +124,70 @@ function loadHtmlFile(win, filename) {
 // ==========================================
 function createMainWindow() {
   log('createMainWindow starting');
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.show();
-    mainWindow.focus();
-    return;
+  try {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+      return;
+    }
+
+    log('Getting primary display...');
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { workArea } = primaryDisplay;
+    log('workArea: ' + JSON.stringify(workArea));
+
+    const iconPath = getIconPath();
+    log('mainWindow iconPath: ' + iconPath);
+
+    log('Creating BrowserWindow...');
+    mainWindow = new BrowserWindow({
+      width: Math.min(1240, workArea.width - 80),
+      height: Math.min(840, workArea.height - 80),
+      minWidth: 920,
+      minHeight: 600,
+      center: true,
+      title: 'Nihongo Flashcard',
+      icon: iconPath || undefined,
+      webPreferences: {
+        preload: path.join(__dirname, 'preload.cjs'),
+        nodeIntegration: false,
+        contextIsolation: true
+      }
+    });
+    log('BrowserWindow instance created!');
+
+    log('Calling loadHtmlFile...');
+    loadHtmlFile(mainWindow, 'index.html');
+    log('loadHtmlFile called');
+
+    mainWindow.webContents.on('console-message', (_e, _level, message) => {
+      log(`[mainWindow console] ${message}`);
+    });
+
+    mainWindow.on('close', (e) => {
+      log('mainWindow close event');
+      if (!isQuitting) {
+        e.preventDefault();
+        mainWindow.hide();
+      }
+    });
+
+    mainWindow.on('closed', () => {
+      log('mainWindow closed event');
+      mainWindow = null;
+    });
+
+    mainWindow.once('ready-to-show', () => {
+      log('mainWindow ready-to-show event');
+      mainWindow.show();
+      mainWindow.focus();
+    });
+
+    log('createMainWindow completed');
+  } catch (err) {
+    log('ERROR in createMainWindow: ' + (err ? (err.stack || err) : 'unknown'));
   }
-
-  const primaryDisplay = screen.getPrimaryDisplay();
-  const { workArea } = primaryDisplay;
-
-  mainWindow = new BrowserWindow({
-    width: Math.min(1240, workArea.width - 80),
-    height: Math.min(840, workArea.height - 80),
-    minWidth: 920,
-    minHeight: 600,
-    center: true,
-    title: 'Nihongo Flashcard',
-    icon: getIconPath(),
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.cjs'),
-      nodeIntegration: false,
-      contextIsolation: true
-    }
-  });
-
-  loadHtmlFile(mainWindow, 'index.html');
-
-  mainWindow.webContents.on('console-message', (_e, _level, message) => {
-    log(`[mainWindow console] ${message}`);
-  });
-
-  mainWindow.on('close', (e) => {
-    log('mainWindow close event');
-    if (!isQuitting) {
-      e.preventDefault();
-      mainWindow.hide();
-    }
-  });
-
-  mainWindow.on('closed', () => {
-    log('mainWindow closed event');
-    mainWindow = null;
-  });
-
-  log('createMainWindow completed');
 }
 
 // ==========================================
@@ -636,6 +641,7 @@ function finishStealthQuiz() {
 // ==========================================
 // IPC HANDLERS
 // ==========================================
+log('Registering ipcMain handlers');
 ipcMain.handle('open-main-window', () => {
   createMainWindow();
 });
@@ -860,7 +866,10 @@ function createTray() {
     const iconPath = getIconPath();
     if (!iconPath) return;
 
-    const icon = nativeImage.createFromPath(iconPath);
+    let icon = nativeImage.createFromPath(iconPath);
+    if (!icon.isEmpty()) {
+      icon = icon.resize({ width: 16, height: 16 });
+    }
     tray = new Tray(icon.isEmpty() ? iconPath : icon);
     tray.setToolTip('Nihongo Flashcard - Desktop App');
 
@@ -940,6 +949,7 @@ app.on('second-instance', () => {
 // ==========================================
 // KHỞI ĐỘNG APP
 // ==========================================
+log('Calling app.whenReady()...');
 app.whenReady().then(() => {
   log('app.whenReady reached');
   createTray();
@@ -966,12 +976,27 @@ app.whenReady().then(() => {
   app.on('activate', () => {
     createMainWindow();
   });
+}).catch(err => {
+  log(`app.whenReady ERROR: ${err ? (err.stack || err) : 'unknown'}`);
+});
+
+app.on('window-all-closed', () => {
+  log('window-all-closed event triggered');
+  // keep running in background / tray
 });
 
 app.on('before-quit', () => {
+  log('app before-quit event');
   isQuitting = true;
 });
 
 app.on('will-quit', () => {
+  log('app will-quit event');
   globalShortcut.unregisterAll();
 });
+
+process.on('exit', (code) => {
+  log('process exit event with code: ' + code);
+});
+
+log('Script evaluation finished. Waiting for events.');
