@@ -852,7 +852,7 @@ function renderAccountThemeOptions(selectedTheme) {
 function populateAccountModal() {
   const user = currentAuthSession?.user;
   if (!user) {
-    const currentTheme = localStorage.getItem("nihongo_account_theme") || "traditional";
+    const currentTheme = localStorage.getItem("nihongo_account_theme") || "paper";
     renderAccountThemeOptions(currentTheme);
     return;
   }
@@ -1039,6 +1039,14 @@ function setupAccountCenterUI() {
 
     if (button) button.disabled = true;
     setAccountMessage("account-settings-message", "Đang lưu...");
+
+    if (!currentAuthSession?.user) {
+      applyAccountTheme(selectedTheme);
+      setAccountMessage("account-settings-message", "Đã lưu cài đặt giao diện.", "success");
+      if (button) button.disabled = false;
+      return;
+    }
+
     try {
       const user = await updateAccountProfile({
         theme: selectedTheme,

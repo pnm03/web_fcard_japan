@@ -14,6 +14,18 @@ export const ACCOUNT_THEMES = [
     colors: ["#f4f1ea", "#b5482e", "#4f7a4a"]
   },
   {
+    id: "duolingo",
+    name: "Duolingo",
+    description: "Xanh lá năng động, tươi sáng và vui tươi",
+    colors: ["#58cc02", "#ffc800", "#1cb0f6"]
+  },
+  {
+    id: "black-white",
+    name: "Đen Trắng",
+    description: "Tối giản tuyệt đối, tương phản cao phong cách Manga",
+    colors: ["#ffffff", "#000000", "#555555"]
+  },
+  {
     id: "sakura",
     name: "Sakura",
     description: "Hồng anh đào, xanh lá trầm",
