@@ -16,8 +16,8 @@ export const ACCOUNT_THEMES = [
   {
     id: "duolingo",
     name: "Duolingo",
-    description: "Xanh lá năng động, tươi sáng và vui tươi",
-    colors: ["#58cc02", "#ffc800", "#1cb0f6"]
+    description: "Nền trắng tinh, viền mềm mại, xanh Cú tươi sáng không mỏi mắt",
+    colors: ["#58cc02", "#1cb0f6", "#ffc800"]
   },
   {
     id: "black-white",
