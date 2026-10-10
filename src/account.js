@@ -26,6 +26,12 @@ export const ACCOUNT_THEMES = [
     colors: ["#ffffff", "#000000", "#555555"]
   },
   {
+    id: "pure-white",
+    name: "Trắng Tinh",
+    description: "Nền trắng tinh khiết 100%, nét mực đen tối giản",
+    colors: ["#ffffff", "#000000", "#d0d0d0"]
+  },
+  {
     id: "sakura",
     name: "Sakura",
     description: "Hồng anh đào, xanh lá trầm",

@@ -419,6 +419,71 @@ html[data-theme="black-white"] .quiz-progress-bar-fill {
   background: #000000;
 }
 
+html[data-theme="pure-white"] {
+  --bg: #ffffff;
+  --paper: #ffffff;
+  --field: #ffffff;
+  --ink: #000000;
+  --ink-soft: #333333;
+  --ink-faint: #666666;
+  --text-muted: var(--ink-soft);
+  --accent: #000000;
+  --accent-hover: #222222;
+  --accent-soft: #f2f2f2;
+  --accent-glow: rgba(0, 0, 0, 0.12);
+  --good: #1a7f37;
+  --good-soft: #edf7ee;
+  --warning: #73510d;
+  --warning-soft: #fef7e0;
+  --error: #cf222e;
+  --error-soft: #ffebe9;
+  --line: #d8d8d8;
+  --line-strong: #000000;
+  --radius: 6px;
+  --radius-lg: 10px;
+  --modal-overlay: rgba(0, 0, 0, 0.55);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.12);
+  --bg-image: none;
+}
+
+html[data-theme="pure-white"] .btn-primary {
+  background: #000000;
+  color: #ffffff;
+  border: 1.5px solid #000000;
+  font-weight: 700;
+}
+
+html[data-theme="pure-white"] .btn-primary:hover {
+  background: #222222;
+  transform: translateY(-1px);
+}
+
+html[data-theme="pure-white"] .btn-primary:active {
+  transform: translateY(0);
+}
+
+html[data-theme="pure-white"] .btn-secondary {
+  background: #ffffff;
+  color: #000000;
+  border: 1.5px solid #000000;
+}
+
+html[data-theme="pure-white"] .btn-secondary:hover {
+  background: #f5f5f5;
+}
+
+html[data-theme="pure-white"] .quiz-progress-bar-wrapper {
+  height: 8px;
+  border: 1px solid #000000;
+  background: #ffffff;
+}
+
+html[data-theme="pure-white"] .quiz-progress-bar-fill {
+  background: #000000;
+}
+
 /* Reset & Basic styling */
 * {
   margin: 0;
