@@ -7010,225 +7010,426 @@ body,
   white-space: nowrap;
 }
 
-/* Workspace 3 Cột */
-.grammar-workspace-grid {
-  display: grid;
-  grid-template-columns: 290px minmax(0, 1fr) 290px;
-  gap: 16px;
-  align-items: start;
+/* ==========================================================================
+   GRAMMAR LMS LEARNING CENTER (NGỮ PHÁP N5)
+   - Layout 3 cột sát lề (Edge-to-Edge)
+   - Mở rộng khu vực trung tâm bài giảng
+   - Cột trái: Menu khóa học & Lộ trình phân cấp Bài 1
+   - Cột phải: Sổ tay ghi chú (dạng danh sách), Mẹo nhớ, Kết quả, Thu gọn
+   - Highlight từ khóa ngữ pháp (も in đỏ gạch chân, は, です, じゃありません, ですか)
+   - Phân tích ngữ pháp chuyên sâu với gạch đầu dòng
+   ========================================================================== */
+
+/* Mở rộng container toàn màn hình khi đang ở màn hình Ngữ pháp */
+body.view-grammar-active .container,
+.container:has(#grammar-view.active) {
+  max-width: 98vw;
+  width: 98%;
+  padding-left: 12px;
+  padding-right: 12px;
 }
 
-/* CỘT TRÁI */
+/* Lưới Workspace 3 Cột Sát Lề */
+.grammar-workspace-grid {
+  display: grid;
+  grid-template-columns: 270px minmax(0, 1fr) 300px;
+  gap: 14px;
+  align-items: start;
+  width: 100%;
+  transition: grid-template-columns 0.25s ease;
+}
+
+/* Khi cột phải thu gọn: Thu nhỏ cột phải xuống 42px, nhường trọn không gian cho nội dung chính */
+.grammar-workspace-grid.right-panel-collapsed,
+.grammar-workspace-grid:has(.grammar-sidebar-right.is-collapsed) {
+  grid-template-columns: 270px minmax(0, 1fr) 42px;
+  gap: 10px;
+}
+
+/* --------------------------------------------------------------------------
+   TỪ KHÓA NGỮ PHÁP NỔI BẬT (HIGHLIGHT TARGETS)
+   -------------------------------------------------------------------------- */
+.gp-mark {
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  display: inline-block;
+  line-height: 1.25;
+  transition: all 0.2s ease;
+}
+
+/* Yêu cầu đặc biệt: "học về mo thì mo phải đc gạch chân, in đỏ chẳng hạn hoặc highlight lên chứ" */
+.gp-mo {
+  color: #dc2626 !important;
+  text-decoration-color: #dc2626 !important;
+  text-decoration-thickness: 2.5px !important;
+  background: rgba(220, 38, 38, 0.14) !important;
+  border-bottom: 2px solid #dc2626;
+  box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.25);
+}
+
+.gp-ha {
+  color: #2563eb !important;
+  text-decoration-color: #2563eb !important;
+  text-decoration-thickness: 2px !important;
+  background: rgba(37, 99, 235, 0.12) !important;
+}
+
+.gp-desu {
+  color: #059669 !important;
+  text-decoration-color: #059669 !important;
+  text-decoration-thickness: 2px !important;
+  background: rgba(5, 150, 105, 0.12) !important;
+}
+
+.gp-ja {
+  color: #d97706 !important;
+  text-decoration-color: #d97706 !important;
+  text-decoration-thickness: 2px !important;
+  background: rgba(217, 119, 6, 0.14) !important;
+}
+
+.gp-ka {
+  color: #7c3aed !important;
+  text-decoration-color: #7c3aed !important;
+  text-decoration-thickness: 2px !important;
+  background: rgba(124, 58, 237, 0.12) !important;
+}
+
+/* --------------------------------------------------------------------------
+   CỘT TRÁI (SÁT LỀ TRÁI): MENU KHÓA HỌC & LỘ TRÌNH BÀI 1
+   -------------------------------------------------------------------------- */
 .grammar-sidebar-left {
-  padding: 16px;
+  padding: 16px 14px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  position: sticky;
+  top: 76px;
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
 }
 
-.grammar-sidebar-header {
+.course-menu-header {
   border-bottom: 1px solid var(--line);
   padding-bottom: 10px;
 }
 
-.grammar-tab-pills {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
+.course-menu-level-badge {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: var(--accent);
   background: var(--field);
-  padding: 3px;
-  border-radius: 6px;
   border: 1px solid var(--line);
-}
-
-.g-subtab-btn {
-  border: none;
-  background: transparent;
-  padding: 5px 4px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--ink-soft);
+  padding: 2px 7px;
   border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-  text-align: center;
+  margin-bottom: 4px;
 }
 
-.g-subtab-btn.active {
-  background: var(--paper);
-  color: var(--accent);
-  box-shadow: var(--shadow-sm);
-  font-weight: 700;
-}
-
-.g-subtab-panel {
-  display: none;
-}
-
-.g-subtab-panel.active {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.grammar-notes-textarea {
-  min-height: 190px;
-  resize: vertical;
-  font-size: 13px;
-  line-height: 1.5;
-  padding: 10px;
-}
-
-.notes-panel-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 11px;
-}
-
-.notes-save-status {
-  color: var(--ink-faint);
-  font-style: italic;
-}
-
-.bookmark-study-box {
-  margin-top: 8px;
-  padding-top: 10px;
-  border-top: 1px dashed var(--line);
-  font-size: 12px;
-}
-
-.custom-checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  user-select: none;
-  color: var(--ink-soft);
-}
-
-.takeaways-title {
-  margin: 0 0 6px 0;
-  font-size: 13px;
-  color: var(--accent);
+.course-menu-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
   font-family: var(--font-display);
 }
 
-.takeaways-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.course-menu-sub {
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  display: block;
+  margin-top: 2px;
+}
+
+.course-lessons-accordion {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  font-size: 12.5px;
-  line-height: 1.45;
 }
 
-.takeaways-list li {
+.accordion-lesson-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--field);
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.accordion-lesson-card.current-active-lesson {
+  border-color: var(--accent);
+  background: var(--paper);
+  box-shadow: var(--shadow-sm);
+}
+
+.acc-lesson-head {
   display: flex;
-  gap: 6px;
-  align-items: flex-start;
-  color: var(--ink);
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  cursor: pointer;
 }
 
-.lesson-quick-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.lesson-quick-item {
+.acc-lesson-title-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
+  min-width: 0;
+}
+
+.acc-num-badge {
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: var(--ink-soft);
+  flex-shrink: 0;
+}
+
+.current-active-lesson .acc-num-badge {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.acc-lesson-title-row strong {
+  font-size: 13px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.acc-progress-pill {
+  font-size: 11px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: var(--accent);
+  background: rgba(181, 72, 46, 0.1);
+  padding: 2px 7px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+.acc-lock-hint {
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+/* Lộ trình phân cấp trong Bài 1 */
+.acc-sub-steps-tree {
+  padding: 6px 10px 10px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px dashed var(--line);
+  background: rgba(0, 0, 0, 0.02);
+  position: relative;
+}
+
+.acc-sub-steps-tree::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  bottom: 14px;
+  left: 26px;
+  width: 2px;
+  background: var(--line);
+}
+
+.acc-step-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: var(--field);
+  background: var(--paper);
   cursor: pointer;
   transition: all 0.15s ease;
+  position: relative;
+  z-index: 1;
 }
 
-.lesson-quick-item:hover:not(.locked) {
+.acc-step-item:hover:not(.locked-step) {
   border-color: var(--accent);
-  background: var(--paper);
+  transform: translateX(2px);
 }
 
-.lesson-quick-item.current {
+.acc-step-item.active-step {
   border-color: var(--accent);
-  background: rgba(181, 72, 46, 0.08);
+  background: var(--accent);
+  color: #fff !important;
+  box-shadow: var(--shadow-sm);
 }
 
-.lesson-quick-item.locked {
+.acc-step-item.active-step .step-label,
+.acc-step-item.active-step small {
+  color: #fff !important;
+}
+
+.acc-step-item.completed-step:not(.active-step) {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.acc-step-item.completed-step .step-indicator-icon {
+  color: #10b981;
+  font-weight: 800;
+}
+
+.acc-step-item.locked-step {
   opacity: 0.55;
   cursor: not-allowed;
+  background: var(--field);
 }
 
-.quick-item-info {
+.step-indicator-icon {
+  font-size: 13px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.step-info {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
-.quick-item-info strong {
+.step-label {
   font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.quick-item-info small {
-  font-size: 10.5px;
+.step-info small {
+  font-size: 10px;
   color: var(--ink-faint);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* KHU VỰC TRUNG TÂM */
+.course-menu-footer {
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+/* --------------------------------------------------------------------------
+   KHU VỰC TRUNG TÂM (RỘNG THOẢI MÁI): NỘI DUNG CHÍNH
+   -------------------------------------------------------------------------- */
 .grammar-main-content {
-  padding: 20px;
-  min-height: 600px;
+  padding: 22px 26px;
+  min-height: 650px;
 }
 
-.grammar-main-tabs {
+.workspace-header-bar {
   display: flex;
-  gap: 8px;
-  border-bottom: 2px solid var(--line);
-  padding-bottom: 12px;
-  margin-bottom: 18px;
-  overflow-x: auto;
-}
-
-.g-main-tab-btn {
-  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  border: 1px solid var(--line);
-  background: var(--field);
-  color: var(--ink-soft);
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 13.5px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid var(--line);
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-.g-main-tab-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+.workspace-current-step-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.g-main-tab-btn.active {
+.step-num-pill {
+  font-size: 11px;
+  font-weight: 800;
+  font-family: var(--font-mono);
   background: var(--accent);
-  color: var(--paper);
-  border-color: var(--accent);
+  color: #fff;
+  padding: 3px 8px;
+  border-radius: 9999px;
+}
+
+.workspace-step-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--ink);
+  font-family: var(--font-display);
+}
+
+.workspace-step-status .status-chip {
+  font-size: 12px;
   font-weight: 700;
-  box-shadow: var(--shadow-sm);
+  padding: 4px 10px;
+  border-radius: 9999px;
+}
+
+.status-chip.chip-done {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+/* Phân tích lý thuyết chuyên sâu (Deep points với gạch đầu dòng) */
+.deep-points-box {
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  padding: 14px 16px;
+  margin: 12px 0 10px;
+}
+
+.deep-heading {
+  margin: 0 0 8px 0;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--accent);
+  font-family: var(--font-display);
+}
+
+.deep-points-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+.deep-points-list li {
+  color: var(--ink);
+}
+
+.deep-points-list strong {
+  color: var(--ink);
+}
+
+.deep-points-list code {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+
+.deep-points-list u {
+  text-underline-offset: 3px;
 }
 
 /* Tab Lý Thuyết */
@@ -7707,22 +7908,245 @@ body,
   text-align: center;
 }
 
-/* CỘT PHẢI */
+/* --------------------------------------------------------------------------
+   CỘT PHẢI (SÁT LỀ PHẢI): TIỆN ÍCH, GHI CHÚ, KẾT QUẢ & CÓ THỂ THU GỌN
+   -------------------------------------------------------------------------- */
 .grammar-sidebar-right {
-  padding: 16px;
+  padding: 16px 14px;
   display: flex;
   flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  top: 76px;
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  transition: all 0.25s ease;
+}
+
+/* Khi thu gọn khép sát lề phải */
+.grammar-sidebar-right.is-collapsed {
+  padding: 10px 4px;
+  width: 42px;
+  min-width: 42px;
+  overflow: hidden;
+  align-items: center;
+  justify-content: flex-start;
+  background: var(--field);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.btn-expand-panel {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 14px;
-}
-
-.progress-sidebar-header h4 {
-  margin: 0;
-  font-size: 14px;
+  padding: 8px 0;
   color: var(--accent);
-  font-family: var(--font-display);
+  font-weight: 700;
+  width: 100%;
 }
 
-.progress-meter-card {
+.btn-expand-panel span:first-child {
+  font-size: 14px;
+}
+
+.expand-vertical-text {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 12px;
+  letter-spacing: 2.5px;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.btn-expand-panel:hover .expand-vertical-text {
+  color: var(--accent);
+}
+
+.right-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 10px;
+}
+
+.right-tab-pills {
+  display: flex;
+  gap: 4px;
+  background: var(--field);
+  padding: 3px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  flex: 1;
+}
+
+.r-tab-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 6px 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  text-align: center;
+}
+
+/* Yêu cầu: "mỗi lần ở vị trí nào ví dụ ghi chú thì nền sẽ đc highilight lên chứ" */
+.r-tab-btn.active-highlight {
+  background: var(--accent) !important;
+  color: #fff !important;
+  font-weight: 800 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+}
+
+.btn-collapse-panel {
+  border: 1px solid var(--line);
+  background: var(--field);
+  color: var(--ink-soft);
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.btn-collapse-panel:hover {
+  background: var(--paper);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.right-panel-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.r-tab-panel {
+  display: none;
+}
+
+.r-tab-panel.active-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Ô nhập ghi chú nhỏ gọn + danh sách bên dưới */
+.add-note-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.g-compact-note-input {
+  min-height: 60px !important;
+  max-height: 90px !important;
+  font-size: 12.5px !important;
+  line-height: 1.4 !important;
+  padding: 8px 10px !important;
+  resize: vertical;
+}
+
+.user-notes-list-header {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 4px;
+  margin-top: 4px;
+}
+
+.user-notes-stream {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.empty-notes-hint {
+  padding: 12px 8px;
+  text-align: center;
+  color: var(--ink-faint);
+  font-style: italic;
+  background: var(--field);
+  border-radius: 6px;
+  border: 1px dashed var(--line);
+}
+
+.user-note-card {
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.user-note-card:hover {
+  border-color: var(--line-strong);
+  background: var(--paper);
+}
+
+.user-note-content {
+  font-size: 12.5px;
+  color: var(--ink);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.user-note-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 2px;
+}
+
+.note-time {
+  font-size: 10px;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+}
+
+.delete-note-btn {
+  background: transparent;
+  border: none;
+  color: var(--ink-faint);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 4px;
+  border-radius: 3px;
+}
+
+.delete-note-btn:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Tab Kết Quả */
+.results-overview-card {
   background: var(--field);
   border: 1px solid var(--line);
   padding: 12px 14px;
@@ -7732,164 +8156,107 @@ body,
   gap: 8px;
 }
 
-.progress-meter-info {
+.res-progress-top {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   font-size: 12.5px;
 }
 
-.progress-meter-info strong {
-  font-size: 15px;
+.res-progress-top strong {
+  font-size: 16px;
   font-family: var(--font-mono);
   color: var(--accent);
 }
 
-.progress-bar-track {
-  width: 100%;
-  height: 8px;
-  background: var(--line);
-  border-radius: 9999px;
-  overflow: hidden;
-}
-
-.progress-bar-fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 9999px;
-  transition: width 0.3s ease;
-}
-
-.progress-stars {
+.results-breakdown-card {
+  background: var(--field);
+  border: 1px solid var(--line);
+  padding: 12px 14px;
+  border-radius: 8px;
   display: flex;
-  justify-content: space-between;
-  font-size: 10px;
-  color: var(--ink-faint);
+  flex-direction: column;
+  gap: 8px;
 }
 
-.star-item.active {
-  color: #d97706;
-  font-weight: 700;
-}
-
-.milestones-card h5,
-.chapter-roadmap-card h5 {
-  margin: 0 0 8px 0;
+.res-sub-heading {
+  margin: 0 0 4px 0;
   font-size: 12.5px;
-  color: var(--ink-soft);
-  font-family: var(--font-mono);
-  text-transform: uppercase;
+  color: var(--accent);
+  font-family: var(--font-display);
 }
 
-.milestone-step {
+.res-item-row {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
-  border: 1px solid var(--line);
   border-radius: 6px;
+  border: 1px solid var(--line);
   background: var(--paper);
-  margin-bottom: 6px;
-  cursor: pointer;
-  transition: all 0.15s ease;
 }
 
-.milestone-step:hover {
-  border-color: var(--accent);
-}
-
-.milestone-step.completed {
+.res-item-row.done {
   border-color: #10b981;
-  background: rgba(16, 185, 129, 0.06);
+  background: rgba(16, 185, 129, 0.08);
 }
 
-.milestone-step.locked {
-  opacity: 0.6;
-  cursor: not-allowed;
+.res-item-row.done .res-icon {
+  color: #10b981;
+  font-weight: 800;
 }
 
-.m-icon {
+.res-item-row.doing {
+  border-color: var(--accent);
+  background: rgba(181, 72, 46, 0.06);
+}
+
+.res-item-row.failed {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.res-icon {
   font-size: 14px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
 }
 
-.m-text {
+.res-info {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
-.m-text strong {
+.res-info strong {
   font-size: 12px;
+  color: var(--ink);
 }
 
-.m-text small {
+.res-info small {
   font-size: 10.5px;
-  color: var(--ink-faint);
+  color: var(--ink-soft);
 }
 
-.chapter-roadmap-card {
-  border-top: 1px dashed var(--line);
-  padding-top: 12px;
-}
-
-.roadmap-lessons-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.roadmap-item {
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
+.res-unlock-status-card {
   background: var(--field);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.roadmap-item:hover:not(.lock) {
-  border-color: var(--accent);
-  background: var(--paper);
-}
-
-.roadmap-item.curr {
-  border-color: var(--accent);
-  background: rgba(181, 72, 46, 0.08);
-}
-
-.roadmap-item.lock {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.roadmap-item-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.roadmap-badge {
-  font-size: 10px;
-  font-weight: 700;
-  font-family: var(--font-mono);
-  background: var(--paper);
-  border: 1px solid var(--line);
-  padding: 1px 4px;
-  border-radius: 3px;
-}
-
-.roadmap-title {
+  border: 1px dashed var(--line);
+  padding: 10px 12px;
+  border-radius: 8px;
   font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.roadmap-sub small {
-  font-size: 10.5px;
-  color: var(--ink-faint);
+.res-unlock-status-card strong {
+  color: var(--accent);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.res-unlock-status-card p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.4;
 }
 
 /* Responsive LMS Workspace */

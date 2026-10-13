@@ -1581,9 +1581,19 @@ export function switchView(viewId) {
   } else if (viewId === "kana-setup-view") {
     renderKanaSetup();
   } else if (viewId === "grammar-view") {
+    if (typeof document !== "undefined" && document.body) {
+      document.body.classList.add("view-grammar-active");
+    }
     renderGrammarView();
   } else if (viewId === "spoken-notes-view") {
+    if (typeof document !== "undefined" && document.body) {
+      document.body.classList.remove("view-grammar-active");
+    }
     renderSpokenNotesList();
+  } else {
+    if (typeof document !== "undefined" && document.body) {
+      document.body.classList.remove("view-grammar-active");
+    }
   }
 }
 

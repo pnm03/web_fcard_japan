@@ -1,5 +1,5 @@
 // src/grammar.js
-// Quản lý hệ thống học Ngữ pháp Tiếng Nhật có chia chương, tiến trình 2 bên, bài tập đa dạng và bài kiểm tra
+// Quản lý hệ thống học Ngữ pháp Tiếng Nhật LMS chuyên sâu, bố cục 3 cột sát lề, highlight từ khóa, lộ trình phân cấp, ghi chú dạng danh sách và tab kết quả
 
 import { speakJapanese, triggerConfetti } from './ui.js';
 
@@ -14,73 +14,98 @@ export const GRAMMAR_CHAPTERS = [
         id: "n5-lesson-1",
         number: 1,
         title: "Bài 1: Giới thiệu bản thân (自己紹介)",
-        subtitle: "A は B です · A は B じゃありません · A は B ですか · A も B です",
+        subtitle: "Khẳng định (です) · Phủ định (じゃありません) · Nghi vấn (ですか) · Trợ từ cũng (も)",
         level: "N5",
         keyTakeaways: [
-          "Trợ từ は viết là 'ha' nhưng PHẢI đọc là 'wa'.",
-          "です đứng cuối câu khẳng định danh từ một cách lịch sự.",
-          "じゃありません (văn nói) / ではありません (trang trọng) là thể phủ định của です.",
-          "Thêm か vào cuối câu để thành câu hỏi nghi vấn.",
-          "Trợ từ も (cũng) THAY THẾ cho は khi có cùng tính chất, không nói 'A はも B'."
+          "Trợ từ は viết là 'ha' nhưng BẮT BUỘC phát âm là 'wa'. Tuyệt đối không viết là わ.",
+          "です đứng cuối câu khẳng định danh từ một cách lịch sự, phát âm nuốt nhẹ âm u giống 'des'.",
+          "じゃありません dùng trong văn nói hàng ngày; ではありません dùng trong văn viết và trang trọng.",
+          "Thêm か vào cuối câu để tạo thành câu hỏi nghi vấn xác nhận, ngữ điệu hơi lên giọng.",
+          "Trợ từ も (cũng) THAY THẾ hoàn toàn cho は khi có cùng tính chất. Cấm kỵ: không nói 'A はも B'."
         ],
         patterns: [
           {
             id: "pattern-1",
             name: "A は B です",
-            meaning: "A là B (Câu khẳng định)",
-            formula: "Danh từ 1 [ は ] Danh từ 2 [ です ]",
-            explanation: "Mẫu câu khẳng định cơ bản nhất trong tiếng Nhật. Trợ từ <strong>は</strong> (đọc là <strong>wa</strong>) đánh dấu chủ đề của câu. <strong>です</strong> (desu) đứng ở cuối câu để khẳng định và thể hiện thái độ lịch sự với người nghe.",
-            notes: "🔴 <u>Lưu ý phát âm:</u> Chữ cái viết là <strong>は (ha)</strong> nhưng khi đóng vai trò là <strong>trợ từ</strong> thì bắt buộc phải phát âm là <strong>wa</strong>.",
+            targetHighlight: "は ... です",
+            meaning: "A là B (Câu khẳng định danh từ)",
+            formula: "Danh từ 1 [ <span class=\"gp-mark gp-ha\">は</span> ] Danh từ 2 [ <span class=\"gp-mark gp-desu\">です</span> ]",
+            explanation: "Mẫu câu khẳng định cơ bản và quan trọng nhất trong tiếng Nhật, dùng để giới thiệu tên, nghề nghiệp, quốc tịch, thân phận.",
+            deepPoints: [
+              "<strong>1. Khái niệm cốt lõi về 'Chủ đề của câu' (Topic):</strong><br>• <strong>Danh từ 1</strong> là đối tượng chính được người nói đưa ra làm chủ đề để bàn luận.<br>• Trợ từ <span class=\"gp-mark gp-ha\">は</span> đứng ngay sau Danh từ 1 để khoanh vùng chủ đề đó.",
+              "<strong>2. Vì sao chữ は (ha) lại phát âm là 'wa'?</strong><br>• <em>Nguồn gốc lịch sử:</em> Trong tiếng Nhật cổ thế kỷ 11, chữ は từng phát âm là 'wa/fa'. Sau cải cách chữ viết thời Minh Trị, để bảo tồn ngữ pháp lịch sử, người Nhật quy định: Khi đóng vai trò <u>trợ từ ngữ pháp</u> thì BẮT BUỘC phát âm là <strong>wa</strong>.<br>• <em>Cảnh báo viết đúng:</em> Tuyệt đối <u>không được viết là わ</u> (viết <s>A わ B です</s> là sai chính tả hoàn toàn).",
+              "<strong>3. Trợ động từ です (desu) và cách phát âm chuẩn người bản xứ:</strong><br>• Biểu thị thái độ tôn trọng, lịch sự với người đối diện.<br>• Khi phát âm, người Nhật nuốt nhẹ nguyên âm 'u' ở cuối, nghe dứt khoát và thanh lịch giống <strong>'des'</strong> chứ không đọc kéo dài thành 'de-su-u'.",
+              "<strong>4. Quy tắc lược bỏ chủ ngữ trong giao tiếp thực tế:</strong><br>• Khi nói về chính mình hoặc người nghe đã biết rõ đang nói về ai, người Nhật thường lược bỏ hẳn <em>'わたしは'</em> để tránh lặp từ rườm rà (ví dụ: chỉ cần nói <em>'マイです。'</em> thay vì <em>'わたしはマイです。'</em>)."
+            ],
+            notes: "🔴 <u>Ghi nhớ vàng:</u> Công thức: <strong>A</strong> (Ai đó) + <span class=\"gp-mark gp-ha\">は (wa)</span> + <strong>B</strong> (Là gì) + <span class=\"gp-mark gp-desu\">です (desu)</span>.",
             examples: [
-              { jp: "わたし は マイ です。", romaji: "Watashi wa Mai desu.", vi: "Tôi là Mai.", audio: "わたしはマイです" },
-              { jp: "タインさん は ベトナム人 です。", romaji: "Thanh-san wa Betonamu-jin desu.", vi: "Anh Thanh là người Việt Nam.", audio: "タインさんはベトナムじんです" },
-              { jp: "ミラーさん は 会社員 です。", romaji: "Miraa-san wa kaishain desu.", vi: "Anh Miller là nhân viên công ty.", audio: "ミラーさんはかいしゃいんです" },
-              { jp: "ワンさん は 医者 です。", romaji: "Wan-san wa isha desu.", vi: "Anh Wang là bác sĩ.", audio: "ワンさんはいしゃです" }
+              { jp: "わたし <span class=\"gp-mark gp-ha\">は</span> マイ <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Watashi wa Mai desu.", vi: "Tôi là Mai.", audio: "わたしはマイです" },
+              { jp: "タインさん <span class=\"gp-mark gp-ha\">は</span> ベトナム人 <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Thanh-san wa Betonamu-jin desu.", vi: "Anh Thanh là người Việt Nam.", audio: "タインさんはベトナムじんです" },
+              { jp: "ミラーさん <span class=\"gp-mark gp-ha\">は</span> 会社員 <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Miraa-san wa kaishain desu.", vi: "Anh Miller là nhân viên công ty.", audio: "ミラーさんはかいしゃいんです" },
+              { jp: "ワンさん <span class=\"gp-mark gp-ha\">は</span> 医者 <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Wan-san wa isha desu.", vi: "Anh Wang là bác sĩ.", audio: "ワンさんはいしゃです" }
             ]
           },
           {
             id: "pattern-2",
             name: "A は B じゃありません",
-            meaning: "A không phải là B (Câu phủ định)",
-            formula: "Danh từ 1 [ は ] Danh từ 2 [ じゃありません / ではありません ]",
-            explanation: "Đây là thể phủ định lịch sự của <strong>です</strong>. Trong giao tiếp đời thường hàng ngày, người Nhật thường dùng <strong>じゃありません (ja arimasen)</strong>. Khi viết thư, phát biểu hoặc trong ngữ cảnh trang trọng, họ dùng <strong>ではありません (dewa arimasen)</strong>.",
-            notes: "💡 <u>Mẹo thực tế:</u> Cả hai cách nói đều đúng, nhưng người mới bắt đầu nên luyện thành thạo <em>じゃありません</em> trước vì dùng nhiều nhất trong đàm thoại.",
+            targetHighlight: "じゃありません / ではありません",
+            meaning: "A không phải là B (Câu phủ định danh từ)",
+            formula: "Danh từ 1 [ <span class=\"gp-mark gp-ha\">は</span> ] Danh từ 2 [ <span class=\"gp-mark gp-ja\">じゃありません</span> / <span class=\"gp-mark gp-ja\">ではありません</span> ]",
+            explanation: "Thể phủ định lịch sự của です, dùng để bác bỏ hoặc đính chính thông tin về nghề nghiệp, quốc tịch, thân phận.",
+            deepPoints: [
+              "<strong>1. Bản chất ngữ pháp:</strong><br>• Đây là dạng phủ định lịch sự tương ứng của trợ động từ <em>です</em>.",
+              "<strong>2. Phân biệt cặn kẽ 'じゃありません' và 'ではありません':</strong><br>• <span class=\"gp-mark gp-ja\">じゃありません</span> (ja arimasen): Là cách nói nuốt âm rút gọn của <em>では ➔ じゃ</em>. Cực kỳ phổ biến, tự nhiên nhất trong <u>đàm thoại giao tiếp hàng ngày</u>.<br>• <span class=\"gp-mark gp-ja\">ではありません</span> (dewa arimasen): Giữ nguyên thể gốc, mang sắc thái trang trọng, lịch sự chuẩn mực, dùng trong <u>văn viết, hợp đồng, email công sở hoặc phát biểu</u>.",
+              "<strong>3. Lỗi sai người mới học hay mắc phải:</strong><br>• Tuyệt đối không dùng <em>ありません</em> đứng cộc lốc một mình sau danh từ (không nói <s>A は B ありません</s>). Bắt buộc phải có liên từ nối <em>じゃ</em> hoặc <em>では</em> ở phía trước!"
+            ],
+            notes: "💡 <u>Mẹo thực hành:</u> Khi đàm thoại cứ tự tin dùng <strong>じゃありません</strong> cho tự nhiên, khi viết bài kiểm tra hoặc email công việc thì dùng <strong>ではありません</strong>.",
             examples: [
-              { jp: "わたし は 学生 じゃありません。", romaji: "Watashi wa gakusei ja arimasen.", vi: "Tôi không phải là học sinh.", audio: "わたしはがくせいじゃありません" },
-              { jp: "サントスさん は 医者 じゃありません。", romaji: "Santosu-san wa isha ja arimasen.", vi: "Anh Santos không phải là bác sĩ.", audio: "サントスさんはいしゃじゃありません" },
-              { jp: "あの方 は 先生 ではありません。", romaji: "Ano kata wa sensei dewa arimasen.", vi: "Vị kia không phải là giáo viên. (Trang trọng)", audio: "あのかたはせんせいではありません" }
+              { jp: "わたし <span class=\"gp-mark gp-ha\">は</span> 学生 <span class=\"gp-mark gp-ja\">じゃありません</span>。", romaji: "Watashi wa gakusei ja arimasen.", vi: "Tôi không phải là học sinh.", audio: "わたしはがくせいじゃありません" },
+              { jp: "サントスさん <span class=\"gp-mark gp-ha\">は</span> 医者 <span class=\"gp-mark gp-ja\">じゃありません</span>。", romaji: "Santosu-san wa isha ja arimasen.", vi: "Anh Santos không phải là bác sĩ.", audio: "サントスさんはいしゃじゃありません" },
+              { jp: "あの方 <span class=\"gp-mark gp-ha\">は</span> 先生 <span class=\"gp-mark gp-ja\">ではありません</span>。", romaji: "Ano kata wa sensei dewa arimasen.", vi: "Vị kia không phải là giáo viên. (Trang trọng)", audio: "あのかたはせんせいではありません" }
             ]
           },
           {
             id: "pattern-3",
             name: "A は B ですか",
-            meaning: "A có phải là B không? (Câu nghi vấn)",
-            formula: "Danh từ 1 [ は ] Danh từ 2 [ ですか ]",
-            explanation: "Thêm trợ từ <strong>か</strong> vào cuối câu để chuyển câu khẳng định thành câu hỏi. Trong tiếng Nhật chuẩn truyền thống, cuối câu dùng dấu chấm (。) chứ không dùng dấu hỏi (?), ngữ điệu cuối câu hơi <u>lên giọng</u>.",
-            notes: "🗣️ <u>Cách trả lời câu hỏi nghi vấn:</u><br>• Đồng ý: <strong>はい、B です。</strong> (Vâng, là B)<br>• Từ chối: <strong>いいえ、B じゃありません。</strong> (Không, không phải là B)",
+            targetHighlight: "ですか",
+            meaning: "A có phải là B không? (Câu hỏi nghi vấn)",
+            formula: "Danh từ 1 [ <span class=\"gp-mark gp-ha\">は</span> ] Danh từ 2 [ <span class=\"gp-mark gp-ka\">ですか</span> ]",
+            explanation: "Thêm trợ từ か vào cuối câu khẳng định để biến thành câu hỏi xác nhận thông tin.",
+            deepPoints: [
+              "<strong>1. Trợ từ か đóng vai trò như dấu hỏi chấm bằng lời nói:</strong><br>• Không cần đảo ngữ hay đổi trật tự từ như tiếng Anh (không cần đảo động từ lên đầu). Chỉ cần giữ nguyên câu khẳng định và thêm <span class=\"gp-mark gp-ka\">か</span> vào cuối.",
+              "<strong>2. Dấu câu và ngữ điệu (Intonation):</strong><br>• Trong văn bản tiếng Nhật chuẩn, cuối câu dùng dấu chấm tròn <code>。</code> chứ không bắt buộc dùng dấu <code>?</code> (dù văn cảnh hiện đại vẫn chấp nhận <code>?</code>).<br>• Khi phát âm, âm <strong>か</strong> ở cuối câu được phát âm với ngữ điệu <u>hơi đi lên nhẹ nhàng</u>.",
+              "<strong>3. Nghệ thuật trả lời câu hỏi:</strong><br>• <strong>Khi đồng ý:</strong> Nói <em>はい、[B] です。</em> (Vâng, đúng là B). Có thể lược bỏ chủ ngữ A để câu gọn gàng.<br>• <strong>Khi từ chối:</strong> Nói <em>いいえ、[B] じゃありません。</em> (Không, không phải là B). Sau đó nói thêm thông tin đúng (ví dụ: <em>いいえ、学生じゃありません。会社員です。</em>)."
+            ],
+            notes: "🗣️ <u>Cặp thoại mẫu:</u><br>Q: タインさん は エンジニア ですか。<br>A: はい、エンジニア です。(Đồng ý) / いいえ、エンジニア じゃありません。(Từ chối)",
             examples: [
-              { jp: "タインさん は エンジニア ですか。", romaji: "Thanh-san wa enjinia desu ka.", vi: "Anh Thanh có phải là kỹ sư không? ➔ [Trả lời: はい、エンジニア です。]", audio: "タインさんはエンジニアですか" },
-              { jp: "ミラーさん は アメリカ人 ですか。", romaji: "Miraa-san wa Amerikajin desu ka.", vi: "Anh Miller có phải là người Mỹ không? ➔ [Trả lời: はい、アメリカ人 です。]", audio: "ミラーさんはアメリカじんですか" },
-              { jp: "あの方 は 社長 ですか。", romaji: "Ano kata wa shachou desu ka.", vi: "Vị kia có phải là giám đốc không? ➔ [Trả lời: いいえ、社長 じゃありません。]", audio: "あのかたはしゃちょうですか" }
+              { jp: "タインさん <span class=\"gp-mark gp-ha\">は</span> エンジニア <span class=\"gp-mark gp-ka\">ですか</span>。", romaji: "Thanh-san wa enjinia desu ka.", vi: "Anh Thanh có phải là kỹ sư không? ➔ [はい、エンジニア です。]", audio: "タインさんはエンジニアですか" },
+              { jp: "ミラーさん <span class=\"gp-mark gp-ha\">は</span> アメリカ人 <span class=\"gp-mark gp-ka\">ですか</span>。", romaji: "Miraa-san wa Amerikajin desu ka.", vi: "Anh Miller có phải là người Mỹ không? ➔ [はい、アメリカ人 です。]", audio: "ミラーさんはアメリカじんですか" },
+              { jp: "あの方 <span class=\"gp-mark gp-ha\">は</span> 社長 <span class=\"gp-mark gp-ka\">ですか</span>。", romaji: "Ano kata wa shachou desu ka.", vi: "Vị kia có phải là giám đốc không? ➔ [いいえ、社長 じゃありません。]", audio: "あのかたはしゃちょうですか" }
             ]
           },
           {
             id: "pattern-4",
             name: "A も B です",
+            targetHighlight: "も",
             meaning: "A cũng là B (Trợ từ も - Cũng)",
-            formula: "Danh từ 1 は C です。 Danh từ 2 [ も ] C です。",
-            explanation: "Trợ từ <strong>も (mo)</strong> mang nghĩa là <em>'cũng'</em>. Nó được dùng để <strong>thay thế hoàn toàn cho trợ từ は</strong> khi chủ ngữ thứ hai có cùng đặc tính, nghề nghiệp hoặc quốc tịch với chủ ngữ trước đó.",
-            notes: "🔴 <u>CẢNH BÁO LỖI SAI:</u> Tuyệt đối không dùng cả <em>は</em> và <em>も</em> cùng lúc (sai: <s>A はも B</s>). Phải thay thế: A は ➔ A も.",
+            formula: "Danh từ 1 は C です。 Danh từ 2 [ <span class=\"gp-mark gp-mo\">も</span> ] C です。",
+            explanation: "Trợ từ も (mo) mang nghĩa là 'cũng', dùng để biểu thị sự đồng nhất hoặc tương đồng về tính chất, quốc tịch, nghề nghiệp.",
+            deepPoints: [
+              "<strong>1. Bản chất cốt lõi của trợ từ も:</strong><br>• Dùng khi chủ ngữ thứ 2 có cùng tính chất, đặc điểm hoặc hành động với chủ ngữ trước đó đã được nhắc đến.",
+              "<strong>2. Quy tắc thay thế tuyệt đối (CỰC KỲ QUAN TRỌNG):</strong><br>• Trợ từ <span class=\"gp-mark gp-mo\">も</span> sẽ <strong>thay thế hoàn toàn vị trí của trợ từ は</strong>.<br>• 🔴 <u>CẤM KỴ:</u> Tuyệt đối không dùng cả <em>は</em> và <em>も</em> cùng lúc (sai hoàn toàn: <s>A はも B です</s> hoặc <s>A もは B です</s>).",
+              "<strong>3. Cách dùng も trong câu hỏi và trả lời:</strong><br>• Hỏi: <em>ナムさん <span class=\"gp-mark gp-mo\">も</span> ベトナム人 ですか。</em> (Anh Nam cũng là người VN à?)<br>• Trả lời khẳng định: <em>はい、ナムさん <span class=\"gp-mark gp-mo\">も</span> ベトナム人 です。</em><br>• Trả lời phủ định: <em>いいえ、ナムさん <span class=\"gp-mark gp-ha\">は</span> ベトナム人 じゃありません。</em> ➔ <u>Chú ý:</u> Khi phủ định, trợ từ lại quay trở về dùng <span class=\"gp-mark gp-ha\">は</span>!"
+            ],
+            notes: "🔴 <u>Công thức cần khắc cốt ghi tâm:</u> Câu trước dùng <strong>は</strong>, câu sau có cùng tính chất thì thay thế bằng <span class=\"gp-mark gp-mo\">も</span>.",
             examples: [
-              { jp: "タインさん は ベトナム人 です。ナムさん も ベトナム人 です。", romaji: "Thanh-san wa Betonamu-jin desu. Nam-san mo Betonamu-jin desu.", vi: "Anh Thanh là người Việt Nam. Anh Nam CŨNG là người Việt Nam.", audio: "タインさんはベトナムじんです。ナムさんもベトナムじんです" },
-              { jp: "わたし は 学生 です。あの方 も 学生 です。", romaji: "Watashi wa gakusei desu. Ano kata mo gakusei desu.", vi: "Tôi là học sinh. Vị kia CŨNG là học sinh.", audio: "わたしはがくせいです。あのかたもがくせいです" },
-              { jp: "ミラーさん は 会社員 です。グプタさん も 会社員 です。", romaji: "Miraa-san wa kaishain desu. Guputa-san mo kaishain desu.", vi: "Anh Miller là nhân viên công ty. Anh Gupta CŨNG là nhân viên công ty.", audio: "ミラーさんはかいしゃいんです。グプタさんもかいしゃいんです" }
+              { jp: "タインさん <span class=\"gp-mark gp-ha\">は</span> ベトナム人 です。ナムさん <span class=\"gp-mark gp-mo\">も</span> ベトナム人 <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Thanh-san wa Betonamu-jin desu. Nam-san mo Betonamu-jin desu.", vi: "Anh Thanh là người Việt Nam. Anh Nam CŨNG là người Việt Nam.", audio: "タインさんはベトナムじんです。ナムさんもベトナムじんです" },
+              { jp: "わたし <span class=\"gp-mark gp-ha\">は</span> 学生 です。あの方 <span class=\"gp-mark gp-mo\">も</span> 学生 <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Watashi wa gakusei desu. Ano kata mo gakusei desu.", vi: "Tôi là học sinh. Vị kia CŨNG là học sinh.", audio: "わたしはがくせいです。あのかたもがくせいです" },
+              { jp: "ミラーさん <span class=\"gp-mark gp-ha\">は</span> 会社員 です。グプタさん <span class=\"gp-mark gp-mo\">も</span> 会社員 <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Miraa-san wa kaishain desu. Guputa-san mo kaishain desu.", vi: "Anh Miller là nhân viên công ty. Anh Gupta CŨNG là nhân viên công ty.", audio: "ミラーさんはかいしゃいんです。グプタさんもかいしゃいんです" }
             ]
           }
         ],
         readingArticle: {
           title: "Đoạn văn & Hội thoại tự giới thiệu bản thân mẫu (自己紹介)",
-          passageJp: "初めまして。わたし は タイン です。ベトナム から 来ました。25歳 です。エンジニア です。学生 じゃありません。ナムさん も ベトナム人 です。どうぞ よろしく お願いします。",
+          passageJp: "初めまして。わたし <span class=\"gp-mark gp-ha\">は</span> タイン <span class=\"gp-mark gp-desu\">です</span>。ベトナム から 来ました。25歳 <span class=\"gp-mark gp-desu\">です</span>。エンジニア <span class=\"gp-mark gp-desu\">です</span>。学生 <span class=\"gp-mark gp-ja\">じゃありません</span>。ナムさん <span class=\"gp-mark gp-mo\">も</span> ベトナム人 <span class=\"gp-mark gp-desu\">です</span>。どうぞ よろしく お願いします。",
           passageRomaji: "Hajimemashite. Watashi wa Thanh desu. Betonamu kara kimashita. 25-sai desu. Enjinia desu. Gakusei ja arimasen. Nam-san mo Betonamu-jin desu. Douzo yoroshiku onegaishimasu.",
           passageVi: "Rất vui được làm quen với bạn. Tôi là Thanh. Tôi đến từ Việt Nam. Tôi 25 tuổi. Tôi là kỹ sư. Tôi không phải là học sinh. Anh Nam cũng là người Việt Nam. Rất mong được sự giúp đỡ của bạn.",
           audio: "はじめまして。わたしはタインです。ベトナムからきました。にじゅうごさいです。エンジニアです。がくせいじゃありません。ナムさんもベトナムじんです。どうぞよろしくおねがいします"
@@ -90,7 +115,7 @@ export const GRAMMAR_CHAPTERS = [
             id: "ex-1",
             type: "reading",
             typeLabel: "📖 Đọc hiểu",
-            question: "Dựa vào bài giới thiệu ở trên: Anh Thanh làm nghề gì?",
+            question: "Dựa vào đoạn văn giới thiệu ở trên: Anh Thanh làm nghề gì?",
             options: [
               "Học sinh (学生)",
               "Kỹ sư (エンジニア)",
@@ -122,7 +147,7 @@ export const GRAMMAR_CHAPTERS = [
             question: "タインさん は ベトナム人 です。ナムさん [ ... ] ベトナム人 です。",
             options: ["は", "も", "か", "の"],
             correct: 1,
-            explanation: "Cả Thanh và Nam đều là người Việt Nam nên câu thứ hai dùng trợ từ 'も' (cũng) để thay thế cho 'は'."
+            explanation: "Cả Thanh và Nam đều là người Việt Nam nên câu thứ hai dùng trợ từ 'も' (cũng) để thay thế hoàn toàn cho 'は'."
           },
           {
             id: "ex-4",
@@ -202,7 +227,7 @@ export const GRAMMAR_CHAPTERS = [
               "じゃなかった"
             ],
             correct: 0,
-            explanation: "ではありません mang sắc thái trang trọng, lịch sự đỉnh cao."
+            explanation: "ではありません mang sắc thái trang trọng, lịch sự chuẩn mực trong văn viết."
           },
           {
             id: "tq-6",
@@ -227,7 +252,7 @@ export const GRAMMAR_CHAPTERS = [
               "わたし は ベトナム人 も です。"
             ],
             correct: 1,
-            explanation: "Trợ từ 'も' đứng ngay sau danh từ và thay thế cho 'は', không được viết ghép 'はも'."
+            explanation: "Trợ từ 'も' đứng ngay sau danh từ và thay thế cho 'は', tuyệt đối không được viết ghép 'はも'."
           },
           {
             id: "tq-8",
@@ -279,7 +304,8 @@ export const GRAMMAR_CHAPTERS = [
   }
 ];
 
-const STORAGE_KEY_GRAMMAR_PROGRESS = "nihongo_grammar_progress_v1";
+const STORAGE_KEY_GRAMMAR_PROGRESS = "nihongo_grammar_progress_v2";
+const STORAGE_KEY_RIGHT_COLLAPSED = "nihongo_grammar_right_collapsed";
 
 // Đọc toàn bộ tiến trình từ localStorage
 export function loadAllGrammarProgress() {
@@ -305,7 +331,7 @@ export function saveAllGrammarProgress(data) {
 function getDefaultProgressState() {
   return {
     activeLessonId: "n5-lesson-1",
-    activeTab: "theory", // theory | exercises | test
+    activeSubStep: "theory", // theory | exercises | test
     unlockedAll: false,
     lessons: {
       "n5-lesson-1": {
@@ -315,7 +341,7 @@ function getDefaultProgressState() {
         testPassed: false,
         testScore: 0,
         testTotal: 8,
-        notes: "",
+        notesList: [],
         bookmarked: false
       }
     }
@@ -333,7 +359,7 @@ export function getLessonProgress(lessonId) {
       testPassed: false,
       testScore: 0,
       testTotal: 8,
-      notes: "",
+      notesList: [],
       bookmarked: false
     };
   }
@@ -351,7 +377,7 @@ export function updateLessonProgress(lessonId, partial) {
       testPassed: false,
       testScore: 0,
       testTotal: 8,
-      notes: "",
+      notesList: [],
       bookmarked: false
     };
   }
@@ -373,14 +399,15 @@ export function calculateLessonPercent(lessonId) {
 // Biến trạng thái runtime
 let currentChapterIndex = 0;
 let currentLessonId = "n5-lesson-1";
-let currentTab = "theory"; // theory | exercises | test
-let activeLeftSubTab = "notes"; // notes | takeaways | list
+let currentSubStep = "theory"; // theory | exercises | test
+let activeRightTab = "notes"; // notes | takeaways | results
+let isRightPanelCollapsed = typeof localStorage !== "undefined" ? (localStorage.getItem(STORAGE_KEY_RIGHT_COLLAPSED) === "true") : false;
 
 // Khởi tạo các sự kiện giao diện
 export function setupGrammarUI() {
   const state = loadAllGrammarProgress();
   if (state.activeLessonId) currentLessonId = state.activeLessonId;
-  if (state.activeTab) currentTab = state.activeTab;
+  if (state.activeSubStep) currentSubStep = state.activeSubStep;
 
   const grammarNavBtn = document.getElementById("nav-grammar");
   if (grammarNavBtn) {
@@ -395,12 +422,16 @@ export function renderGrammarView() {
   const view = document.getElementById("grammar-view");
   if (!view) return;
 
+  if (typeof document !== "undefined" && document.body) {
+    document.body.classList.add("view-grammar-active");
+  }
+
   const currentLesson = getCurrentLessonData();
   if (!currentLesson) return;
 
-  renderLeftSidebar(currentLesson);
+  renderLeftCourseMenu(currentLesson);
   renderCenterWorkspace(currentLesson);
-  renderRightSidebar(currentLesson);
+  renderRightToolsPanel(currentLesson);
 }
 
 function getCurrentLessonData() {
@@ -410,145 +441,137 @@ function getCurrentLessonData() {
 }
 
 /* ==========================================================================
-   CỘT TRÁI: TIỆN ÍCH & SỔ TAY GHI CHÚ
+   CỘT TRÁI (SÁT LỀ): MENU KHÓA HỌC & LỘ TRÌNH BÀI 1
    ========================================================================== */
-function renderLeftSidebar(lesson) {
+function renderLeftCourseMenu(lesson) {
   const sidebar = document.getElementById("grammar-sidebar-left");
   if (!sidebar) return;
 
   const progress = getLessonProgress(lesson.id);
+  const percent = calculateLessonPercent(lesson.id);
+  const allState = loadAllGrammarProgress();
 
   sidebar.innerHTML = `
-    <div class="grammar-sidebar-header">
-      <div class="grammar-tab-pills">
-        <button type="button" class="g-subtab-btn ${activeLeftSubTab === 'notes' ? 'active' : ''}" data-subtab="notes" title="Sổ tay ghi chú">
-          📝 Ghi chú
-        </button>
-        <button type="button" class="g-subtab-btn ${activeLeftSubTab === 'takeaways' ? 'active' : ''}" data-subtab="takeaways" title="Điểm cần nhớ">
-          💡 Mẹo nhớ
-        </button>
-        <button type="button" class="g-subtab-btn ${activeLeftSubTab === 'list' ? 'active' : ''}" data-subtab="list" title="Mục lục bài học">
-          📚 Bài học
-        </button>
-      </div>
+    <div class="course-menu-header">
+      <div class="course-menu-level-badge">JLPT N5</div>
+      <h3 class="course-menu-title">Khóa Học Ngữ Pháp</h3>
+      <small class="course-menu-sub">Chương 1: Giới Thiệu Bản Thân</small>
     </div>
 
-    <div class="grammar-sidebar-body">
-      <!-- 1. Sổ tay ghi chú cá nhân -->
-      <div class="g-subtab-panel ${activeLeftSubTab === 'notes' ? 'active' : ''}" id="g-panel-notes">
-        <div class="notes-panel-desc">
-          <small>Ghi chú của riêng bạn cho <strong>${lesson.title}</strong> (Tự động lưu vào máy):</small>
-        </div>
-        <textarea id="grammar-user-notes" class="form-control grammar-notes-textarea" placeholder="Viết những gì bạn học được, câu ví dụ của bạn, thắc mắc cần ôn lại...">${progress.notes || ''}</textarea>
-        <div class="notes-panel-actions">
-          <span id="grammar-notes-status" class="notes-save-status">Đã đồng bộ</span>
-          <button type="button" class="btn btn-secondary btn-sm" id="grammar-save-notes-btn">💾 Lưu ghi chú</button>
+    <div class="course-lessons-accordion">
+      <!-- Bài 1: Đang học (sổ ra các phần con) -->
+      <div class="accordion-lesson-card current-active-lesson">
+        <div class="acc-lesson-head">
+          <div class="acc-lesson-title-row">
+            <span class="acc-num-badge">Bài 1</span>
+            <strong>Giới Thiệu Bản Thân</strong>
+          </div>
+          <span class="acc-progress-pill">${percent}%</span>
         </div>
 
-        <div class="bookmark-study-box">
-          <label class="custom-checkbox-label">
-            <input type="checkbox" id="grammar-bookmark-check" ${progress.bookmarked ? 'checked' : ''}>
-            <span>⭐ Đánh dấu bài học này để ôn tập lại sau</span>
-          </label>
+        <!-- Các bước lộ trình con trong Bài 1 (sổ ra từ menu Bài 1) -->
+        <div class="acc-sub-steps-tree">
+          <!-- Bước 1: Lý thuyết -->
+          <div class="acc-step-item ${currentSubStep === 'theory' ? 'active-step' : ''} ${progress.theoryDone ? 'completed-step' : ''}" data-step="theory">
+            <span class="step-indicator-icon">${progress.theoryDone ? '✓' : '📖'}</span>
+            <div class="step-info">
+              <span class="step-label">1. Lý thuyết bài giảng</span>
+              <small>${progress.theoryDone ? 'Đã hoàn thành' : 'Đang học'}</small>
+            </div>
+          </div>
+
+          <!-- Bước 2: Bài tập (phải xong lý thuyết mới đi tiếp) -->
+          <div class="acc-step-item ${currentSubStep === 'exercises' ? 'active-step' : ''} ${progress.exercisesDone ? 'completed-step' : ''} ${!progress.theoryDone && !allState.unlockedAll ? 'locked-step' : ''}" data-step="exercises">
+            <span class="step-indicator-icon">${progress.exercisesDone ? '✓' : (!progress.theoryDone && !allState.unlockedAll ? '🔒' : '✍️')}</span>
+            <div class="step-info">
+              <span class="step-label">2. Luyện tập thực hành</span>
+              <small>${progress.exercisesDone ? 'Đã làm xong' : (!progress.theoryDone && !allState.unlockedAll ? 'Khóa (cần xong bước 1)' : '5 bài tập đa dạng')}</small>
+            </div>
+          </div>
+
+          <!-- Bước 3: Bài kiểm tra (phải xong bài tập mới mở) -->
+          <div class="acc-step-item ${currentSubStep === 'test' ? 'active-step' : ''} ${progress.testPassed ? 'completed-step' : ''} ${!progress.exercisesDone && !allState.unlockedAll ? 'locked-step' : ''}" data-step="test">
+            <span class="step-indicator-icon">${progress.testPassed ? '🏆' : (!progress.exercisesDone && !allState.unlockedAll ? '🔒' : '🎯')}</span>
+            <div class="step-info">
+              <span class="step-label">3. Kiểm tra đánh giá</span>
+              <small>${progress.testPassed ? `Đạt ${progress.testScore}/${progress.testTotal} điểm` : (!progress.exercisesDone && !allState.unlockedAll ? 'Khóa (cần làm bài tập)' : 'Đạt ≥ 80% để qua bài')}</small>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- 2. Điểm cần nhớ / Mẹo vàng -->
-      <div class="g-subtab-panel ${activeLeftSubTab === 'takeaways' ? 'active' : ''}" id="g-panel-takeaways">
-        <h4 class="takeaways-title">⚡ Điểm mấu chốt của bài:</h4>
-        <ul class="takeaways-list">
-          ${(lesson.keyTakeaways || []).map(tip => `
-            <li><span>🔹</span> <div>${tip}</div></li>
-          `).join('')}
-        </ul>
-      </div>
-
-      <!-- 3. Mục lục bài học trong chương -->
-      <div class="g-subtab-panel ${activeLeftSubTab === 'list' ? 'active' : ''}" id="g-panel-list">
-        <h4 class="takeaways-title">Danh sách bài học N5:</h4>
-        <div class="lesson-quick-list">
-          ${GRAMMAR_CHAPTERS[currentChapterIndex].lessons.map(l => {
-            const isCurrent = l.id === lesson.id;
-            const isLocked = isLessonLocked(l.id);
-            return `
-              <div class="lesson-quick-item ${isCurrent ? 'current' : ''} ${isLocked ? 'locked' : ''}" data-lesson-id="${l.id}">
-                <span class="quick-item-icon">${isLocked ? '🔒' : (isCurrent ? '👉' : '📖')}</span>
-                <div class="quick-item-info">
-                  <strong>${l.title}</strong>
-                  <small>${l.subtitle || ''}</small>
-                </div>
+      <!-- Các bài học tiếp theo (Bài 2, 3, 4, 5...) -->
+      ${GRAMMAR_CHAPTERS[currentChapterIndex].lessons.filter(l => l.id !== "n5-lesson-1").map(l => {
+        const isLock = isLessonLocked(l.id);
+        const p = getLessonProgress(l.id);
+        return `
+          <div class="accordion-lesson-card ${isLock ? 'locked-lesson' : 'open-lesson'}" data-lesson-id="${l.id}">
+            <div class="acc-lesson-head">
+              <div class="acc-lesson-title-row">
+                <span class="acc-num-badge">${isLock ? '🔒' : 'Bài ' + l.number}</span>
+                <strong>${l.title.replace(/^Bài \d+:\s*/, '')}</strong>
               </div>
-            `;
-          }).join('')}
-        </div>
-      </div>
+              <small class="acc-lock-hint">${isLock ? 'Khóa' : (p.testPassed ? '✓ Đã xong' : 'Mở')}</small>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+
+    <div class="course-menu-footer">
+      <button type="button" class="btn btn-secondary btn-sm" id="g-unlock-all-btn" style="width: 100%; font-size: 11px;">
+        ${allState.unlockedAll ? '🔓 Đang mở tự do' : '🔓 Mở khóa tự do toàn bộ'}
+      </button>
     </div>
   `;
 
-  // Bắt sự kiện chuyển tab cột trái
-  sidebar.querySelectorAll(".g-subtab-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      activeLeftSubTab = btn.getAttribute("data-subtab");
-      renderLeftSidebar(lesson);
-    });
-  });
-
-  // Bắt sự kiện lưu ghi chú
-  const notesTextarea = document.getElementById("grammar-user-notes");
-  const saveNotesBtn = document.getElementById("grammar-save-notes-btn");
-  const notesStatus = document.getElementById("grammar-notes-status");
-
-  if (notesTextarea) {
-    notesTextarea.addEventListener("input", () => {
-      if (notesStatus) notesStatus.textContent = "Chưa lưu...";
-    });
-  }
-
-  if (saveNotesBtn && notesTextarea) {
-    saveNotesBtn.addEventListener("click", () => {
-      const val = notesTextarea.value.trim();
-      updateLessonProgress(lesson.id, { notes: val });
-      if (notesStatus) {
-        notesStatus.textContent = "✓ Đã lưu thành công!";
-        setTimeout(() => { if (notesStatus) notesStatus.textContent = "Đã đồng bộ"; }, 2000);
-      }
-    });
-  }
-
-  // Đánh dấu bookmark
-  const bookmarkCheck = document.getElementById("grammar-bookmark-check");
-  if (bookmarkCheck) {
-    bookmarkCheck.addEventListener("change", (e) => {
-      updateLessonProgress(lesson.id, { bookmarked: e.target.checked });
-    });
-  }
-
-  // Bắt sự kiện chuyển bài nhanh
-  sidebar.querySelectorAll(".lesson-quick-item:not(.locked)").forEach(item => {
+  // Bắt sự kiện chuyển bước lộ trình con trong bài 1
+  sidebar.querySelectorAll(".acc-step-item:not(.locked-step)").forEach(item => {
     item.addEventListener("click", () => {
-      const targetId = item.getAttribute("data-lesson-id");
-      if (targetId && targetId !== currentLessonId) {
-        currentLessonId = targetId;
+      const step = item.getAttribute("data-step");
+      if (step) {
+        currentSubStep = step;
         const all = loadAllGrammarProgress();
-        all.activeLessonId = targetId;
+        all.activeSubStep = step;
         saveAllGrammarProgress(all);
         renderGrammarView();
       }
     });
   });
+
+  // Bắt sự kiện click vào bước bị khóa -> thông báo hướng dẫn
+  sidebar.querySelectorAll(".acc-step-item.locked-step").forEach(item => {
+    item.addEventListener("click", () => {
+      const step = item.getAttribute("data-step");
+      if (step === "exercises") {
+        alert("🔒 Bước này đang bị khóa!\nBạn cần đọc qua '1. Lý thuyết bài giảng' và bấm nút '✓ Đã học xong lý thuyết' để mở khóa phần Luyện tập.");
+      } else if (step === "test") {
+        alert("🔒 Bài kiểm tra đang bị khóa!\nBạn cần hoàn thành phần '2. Luyện tập thực hành' trước khi làm Bài kiểm tra.");
+      }
+    });
+  });
+
+  // Toggle mở khóa tất cả
+  const unlockBtn = document.getElementById("g-unlock-all-btn");
+  if (unlockBtn) {
+    unlockBtn.addEventListener("click", () => {
+      const all = loadAllGrammarProgress();
+      all.unlockedAll = !all.unlockedAll;
+      saveAllGrammarProgress(all);
+      renderGrammarView();
+    });
+  }
 }
 
 function isLessonLocked(lessonId) {
   const all = loadAllGrammarProgress();
   if (all.unlockedAll) return false;
   if (lessonId === "n5-lesson-1") return false;
-  const lesson = GRAMMAR_CHAPTERS[currentChapterIndex].lessons.find(l => l.id === lessonId);
-  if (!lesson) return true;
-  // Mở khóa bài 2 nếu bài 1 đã thi đỗ
   if (lessonId === "n5-lesson-2") {
     return !getLessonProgress("n5-lesson-1").testPassed;
   }
-  return lesson.locked === true;
+  const lesson = GRAMMAR_CHAPTERS[currentChapterIndex].lessons.find(l => l.id === lessonId);
+  return lesson?.locked === true;
 }
 
 /* ==========================================================================
@@ -560,50 +583,39 @@ function renderCenterWorkspace(lesson) {
 
   const progress = getLessonProgress(lesson.id);
 
+  // Render nội dung tương ứng theo bước lộ trình con đang chọn
   main.innerHTML = `
-    <!-- Thanh điều hướng Tab chính giữa -->
-    <header class="grammar-main-tabs">
-      <button type="button" class="g-main-tab-btn ${currentTab === 'theory' ? 'active' : ''}" data-tab="theory">
-        <span>📖</span> Bài Giảng Lý Thuyết ${progress.theoryDone ? '✓' : ''}
-      </button>
-      <button type="button" class="g-main-tab-btn ${currentTab === 'exercises' ? 'active' : ''}" data-tab="exercises">
-        <span>✍️</span> Luyện Tập Thực Hành ${progress.exercisesDone ? '✓' : ''}
-      </button>
-      <button type="button" class="g-main-tab-btn ${currentTab === 'test' ? 'active' : ''}" data-tab="test">
-        <span>🎯</span> Kiểm Tra Đánh Giá ${progress.testPassed ? `(${progress.testScore}/${progress.testTotal})` : ''}
-      </button>
-    </header>
+    <div class="workspace-header-bar">
+      <div class="workspace-current-step-badge">
+        <span class="step-num-pill">Bước ${currentSubStep === 'theory' ? '1/3' : (currentSubStep === 'exercises' ? '2/3' : '3/3')}</span>
+        <h2 class="workspace-step-title">
+          ${currentSubStep === 'theory' ? '📖 1. Lý Thuyết & Mẫu Câu Bài Giảng' : (currentSubStep === 'exercises' ? '✍️ 2. Luyện Tập Thực Hành Đa Dạng' : '🎯 3. Bài Kiểm Tra Đánh Giá Năng Lực')}
+        </h2>
+      </div>
+      <div class="workspace-step-status">
+        ${currentSubStep === 'theory' && progress.theoryDone ? '<span class="status-chip chip-done">✓ Đã học xong lý thuyết</span>' : ''}
+        ${currentSubStep === 'exercises' && progress.exercisesDone ? '<span class="status-chip chip-done">✓ Đã làm xong bài tập</span>' : ''}
+        ${currentSubStep === 'test' && progress.testPassed ? '<span class="status-chip chip-done">🏆 Đã đạt chuẩn chốt bài</span>' : ''}
+      </div>
+    </div>
 
     <div class="grammar-tab-content-container">
-      ${currentTab === 'theory' ? renderTheoryTabHtml(lesson, progress) : ''}
-      ${currentTab === 'exercises' ? renderExercisesTabHtml(lesson, progress) : ''}
-      ${currentTab === 'test' ? renderTestTabHtml(lesson, progress) : ''}
+      ${currentSubStep === 'theory' ? renderTheoryTabHtml(lesson, progress) : ''}
+      ${currentSubStep === 'exercises' ? renderExercisesTabHtml(lesson, progress) : ''}
+      ${currentSubStep === 'test' ? renderTestTabHtml(lesson, progress) : ''}
     </div>
   `;
 
-  // Bắt sự kiện chuyển Tab chính
-  main.querySelectorAll(".g-main-tab-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      currentTab = btn.getAttribute("data-tab");
-      const all = loadAllGrammarProgress();
-      all.activeTab = currentTab;
-      saveAllGrammarProgress(all);
-      renderCenterWorkspace(lesson);
-      renderRightSidebar(lesson);
-    });
-  });
-
-  // Bắt sự kiện cho các nút trong nội dung tab
   attachWorkspaceEventListeners(lesson);
 }
 
-// 1. Render Tab Lý Thuyết
+// 1. Render Tab Lý Thuyết (đào sâu, gạch đầu dòng, highlight từ khóa)
 function renderTheoryTabHtml(lesson, progress) {
   return `
     <div class="theory-view-wrapper">
       <div class="theory-intro-banner">
-        <h3>Bài học: ${lesson.title}</h3>
-        <p>Học kỹ 4 cấu trúc dưới đây, bấm nút 🔊 Loa để nghe phát âm từng câu ví dụ thực tế:</p>
+        <h3>Bài 1: Giới Thiệu Bản Thân (自己紹介)</h3>
+        <p>Học kỹ 4 cấu trúc nền tảng. Các từ khóa ngữ pháp chính (<span class="gp-mark gp-ha">は</span>, <span class="gp-mark gp-desu">です</span>, <span class="gp-mark gp-ja">じゃありません</span>, <span class="gp-mark gp-ka">ですか</span>, <span class="gp-mark gp-mo">も</span>) đã được gạch chân và tô màu nổi bật. Bấm nút 🔊 Loa để nghe phát âm tự nhiên:</p>
       </div>
 
       <div class="grammar-patterns-stack">
@@ -620,13 +632,21 @@ function renderTheoryTabHtml(lesson, progress) {
             </div>
 
             <div class="pattern-desc">
-              <p>${p.explanation}</p>
+              <p class="pattern-main-summary">${p.explanation}</p>
+
+              <!-- Các gạch đầu dòng đào sâu cặn kẽ -->
+              <div class="deep-points-box">
+                <h4 class="deep-heading">🔍 Phân tích chi tiết từng điểm cốt lõi:</h4>
+                <ul class="deep-points-list">
+                  ${p.deepPoints.map(point => `<li>${point}</li>`).join('')}
+                </ul>
+              </div>
+
               ${p.notes ? `<div class="pattern-note-box">${p.notes}</div>` : ''}
-              ${p.reply ? `<div class="pattern-reply-box">${p.reply.replace(/\n/g, '<br>')}</div>` : ''}
             </div>
 
             <div class="pattern-examples-box">
-              <h4>🗣️ Ví dụ minh họa (Bấm 🔊 để nghe phát âm):</h4>
+              <h4>🗣️ Các câu ví dụ thực tế (Bấm 🔊 để nghe phát âm):</h4>
               <div class="pattern-examples-list">
                 ${p.examples.map(ex => `
                   <div class="pattern-example-row">
@@ -637,7 +657,6 @@ function renderTheoryTabHtml(lesson, progress) {
                       <div class="ex-jp">${ex.jp}</div>
                       <div class="ex-romaji">${ex.romaji}</div>
                       <div class="ex-vi">${ex.vi}</div>
-                      ${ex.reply ? `<div class="ex-reply">👉 ${ex.reply}</div>` : ''}
                     </div>
                   </div>
                 `).join('')}
@@ -669,7 +688,7 @@ function renderTheoryTabHtml(lesson, progress) {
 
       <div class="theory-footer-actions">
         <button type="button" class="btn btn-primary btn-lg" id="g-mark-theory-done-btn">
-          ${progress.theoryDone ? '✓ Đã hoàn thành Lý thuyết ➔ Sang làm Bài tập' : 'Đã học xong lý thuyết ➔ Bắt đầu luyện tập'}
+          ${progress.theoryDone ? '✓ Đã hoàn thành Lý thuyết ➔ Sang làm Bài tập' : '✓ Tôi đã hiểu bài ➔ Mở khóa làm bài tập'}
         </button>
       </div>
     </div>
@@ -687,7 +706,7 @@ function renderExercisesTabHtml(lesson, progress) {
       <div class="exercises-header-bar">
         <div>
           <h3>Luyện tập thực hành (${completedCount}/${exercises.length} câu đã trả lời)</h3>
-          <p>Bài tập đa dạng kiểm tra đọc hiểu, nghe hiểu, ngữ pháp và ghép câu:</p>
+          <p>Bài tập đa dạng: Đọc hiểu, Nghe hiểu (có loa 🔊), Điền trợ từ, Ngữ pháp và Sắp xếp câu:</p>
         </div>
       </div>
 
@@ -805,7 +824,6 @@ function renderTestTabHtml(lesson, progress) {
   `;
 }
 
-// Bắt các sự kiện tương tác trong khu vực trung tâm
 function attachWorkspaceEventListeners(lesson) {
   // Phát âm âm thanh
   document.querySelectorAll(".g-speak-btn").forEach(btn => {
@@ -817,12 +835,15 @@ function attachWorkspaceEventListeners(lesson) {
     });
   });
 
-  // Hoàn thành lý thuyết
+  // Hoàn thành lý thuyết -> Mở khóa bài tập
   const markTheoryDoneBtn = document.getElementById("g-mark-theory-done-btn");
   if (markTheoryDoneBtn) {
     markTheoryDoneBtn.addEventListener("click", () => {
       updateLessonProgress(lesson.id, { theoryDone: true });
-      currentTab = "exercises";
+      currentSubStep = "exercises";
+      const all = loadAllGrammarProgress();
+      all.activeSubStep = "exercises";
+      saveAllGrammarProgress(all);
       renderGrammarView();
     });
   }
@@ -843,7 +864,8 @@ function attachWorkspaceEventListeners(lesson) {
       updateLessonProgress(lesson.id, { exerciseScores: scores, exercisesDone: allExercisesDone });
 
       renderCenterWorkspace(lesson);
-      renderRightSidebar(lesson);
+      renderLeftCourseMenu(lesson);
+      renderRightToolsPanel(lesson);
     });
   });
 
@@ -854,7 +876,8 @@ function attachWorkspaceEventListeners(lesson) {
       if (confirm("Bạn có muốn làm lại toàn bộ bài tập của bài này không?")) {
         updateLessonProgress(lesson.id, { exerciseScores: {}, exercisesDone: false });
         renderCenterWorkspace(lesson);
-        renderRightSidebar(lesson);
+        renderLeftCourseMenu(lesson);
+        renderRightToolsPanel(lesson);
       }
     });
   }
@@ -863,9 +886,11 @@ function attachWorkspaceEventListeners(lesson) {
   const goToTestBtn = document.getElementById("g-go-to-test-btn");
   if (goToTestBtn) {
     goToTestBtn.addEventListener("click", () => {
-      currentTab = "test";
-      renderCenterWorkspace(lesson);
-      renderRightSidebar(lesson);
+      currentSubStep = "test";
+      const all = loadAllGrammarProgress();
+      all.activeSubStep = "test";
+      saveAllGrammarProgress(all);
+      renderGrammarView();
     });
   }
 
@@ -885,7 +910,7 @@ function attachWorkspaceEventListeners(lesson) {
       });
 
       const total = questions.length;
-      const passed = (correctCount / total) >= 0.8; // >= 80%
+      const passed = (correctCount / total) >= 0.8;
 
       updateLessonProgress(lesson.id, {
         testScore: correctCount,
@@ -897,141 +922,222 @@ function attachWorkspaceEventListeners(lesson) {
         try { triggerConfetti(); } catch (err) {}
         alert(`🎉 XUẤT SẮC! Bạn đạt ${correctCount}/${total} điểm (${Math.round(correctCount / total * 100)}%).\nBạn đã xuất sắc hoàn thành Bài 1 và mở khóa Bài tiếp theo!`);
       } else {
-        alert(`Bạn đạt ${correctCount}/${total} điểm (${Math.round(correctCount / total * 100)}%).\nCần đạt từ 80% (7/8 câu) trở lên để qua bài. Hãy ôn lại lý thuyết và thử lại nhé!`);
+        alert(`Bạn đạt ${correctCount}/${total} điểm (${Math.round(correctCount / total * 100)}%).\nCần đạt từ 80% (7/8 câu) trở lên để qua bài. Hãy thử lại nhé!`);
       }
 
-      renderCenterWorkspace(lesson);
-      renderRightSidebar(lesson);
+      renderGrammarView();
     });
   }
 }
 
 /* ==========================================================================
-   CỘT PHẢI: TIẾN TRÌNH & LỘ TRÌNH MỞ KHÓA
+   CỘT PHẢI (SÁT LỀ): SỔ TAY, MẸO NHỚ, KẾT QUẢ & CÓ THỂ THU GỌN
    ========================================================================== */
-function renderRightSidebar(lesson) {
+function renderRightToolsPanel(lesson) {
   const sidebar = document.getElementById("grammar-sidebar-right");
   if (!sidebar) return;
 
+  const grid = document.querySelector(".grammar-workspace-grid");
+  if (grid) {
+    grid.classList.toggle("right-panel-collapsed", isRightPanelCollapsed);
+  }
+
   const progress = getLessonProgress(lesson.id);
   const percent = calculateLessonPercent(lesson.id);
-  const allState = loadAllGrammarProgress();
+  const notesList = progress.notesList || [];
+
+  if (isRightPanelCollapsed) {
+    sidebar.classList.add("is-collapsed");
+    sidebar.innerHTML = `
+      <button type="button" class="btn-expand-panel" id="g-expand-right-btn" title="Mở rộng bảng tiện ích & ghi chú">
+        <span>◀</span>
+        <span class="expand-vertical-text">Ghi chú · Kết quả</span>
+      </button>
+    `;
+    const expandBtn = document.getElementById("g-expand-right-btn");
+    if (expandBtn) {
+      expandBtn.addEventListener("click", () => {
+        isRightPanelCollapsed = false;
+        localStorage.setItem(STORAGE_KEY_RIGHT_COLLAPSED, "false");
+        sidebar.classList.remove("is-collapsed");
+        renderRightToolsPanel(lesson);
+      });
+    }
+    return;
+  }
+
+  sidebar.classList.remove("is-collapsed");
 
   sidebar.innerHTML = `
-    <div class="progress-sidebar-header">
-      <h4>Tiến Trình Học Tập</h4>
-    </div>
-
-    <!-- Thanh tiến độ tổng quan -->
-    <div class="progress-meter-card">
-      <div class="progress-meter-info">
-        <span>Hoàn thành bài:</span>
-        <strong>${percent}%</strong>
-      </div>
-      <div class="progress-bar-track">
-        <div class="progress-bar-fill" style="width: ${percent}%;"></div>
-      </div>
-      <div class="progress-stars">
-        <span class="star-item ${progress.theoryDone ? 'active' : ''}">⭐ Lý thuyết</span>
-        <span class="star-item ${progress.exercisesDone ? 'active' : ''}">⭐ Bài tập</span>
-        <span class="star-item ${progress.testPassed ? 'active' : ''}">⭐ Kiểm tra</span>
-      </div>
-    </div>
-
-    <!-- Cột mốc 3 bước trong bài -->
-    <div class="milestones-card">
-      <h5>Lộ trình trong bài học:</h5>
-      <div class="milestone-step ${progress.theoryDone ? 'completed' : 'current'}" data-tab="theory">
-        <span class="m-icon">${progress.theoryDone ? '✓' : '📖'}</span>
-        <div class="m-text">
-          <strong>Bước 1: Lý thuyết bài giảng</strong>
-          <small>${progress.theoryDone ? 'Đã xem xong' : 'Đang học'}</small>
-        </div>
-      </div>
-
-      <div class="milestone-step ${progress.exercisesDone ? 'completed' : (progress.theoryDone ? 'unlocked' : 'pending')}" data-tab="exercises">
-        <span class="m-icon">${progress.exercisesDone ? '✓' : '✍️'}</span>
-        <div class="m-text">
-          <strong>Bước 2: Luyện tập thực hành</strong>
-          <small>${progress.exercisesDone ? 'Đã hoàn thành các câu hỏi' : '5 bài tập thực tế'}</small>
-        </div>
-      </div>
-
-      <div class="milestone-step ${progress.testPassed ? 'completed' : (progress.exercisesDone ? 'unlocked' : 'locked')}" data-tab="test">
-        <span class="m-icon">${progress.testPassed ? '🏆' : (progress.exercisesDone ? '🎯' : '🔒')}</span>
-        <div class="m-text">
-          <strong>Bước 3: Bài kiểm tra chốt bài</strong>
-          <small>${progress.testPassed ? `Đạt ${progress.testScore}/${progress.testTotal} điểm` : 'Đạt ≥ 80% để mở bài sau'}</small>
-        </div>
-      </div>
-    </div>
-
-    <!-- Lộ trình toàn bộ Chương N5 -->
-    <div class="chapter-roadmap-card">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <h5>Lộ trình N5:</h5>
-        <button type="button" class="btn btn-secondary btn-sm" id="grammar-unlock-all-toggle" style="font-size: 10px; padding: 2px 6px;">
-          ${allState.unlockedAll ? '🔓 Đang mở hết' : '🔓 Mở khóa tất cả'}
+    <div class="right-panel-header">
+      <div class="right-tab-pills">
+        <button type="button" class="r-tab-btn ${activeRightTab === 'notes' ? 'active-highlight' : ''}" data-rtab="notes">
+          📝 Ghi chú
+        </button>
+        <button type="button" class="r-tab-btn ${activeRightTab === 'takeaways' ? 'active-highlight' : ''}" data-rtab="takeaways">
+          💡 Mẹo nhớ
+        </button>
+        <button type="button" class="r-tab-btn ${activeRightTab === 'results' ? 'active-highlight' : ''}" data-rtab="results">
+          📊 Kết quả
         </button>
       </div>
+      <button type="button" class="btn-collapse-panel" id="g-collapse-right-btn" title="Thu gọn bảng tiện ích vào lề phải">
+        ▶
+      </button>
+    </div>
 
-      <div class="roadmap-lessons-stack">
-        ${GRAMMAR_CHAPTERS[currentChapterIndex].lessons.map(l => {
-          const isCurr = l.id === lesson.id;
-          const isLock = isLessonLocked(l.id);
-          const p = getLessonProgress(l.id);
-          const pct = calculateLessonPercent(l.id);
+    <div class="right-panel-body">
+      <!-- 1. Ghi chú cá nhân (ô nhỏ gọn + thêm vào danh sách bên dưới) -->
+      <div class="r-tab-panel ${activeRightTab === 'notes' ? 'active-panel' : ''}" id="r-panel-notes">
+        <div class="add-note-box">
+          <textarea id="g-note-input" class="form-control g-compact-note-input" placeholder="Viết ghi chú ngắn cho bài này..."></textarea>
+          <button type="button" class="btn btn-primary btn-sm" id="g-add-note-btn">+ Thêm ghi chú</button>
+        </div>
 
-          return `
-            <div class="roadmap-item ${isCurr ? 'curr' : ''} ${isLock ? 'lock' : 'open'}" data-lesson-id="${l.id}">
-              <div class="roadmap-item-head">
-                <span class="roadmap-badge">${isLock ? '🔒' : (p.testPassed ? '✓' : 'Bài ' + l.number)}</span>
-                <span class="roadmap-title">${l.title}</span>
-              </div>
-              <div class="roadmap-sub">
-                <small>${isLock ? 'Cần vượt qua bài trước' : (pct + '% hoàn thành')}</small>
+        <div class="user-notes-list-header">
+          <span>Ghi chú của bạn (${notesList.length})</span>
+        </div>
+
+        <div class="user-notes-stream" id="user-notes-stream">
+          ${notesList.length === 0 ? `
+            <div class="empty-notes-hint">
+              <small>Chưa có ghi chú nào. Hãy ghi lại những từ mới hoặc lưu ý của bạn!</small>
+            </div>
+          ` : notesList.map((item, idx) => `
+            <div class="user-note-card">
+              <div class="user-note-content">${escapeHtml(item.text)}</div>
+              <div class="user-note-footer">
+                <small class="note-time">${item.createdAt || 'Gần đây'}</small>
+                <button type="button" class="delete-note-btn" data-note-idx="${idx}" title="Xóa ghi chú này">×</button>
               </div>
             </div>
-          `;
-        }).join('')}
+          `).join('')}
+        </div>
+
+        <div class="bookmark-study-box">
+          <label class="custom-checkbox-label">
+            <input type="checkbox" id="g-bookmark-check" ${progress.bookmarked ? 'checked' : ''}>
+            <span>⭐ Đánh dấu bài này để ôn lại</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- 2. Điểm cần nhớ / Mẹo vàng -->
+      <div class="r-tab-panel ${activeRightTab === 'takeaways' ? 'active-panel' : ''}" id="r-panel-takeaways">
+        <h4 class="takeaways-title">⚡ Điểm mấu chốt của bài:</h4>
+        <ul class="takeaways-list">
+          ${(lesson.keyTakeaways || []).map(tip => `
+            <li><span>🔹</span> <div>${tip}</div></li>
+          `).join('')}
+        </ul>
+      </div>
+
+      <!-- 3. Kết quả học tập thực tế của bài học này -->
+      <div class="r-tab-panel ${activeRightTab === 'results' ? 'active-panel' : ''}" id="r-panel-results">
+        <div class="results-overview-card">
+          <div class="res-progress-top">
+            <span>Tiến độ bài học:</span>
+            <strong>${percent}%</strong>
+          </div>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" style="width: ${percent}%;"></div>
+          </div>
+        </div>
+
+        <div class="results-breakdown-card">
+          <h4 class="res-sub-heading">📊 Trạng thái chi tiết từng phần:</h4>
+          
+          <div class="res-item-row ${progress.theoryDone ? 'done' : 'doing'}">
+            <div class="res-icon">${progress.theoryDone ? '✓' : '📖'}</div>
+            <div class="res-info">
+              <strong>1. Lý thuyết bài giảng</strong>
+              <small>${progress.theoryDone ? 'Đã xem xong toàn bộ' : 'Chưa hoàn thành'}</small>
+            </div>
+          </div>
+
+          <div class="res-item-row ${progress.exercisesDone ? 'done' : 'doing'}">
+            <div class="res-icon">${progress.exercisesDone ? '✓' : '✍️'}</div>
+            <div class="res-info">
+              <strong>2. Luyện tập thực hành</strong>
+              <small>${progress.exercisesDone ? `Đã làm xong (${Object.keys(progress.exerciseScores || {}).length}/5 câu)` : 'Chưa hoàn thành đủ 5 câu'}</small>
+            </div>
+          </div>
+
+          <div class="res-item-row ${progress.testPassed ? 'done' : (progress.testScore > 0 ? 'failed' : 'doing')}">
+            <div class="res-icon">${progress.testPassed ? '🏆' : (progress.testScore > 0 ? '⚠️' : '🎯')}</div>
+            <div class="res-info">
+              <strong>3. Bài kiểm tra đánh giá</strong>
+              <small>${progress.testPassed ? `Đạt ${progress.testScore}/${progress.testTotal} điểm (Xuất sắc ⭐⭐⭐)` : (progress.testScore > 0 ? `Đạt ${progress.testScore}/${progress.testTotal} (Chưa đạt ≥80%)` : 'Chưa nộp bài')}</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="res-unlock-status-card">
+          <strong>Trạng thái mở khóa:</strong>
+          <p>${progress.testPassed ? '🎉 Đã mở khóa Bài 2: Đồ vật xung quanh (これ・それ・あれ)!' : 'Vượt qua bài kiểm tra để mở khóa bài tiếp theo.'}</p>
+        </div>
       </div>
     </div>
   `;
 
-  // Bắt sự kiện chuyển tab từ cột mốc
-  sidebar.querySelectorAll(".milestone-step").forEach(step => {
-    step.addEventListener("click", () => {
-      const tab = step.getAttribute("data-tab");
-      if (tab) {
-        currentTab = tab;
-        renderCenterWorkspace(lesson);
-        renderRightSidebar(lesson);
-      }
+  // Bắt sự kiện chuyển Tab bên phải
+  sidebar.querySelectorAll(".r-tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      activeRightTab = btn.getAttribute("data-rtab");
+      renderRightToolsPanel(lesson);
     });
   });
 
-  // Bắt sự kiện chuyển bài từ lộ trình N5
-  sidebar.querySelectorAll(".roadmap-item.open").forEach(item => {
-    item.addEventListener("click", () => {
-      const targetId = item.getAttribute("data-lesson-id");
-      if (targetId && targetId !== currentLessonId) {
-        currentLessonId = targetId;
-        const all = loadAllGrammarProgress();
-        all.activeLessonId = targetId;
-        saveAllGrammarProgress(all);
-        renderGrammarView();
-      }
-    });
-  });
-
-  // Toggle mở khóa tất cả bài
-  const unlockAllBtn = document.getElementById("grammar-unlock-all-toggle");
-  if (unlockAllBtn) {
-    unlockAllBtn.addEventListener("click", () => {
-      const all = loadAllGrammarProgress();
-      all.unlockedAll = !all.unlockedAll;
-      saveAllGrammarProgress(all);
-      renderGrammarView();
+  // Thu gọn panel phải
+  const collapseBtn = document.getElementById("g-collapse-right-btn");
+  if (collapseBtn) {
+    collapseBtn.addEventListener("click", () => {
+      isRightPanelCollapsed = true;
+      localStorage.setItem(STORAGE_KEY_RIGHT_COLLAPSED, "true");
+      renderRightToolsPanel(lesson);
     });
   }
+
+  // Thêm ghi chú mới
+  const addNoteBtn = document.getElementById("g-add-note-btn");
+  const noteInput = document.getElementById("g-note-input");
+  if (addNoteBtn && noteInput) {
+    addNoteBtn.addEventListener("click", () => {
+      const text = noteInput.value.trim();
+      if (!text) return;
+      const now = new Date();
+      const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')} - ${now.getDate()}/${now.getMonth() + 1}`;
+      const updatedList = [
+        { text, createdAt: timeStr, lessonId: lesson.id },
+        ...(progress.notesList || [])
+      ];
+      updateLessonProgress(lesson.id, { notesList: updatedList });
+      noteInput.value = "";
+      renderRightToolsPanel(lesson);
+    });
+  }
+
+  // Xóa ghi chú
+  sidebar.querySelectorAll(".delete-note-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx = parseInt(btn.getAttribute("data-note-idx"), 10);
+      const currentList = [...(progress.notesList || [])];
+      currentList.splice(idx, 1);
+      updateLessonProgress(lesson.id, { notesList: currentList });
+      renderRightToolsPanel(lesson);
+    });
+  });
+
+  // Đánh dấu bookmark
+  const bookmarkCheck = document.getElementById("g-bookmark-check");
+  if (bookmarkCheck) {
+    bookmarkCheck.addEventListener("change", (e) => {
+      updateLessonProgress(lesson.id, { bookmarked: e.target.checked });
+    });
+  }
+}
+
+function escapeHtml(text) {
+  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+  return String(text).replace(/[&<>"']/g, m => map[m]);
 }
