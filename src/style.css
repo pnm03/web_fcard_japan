@@ -5333,63 +5333,61 @@ html[data-desktop-app="true"] .desktop-only {
   font-weight: 600;
 }
 
+#quiz-vocab-picker-modal .modal-container {
+  padding: 12px 18px 12px 18px;
+}
+
+#quiz-vocab-picker-modal h2,
+.picker-modal-title {
+  font-size: 13px !important;
+  line-height: 1.2 !important;
+  margin: 0 0 6px 0 !important;
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.vocab-picker-layout {
+  height: clamp(480px, calc(82vh - 120px), 640px) !important;
+}
+
 .picker-right-head {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 6px;
+  margin-bottom: 8px;
 }
 
 .picker-control-stack {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 7px;
-  padding: 8px;
+  gap: 5px;
+  padding: 6px 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.34);
 }
 
-.picker-main-actions-row,
-.picker-review-actions-row,
-.picker-review-extra-row,
-.picker-range-control,
-.picker-basic-actions {
+.picker-main-actions-row {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 6px;
   flex-wrap: wrap;
 }
 
-.picker-main-actions-row {
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.picker-review-actions-row,
-.picker-review-extra-row {
-  justify-content: flex-start;
-}
-
-.picker-review-extra-row {
-  opacity: 0.86;
-}
-
-.picker-control-divider {
-  width: 1px;
-  height: 24px;
-  margin: 0 2px;
-  background: var(--line-strong);
-}
-
 .picker-range-control {
-  flex: 1 1 330px;
-  min-width: min(100%, 330px);
-  padding: 6px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 3px 6px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 6px;
   background: var(--paper);
   color: var(--ink-soft);
   font-family: var(--font-mono);
@@ -5405,11 +5403,11 @@ html[data-desktop-app="true"] .desktop-only {
 }
 
 .picker-range-control input {
-  width: 54px;
+  width: 48px;
   height: 24px;
-  padding: 2px 6px;
+  padding: 2px 4px;
   border: 1px solid var(--line-strong);
-  border-radius: 6px;
+  border-radius: 5px;
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-mono);
@@ -5418,7 +5416,38 @@ html[data-desktop-app="true"] .desktop-only {
 }
 
 .picker-basic-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   flex: 0 0 auto;
+}
+
+.picker-filter-toggle-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  border-color: var(--line-strong);
+}
+
+.picker-filter-toggle-btn.active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.picker-smart-filters-container {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  padding-top: 5px;
+  border-top: 1px dashed var(--line);
+  transition: all 0.2s ease;
+}
+
+.picker-smart-filters-container.is-collapsed {
+  display: none !important;
 }
 
 .picker-mini-btn {
@@ -5428,8 +5457,8 @@ html[data-desktop-app="true"] .desktop-only {
   white-space: nowrap;
 }
 
-.picker-review-actions-row .picker-mini-btn {
-  min-width: 92px;
+.picker-smart-filters-container .picker-mini-btn {
+  min-width: 82px;
 }
 
 .picker-warning-btn {
@@ -5451,16 +5480,17 @@ html[data-desktop-app="true"] .desktop-only {
 @media (max-width: 600px) {
   .vocab-picker-layout {
     flex-direction: column;
-    height: 500px !important;
+    height: clamp(380px, 68dvh, 520px) !important;
   }
   .vocab-picker-left {
     width: 100% !important;
-    height: 140px !important;
+    height: 120px !important;
     border-right: none !important;
     border-bottom: 1px solid var(--line) !important;
   }
   .vocab-picker-right {
     flex: 1;
+    min-height: 0;
   }
   #picker-words-list {
     grid-template-columns: 1fr !important;
@@ -5475,9 +5505,7 @@ html[data-desktop-app="true"] .desktop-only {
     align-items: stretch;
   }
 
-  .picker-main-actions-row,
-  .picker-review-actions-row,
-  .picker-review-extra-row {
+  .picker-main-actions-row {
     flex-wrap: wrap;
   }
 
@@ -6158,55 +6186,57 @@ body,
   }
 
   #quiz-vocab-picker-modal .modal-container {
-    padding: 16px;
+    padding: 10px 12px;
   }
 
-  #quiz-vocab-picker-modal h2 {
-    font-size: 24px;
-    line-height: 1.15;
-    margin-bottom: 12px !important;
+  #quiz-vocab-picker-modal h2,
+  .picker-modal-title {
+    font-size: 13px !important;
+    line-height: 1.15 !important;
+    margin-bottom: 6px !important;
   }
 
   .vocab-picker-layout {
-    height: clamp(360px, 58dvh, 500px) !important;
+    height: clamp(380px, 68dvh, 520px) !important;
   }
 
   .vocab-picker-left {
-    height: 132px !important;
+    height: 120px !important;
   }
 
   .vocab-picker-right {
     min-height: 0;
-    padding: 10px 8px !important;
+    padding: 8px 6px !important;
   }
 
   .picker-control-stack {
-    padding: 7px;
-    gap: 6px;
+    padding: 6px;
+    gap: 5px;
   }
 
   .picker-main-actions-row,
-  .picker-review-actions-row,
-  .picker-review-extra-row,
+  .picker-smart-filters-container,
   .picker-range-control,
   .picker-basic-actions {
     width: 100%;
   }
 
-  .picker-basic-actions,
-  .picker-review-actions-row,
-  .picker-review-extra-row {
+  .picker-basic-actions {
     display: grid;
-    gap: 6px;
-  }
-
-  .picker-basic-actions,
-  .picker-review-extra-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
   }
 
-  .picker-review-actions-row {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .picker-filter-toggle-btn {
+    margin-left: 0;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .picker-smart-filters-container {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
   }
 
   .picker-range-control {
@@ -6215,15 +6245,14 @@ body,
   }
 
   .picker-basic-actions .picker-mini-btn,
-  .picker-review-actions-row .picker-mini-btn,
-  .picker-review-extra-row .picker-mini-btn {
+  .picker-smart-filters-container .picker-mini-btn {
     width: 100%;
     flex: 1 1 0;
     min-width: 0;
-    padding-left: 5px;
-    padding-right: 5px;
+    padding-left: 4px;
+    padding-right: 4px;
     font-size: 10px;
-    letter-spacing: 0.035em;
+    letter-spacing: 0.03em;
   }
 
   #quiz-vocab-picker-modal .modal-container > div:last-child {

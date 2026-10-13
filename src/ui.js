@@ -4411,6 +4411,8 @@ function setupQuizConfigEvents() {
       if (rangeStartInput) rangeStartInput.value = "";
       if (rangeEndInput) rangeEndInput.value = "";
       
+      applyPickerSmartFiltersState(localStorage.getItem(STORAGE_KEY_PICKER_FILTERS_COLLAPSED) === "true");
+
       document.getElementById("quiz-vocab-picker-modal").classList.add("active");
       selectPickerProject("all");
       updateTempSelectedCount();
@@ -4511,6 +4513,55 @@ function setupQuizConfigEvents() {
   if (selectHardCorrectBtn) {
     selectHardCorrectBtn.addEventListener("click", () => {
       selectReviewInCurrentPickerProject("hard_correct", "Từ khó vừa đúng");
+    });
+  }
+
+  // Quản lý ẩn / hiện nhóm bộ lọc thông minh trong modal (nhớ theo lựa chọn người dùng)
+  const STORAGE_KEY_PICKER_FILTERS_COLLAPSED = "nihongo_picker_filters_collapsed";
+
+  function applyPickerSmartFiltersState(collapsed) {
+    const filterContainer = document.getElementById("picker-smart-filters-container");
+    const toggleBtn = document.getElementById("picker-toggle-filters-btn");
+    const toggleIcon = document.getElementById("picker-toggle-filters-icon");
+    if (!filterContainer) return;
+
+    if (collapsed) {
+      filterContainer.classList.add("is-collapsed");
+      if (toggleBtn) {
+        toggleBtn.classList.remove("active");
+        toggleBtn.setAttribute("aria-expanded", "false");
+        toggleBtn.title = "Hiện bộ lọc thông minh (từ yếu, đến hạn ôn...)";
+      }
+      if (toggleIcon) toggleIcon.textContent = "▾";
+    } else {
+      filterContainer.classList.remove("is-collapsed");
+      if (toggleBtn) {
+        toggleBtn.classList.add("active");
+        toggleBtn.setAttribute("aria-expanded", "true");
+        toggleBtn.title = "Thu gọn bộ lọc thông minh";
+      }
+      if (toggleIcon) toggleIcon.textContent = "▴";
+    }
+  }
+
+  function setPickerSmartFiltersCollapsed(collapsed) {
+    applyPickerSmartFiltersState(collapsed);
+    try {
+      localStorage.setItem(STORAGE_KEY_PICKER_FILTERS_COLLAPSED, collapsed ? "true" : "false");
+    } catch (e) {
+      console.warn("Không thể lưu trạng thái bộ lọc vào localStorage:", e);
+    }
+  }
+
+  const toggleFiltersBtn = document.getElementById("picker-toggle-filters-btn");
+  if (toggleFiltersBtn) {
+    const isSavedCollapsed = localStorage.getItem(STORAGE_KEY_PICKER_FILTERS_COLLAPSED) === "true";
+    applyPickerSmartFiltersState(isSavedCollapsed);
+
+    toggleFiltersBtn.addEventListener("click", () => {
+      const filterContainer = document.getElementById("picker-smart-filters-container");
+      const isCurrentCollapsed = filterContainer ? filterContainer.classList.contains("is-collapsed") : false;
+      setPickerSmartFiltersCollapsed(!isCurrentCollapsed);
     });
   }
 

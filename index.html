@@ -1700,22 +1700,22 @@
 
       <!-- Modal: Chọn Dự án & Từ vựng Kiểm tra (2 cột) -->
       <div class="modal-overlay" id="quiz-vocab-picker-modal">
-        <div class="modal-container glass-panel" style="max-width: 900px; width: 92%;">
-          <h2 style="margin-bottom: 1rem; color: var(--accent); font-family: var(--font-display);">🔍 Chọn Từ Vựng Kiểm Tra</h2>
+        <div class="modal-container glass-panel" style="max-width: 920px; width: 92%;">
+          <h2 class="picker-modal-title">🔍 Chọn Từ Vựng Kiểm Tra</h2>
           
-          <div class="vocab-picker-layout" style="display: flex; gap: 8px; height: 450px; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--bg);">
+          <div class="vocab-picker-layout" style="display: flex; gap: 8px; height: 520px; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--bg);">
             <!-- Cột trái: Danh sách các dự án (nhỏ hơn) -->
             <div class="vocab-picker-left" style="width: 250px; border-right: 1px solid var(--line); overflow-y: auto; background: var(--field); padding: 8px;">
-              <h3 style="font-size: 11px; text-transform: uppercase; color: var(--ink-faint); margin: 8px 12px; font-family: var(--font-mono); letter-spacing: 0.05em;">Dự án</h3>
+              <h3 style="font-size: 11px; text-transform: uppercase; color: var(--ink-faint); margin: 6px 12px; font-family: var(--font-mono); letter-spacing: 0.05em;">Dự án</h3>
               <div id="picker-projects-list" style="display: flex; flex-direction: column; gap: 4px;">
                 <!-- Render các dự án động ở đây -->
               </div>
             </div>
             
             <!-- Cột phải: Toàn bộ từ vựng trong dự án đang chọn -->
-            <div class="vocab-picker-right" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 12px 12px 12px 6px;">
+            <div class="vocab-picker-right" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 8px 12px 8px 6px;">
               <div class="picker-right-head">
-                <h3 id="picker-current-project-title" style="margin: 0; font-family: var(--font-display); font-size: 15px; color: var(--accent);">Tên dự án đang chọn</h3>
+                <h3 id="picker-current-project-title" style="margin: 0; font-family: var(--font-display); font-size: 14px; color: var(--accent);">Tên dự án đang chọn</h3>
                 <div class="picker-control-stack">
                   <div class="picker-main-actions-row">
                     <div class="picker-range-control" aria-label="Chọn nhanh theo khoảng thứ tự">
@@ -1725,20 +1725,21 @@
                       <input type="number" id="picker-range-end" min="0" inputmode="numeric" placeholder="Cuối">
                       <button type="button" class="btn btn-secondary picker-mini-btn" id="picker-select-range-btn">Chọn đoạn</button>
                     </div>
-                    <span class="picker-control-divider" aria-hidden="true"></span>
                     <div class="picker-basic-actions">
-                      <button class="btn btn-secondary picker-mini-btn" id="picker-select-all-btn">Chọn tất cả</button>
-                      <button class="btn btn-secondary picker-mini-btn" id="picker-select-none-btn">Bỏ chọn hết</button>
+                      <button type="button" class="btn btn-secondary picker-mini-btn" id="picker-select-all-btn">Chọn tất cả</button>
+                      <button type="button" class="btn btn-secondary picker-mini-btn" id="picker-select-none-btn">Bỏ chọn hết</button>
                     </div>
+                    <button type="button" class="btn btn-secondary picker-mini-btn picker-filter-toggle-btn" id="picker-toggle-filters-btn" aria-expanded="false" title="Ẩn/hiện bộ lọc thông minh">
+                      <span>Lọc từ</span>
+                      <span id="picker-toggle-filters-icon">▾</span>
+                    </button>
                   </div>
-                  <div class="picker-review-actions-row">
-                    <button class="btn btn-secondary picker-mini-btn picker-warning-btn" id="picker-select-weak-btn">Chọn từ yếu</button>
-                    <button class="btn btn-secondary picker-mini-btn picker-accent-btn" id="picker-select-due-btn">Đến hạn ôn</button>
-                    <button class="btn btn-secondary picker-mini-btn picker-error-btn" id="picker-select-overdue-btn">Quá hạn</button>
-                  </div>
-                  <div class="picker-review-extra-row">
-                    <button class="btn btn-secondary picker-mini-btn" id="picker-select-stale-btn">Lâu chưa học</button>
-                    <button class="btn btn-secondary picker-mini-btn" id="picker-select-hard-correct-btn">Khó vừa đúng</button>
+                  <div id="picker-smart-filters-container" class="picker-smart-filters-container">
+                    <button type="button" class="btn btn-secondary picker-mini-btn picker-warning-btn" id="picker-select-weak-btn">Chọn từ yếu</button>
+                    <button type="button" class="btn btn-secondary picker-mini-btn picker-accent-btn" id="picker-select-due-btn">Đến hạn ôn</button>
+                    <button type="button" class="btn btn-secondary picker-mini-btn picker-error-btn" id="picker-select-overdue-btn">Quá hạn</button>
+                    <button type="button" class="btn btn-secondary picker-mini-btn" id="picker-select-stale-btn">Lâu chưa học</button>
+                    <button type="button" class="btn btn-secondary picker-mini-btn" id="picker-select-hard-correct-btn">Khó vừa đúng</button>
                   </div>
                 </div>
               </div>
@@ -1750,7 +1751,7 @@
             </div>
           </div>
           
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
             <div style="font-size: 0.9rem; color: var(--ink-soft); font-family: var(--font-serif);">
               Đang chọn: <span id="picker-total-selected-count" style="font-weight: bold; color: var(--accent);">0</span> từ vựng
             </div>
