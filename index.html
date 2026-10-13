@@ -436,6 +436,9 @@
           <button class="nav-btn" data-target="quiz-setup-view" id="nav-quiz-setup">
             Kiểm tra
           </button>
+          <button class="nav-btn" data-target="grammar-view" id="nav-grammar">
+            Ngữ pháp N5
+          </button>
           <button class="nav-btn" data-target="spoken-notes-view" id="nav-spoken-notes">
             Lưu ý văn nói
           </button>
@@ -1183,7 +1186,44 @@
           </div>
         </section>
 
-        <!-- ================= VIEW 8: SPOKEN JAPANESE NOTES ================= -->
+        <!-- ================= VIEW 8: GRAMMAR LEARNING CENTER ================= -->
+        <section id="grammar-view" class="view-section">
+          <div class="grammar-header">
+            <div class="grammar-header-left">
+              <div class="grammar-breadcrumb">
+                <span class="badge-level">JLPT N5</span>
+                <span class="breadcrumb-sep">/</span>
+                <span id="grammar-active-chapter-title">Chương 1: Khởi Động & Giới Thiệu Bản Thân</span>
+              </div>
+              <h1 id="grammar-lesson-main-title">Bài 1: Giới Thiệu Bản Thân (自己紹介)</h1>
+              <p class="grammar-lesson-desc">
+                Nắm vững 4 mẫu câu nền tảng trong tiếng Nhật: Khẳng định (です), Phủ định (じゃありません), Nghi vấn (ですか) và Trợ từ cũng (も).
+              </p>
+            </div>
+            <div class="grammar-header-actions">
+              <span class="grammar-mode-pill">🌟 Không Gian Học Tập LMS</span>
+            </div>
+          </div>
+
+          <div class="grammar-workspace-grid">
+            <!-- CỘT TRÁI: TIỆN ÍCH & SỔ TAY GHI CHÚ -->
+            <aside class="grammar-sidebar-left glass-panel" id="grammar-sidebar-left">
+              <!-- Render sổ tay, điểm cần nhớ, mục lục bài học -->
+            </aside>
+
+            <!-- KHU VỰC TRUNG TÂM: BÀI GIẢNG / BÀI TẬP / KIỂM TRA -->
+            <main class="grammar-main-content glass-panel" id="grammar-main-content">
+              <!-- Render nội dung theo tab: Lý thuyết, Luyện tập, Bài kiểm tra -->
+            </main>
+
+            <!-- CỘT PHẢI: TIẾN TRÌNH & LỘ TRÌNH MỞ KHÓA -->
+            <aside class="grammar-sidebar-right glass-panel" id="grammar-sidebar-right">
+              <!-- Render thanh tiến độ, lộ trình mở khóa, điểm số -->
+            </aside>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 9: SPOKEN JAPANESE NOTES ================= -->
         <section id="spoken-notes-view" class="view-section">
           <div class="project-list-header">
             <div>

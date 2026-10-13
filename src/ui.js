@@ -61,6 +61,7 @@ import {
 } from "./kana.js";
 import { bindKanaInput, romajiToHiragana } from "./kana-ime.js";
 import { setupSpokenNotesUI, renderSpokenNotesList } from "./spoken-notes.js";
+import { setupGrammarUI, renderGrammarView } from "./grammar.js";
 
 
 // Khai báo các biến trạng thái giao diện toàn cục
@@ -356,6 +357,7 @@ export function initUI() {
   setupDictionaryEvents();
   setupKanaEvents();
   setupSpokenNotesUI();
+  setupGrammarUI();
   
   // Tải danh sách giọng nói speechSynthesis một cách chủ động (khắc phục lỗi Chrome trả về mảng rỗng lần đầu)
   if ('speechSynthesis' in window) {
@@ -1578,6 +1580,8 @@ export function switchView(viewId) {
     }
   } else if (viewId === "kana-setup-view") {
     renderKanaSetup();
+  } else if (viewId === "grammar-view") {
+    renderGrammarView();
   } else if (viewId === "spoken-notes-view") {
     renderSpokenNotesList();
   }
@@ -7205,7 +7209,7 @@ function playFeedbackSound(isCorrect) {
 }
 
 // Hiệu ứng tung hoa bằng canvas động
-function triggerConfetti() {
+export function triggerConfetti() {
   const canvas = document.createElement("canvas");
   canvas.style.position = "fixed";
   canvas.style.top = "0";
