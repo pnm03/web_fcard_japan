@@ -60,6 +60,7 @@ import {
   isKanaRomajiMatch
 } from "./kana.js";
 import { bindKanaInput, romajiToHiragana } from "./kana-ime.js";
+import { setupSpokenNotesUI, renderSpokenNotesList } from "./spoken-notes.js";
 
 
 // Khai báo các biến trạng thái giao diện toàn cục
@@ -354,6 +355,7 @@ export function initUI() {
   setupJsonImportExport();
   setupDictionaryEvents();
   setupKanaEvents();
+  setupSpokenNotesUI();
   
   // Tải danh sách giọng nói speechSynthesis một cách chủ động (khắc phục lỗi Chrome trả về mảng rỗng lần đầu)
   if ('speechSynthesis' in window) {
@@ -1576,6 +1578,8 @@ export function switchView(viewId) {
     }
   } else if (viewId === "kana-setup-view") {
     renderKanaSetup();
+  } else if (viewId === "spoken-notes-view") {
+    renderSpokenNotesList();
   }
 }
 

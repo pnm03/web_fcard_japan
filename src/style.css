@@ -6544,3 +6544,416 @@ body,
   animation: highlight-pulse 0.7s ease-in-out 3;
 }
 
+/* ==========================================================================
+   SPOKEN NOTES (CẨM NANG VĂN NÓI TIẾNG NHẬT)
+   ========================================================================== */
+.spoken-notes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+
+.spoken-note-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  user-select: none;
+}
+
+.spoken-note-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.1));
+}
+
+.note-card-header {
+  margin-bottom: 12px;
+}
+
+.note-card-badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.note-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+}
+
+.pill-cat {
+  background: var(--field);
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+}
+
+.pill-danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.pill-warning {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.pill-info {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.note-card-title {
+  margin: 0 0 6px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: var(--font-display);
+  line-height: 1.3;
+}
+
+.note-card-formula {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--field);
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+}
+
+.note-card-body {
+  flex: 1;
+  margin-bottom: 16px;
+}
+
+.note-card-summary {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.note-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px dashed var(--line);
+  padding-top: 12px;
+}
+
+.note-preview-badge {
+  font-size: 11px;
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+.open-note-btn {
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  padding: 4px 10px !important;
+  white-space: nowrap;
+}
+
+/* Modal Note Details Styling */
+.modal-note-details {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+.note-explanation-block,
+.note-context-block {
+  background: var(--field);
+  padding: 14px 18px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+
+.note-explanation-block h4,
+.note-context-block h4,
+.examples-heading {
+  margin: 0 0 10px 0;
+  font-size: 15px;
+  color: var(--accent);
+  font-family: var(--font-display);
+}
+
+.note-formula-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--paper);
+  border: 2px dashed var(--line-strong);
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  margin-top: 6px;
+}
+
+.formula-original {
+  color: var(--ink-soft);
+}
+
+.formula-arrow {
+  color: var(--accent);
+  font-size: 18px;
+}
+
+.formula-result {
+  color: var(--accent);
+}
+
+.highlight-drop {
+  color: #ef4444;
+  text-decoration: line-through;
+}
+
+.highlight-change {
+  color: #10b981;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.note-context-list {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.note-warning-box {
+  background: rgba(239, 68, 68, 0.08);
+  border-left: 5px solid #ef4444;
+  padding: 14px 18px;
+  border-radius: 0 8px 8px 0;
+}
+
+.warning-title {
+  color: #ef4444;
+  font-weight: 800;
+  font-size: 13.5px;
+  letter-spacing: 0.03em;
+  margin-bottom: 6px;
+}
+
+.warning-text {
+  margin: 0 0 10px 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.danger-targets {
+  color: #ef4444;
+  font-weight: 700;
+}
+
+.tip-box {
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--ink);
+  margin-top: 8px;
+}
+
+/* Pronoun Grid Styling */
+.pronoun-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.pronoun-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  padding: 12px 14px;
+  border-radius: 8px;
+}
+
+.pronoun-card p {
+  margin: 6px 0 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+
+.pronoun-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+
+.pronoun-badge {
+  font-weight: 700;
+  font-size: 13px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.badge-washi { background: rgba(180, 83, 9, 0.15); color: #b45309; }
+.badge-watakushi { background: rgba(30, 64, 175, 0.15); color: #1e40af; }
+.badge-atashi { background: rgba(219, 39, 119, 0.15); color: #db2777; }
+.badge-boku { background: rgba(13, 148, 136, 0.15); color: #0d9488; }
+.badge-ore { background: rgba(220, 38, 38, 0.15); color: #dc2626; }
+.badge-uchi { background: rgba(101, 163, 13, 0.15); color: #65a30d; }
+
+.pronoun-user {
+  font-size: 11px;
+  color: var(--ink-faint);
+  font-weight: 600;
+}
+
+/* Rule Table */
+.rule-table-container {
+  overflow-x: auto;
+}
+
+.note-rule-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.note-rule-table th,
+.note-rule-table td {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  text-align: left;
+}
+
+.note-rule-table th {
+  background: var(--paper);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.rule-highlight {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Examples Section */
+.note-examples-section {
+  background: var(--field);
+  padding: 16px 18px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+
+.examples-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.note-example-item {
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: border-color 0.2s ease;
+}
+
+.note-example-item:hover {
+  border-color: var(--accent);
+}
+
+.example-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.example-index {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  letter-spacing: 0.05em;
+}
+
+.speak-note-btn {
+  font-size: 11px !important;
+  padding: 2px 8px !important;
+  min-height: 22px !important;
+  border-radius: 9999px !important;
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+
+.example-jp {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.02em;
+}
+
+.example-romaji {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+}
+
+.example-vi {
+  font-size: 13px;
+  color: var(--accent);
+  font-style: italic;
+}
+
+.empty-spoken-notes {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--ink-faint);
+}
+
+@media (max-width: 600px) {
+  .spoken-notes-grid {
+    grid-template-columns: 1fr;
+  }
+  .pronoun-grid {
+    grid-template-columns: 1fr;
+  }
+  .spoken-modal-container {
+    padding: 14px 16px !important;
+  }
+  .note-formula-box {
+    font-size: 14px;
+    flex-wrap: wrap;
+  }
+}
+
+
