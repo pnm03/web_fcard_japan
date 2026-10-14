@@ -2,7 +2,9 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MIW Nihongo - Sổ Tay Luyện Tập Tiếng Nhật</title>
     <script>
@@ -403,11 +405,23 @@
 
       <!-- Main Navigation Header -->
       <header class="main-header">
-        <a href="#" class="logo" id="logo-btn">
-          <div class="logo-icon">
-            <img src="/favicon.svg" alt="MIW Nihongo" class="app-logo-img">
+        <a href="#" class="logo" id="logo-btn" title="MIW Nihongo - Bấm để chuyển đổi logo hoặc về Trang chủ" aria-label="MIW Nihongo">
+          <div class="logo-morph-container" id="logo-morph-container">
+            <!-- Dạng 1: Chữ [MIW Nihongo] kèm Icon Cáo -->
+            <div class="logo-variant logo-variant-text is-active" id="logo-variant-text">
+              <div class="logo-icon">
+                <img src="/assets/logo-fox.png" alt="MIW Fox Icon" class="app-logo-img">
+              </div>
+              <span class="logo-text-title">MIW Nihongo</span>
+            </div>
+
+            <!-- Dạng 2: Ảnh (Logo Torii MIW NIHONGO) -->
+            <div class="logo-variant logo-variant-image is-hidden-bottom" id="logo-variant-image">
+              <div class="logo-image-frame">
+                <img src="/assets/logo-torii.png" alt="MIW Nihongo Logo" class="logo-graphic-img">
+              </div>
+            </div>
           </div>
-          <span>MIW Nihongo</span>
         </a>
         <nav class="main-nav">
           <!-- 1. Trang chủ (Đổi từ Dashboard) -->

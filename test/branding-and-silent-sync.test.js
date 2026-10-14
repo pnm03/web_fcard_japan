@@ -59,3 +59,23 @@ test("ui.js: export hàm updateWelcomeGreeting và cập nhật chính xác tên
     }
   }
 });
+
+test("index.html: tích hợp favicon con cáo và logo morph switcher (dạng chữ và dạng ảnh)", () => {
+  const htmlPath = path.resolve(__dirname, "../index.html");
+  const html = fs.readFileSync(htmlPath, "utf-8");
+
+  // Kiểm tra favicon con cáo
+  assert.ok(html.includes('href="/favicon.png"'), "Header phải có link icon favicon.png");
+
+  // Kiểm tra bộ switcher dạng chữ và dạng ảnh
+  assert.ok(html.includes('id="logo-variant-text"'), "Phải có logo-variant-text cho dạng chữ");
+  assert.ok(html.includes('id="logo-variant-image"'), "Phải có logo-variant-image cho dạng ảnh");
+  assert.ok(html.includes('src="/assets/logo-fox.png"'), "Phải sử dụng ảnh icon con cáo logo-fox.png");
+  assert.ok(html.includes('src="/assets/logo-torii.png"'), "Phải sử dụng ảnh logo Torii logo-torii.png");
+});
+
+test("ui.js: export toggleLogoMode và setupLogoMorphTransition cho hiệu ứng lật chuyển đổi", async () => {
+  const uiModule = await import("../src/ui.js");
+  assert.equal(typeof uiModule.toggleLogoMode, "function", "ui.js phải export toggleLogoMode");
+  assert.equal(typeof uiModule.setupLogoMorphTransition, "function", "ui.js phải export setupLogoMorphTransition");
+});

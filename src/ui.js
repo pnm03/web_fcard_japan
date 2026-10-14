@@ -1579,8 +1579,87 @@ function setupNavigation() {
     });
   }
 
-  document.getElementById("logo-btn").addEventListener("click", (e) => {
+  setupLogoMorphTransition();
+}
+
+let logoMorphIntervalId = null;
+let currentLogoMode = "text"; // "text" | "image"
+
+export function toggleLogoMode(targetMode = null) {
+  const textVariant = document.getElementById("logo-variant-text");
+  const imageVariant = document.getElementById("logo-variant-image");
+  if (!textVariant || !imageVariant) return;
+
+  const nextMode = targetMode || (currentLogoMode === "text" ? "image" : "text");
+  if (nextMode === currentLogoMode) return;
+
+  currentLogoMode = nextMode;
+
+  if (nextMode === "image") {
+    // 1. Text trượt và lật lên trên
+    textVariant.classList.remove("is-active", "is-hidden-bottom");
+    textVariant.classList.add("is-hidden-top");
+
+    // 2. Image trượt và lật từ dưới lên vị trí chính
+    imageVariant.classList.remove("is-hidden-bottom", "is-hidden-top");
+    imageVariant.classList.add("is-active");
+
+    // 3. Sau khi hoàn thành hoạt ảnh, đưa text xuống đáy để sẵn sàng cho lần lật tiếp theo
+    setTimeout(() => {
+      if (currentLogoMode === "image") {
+        textVariant.classList.remove("is-hidden-top");
+        textVariant.classList.add("is-hidden-bottom");
+      }
+    }, 650);
+  } else {
+    // 1. Image trượt và lật lên trên
+    imageVariant.classList.remove("is-active", "is-hidden-bottom");
+    imageVariant.classList.add("is-hidden-top");
+
+    // 2. Text trượt và lật từ dưới lên vị trí chính
+    textVariant.classList.remove("is-hidden-bottom", "is-hidden-top");
+    textVariant.classList.add("is-active");
+
+    // 3. Sau khi hoàn thành hoạt ảnh, đưa image xuống đáy để sẵn sàng cho lần lật tiếp theo
+    setTimeout(() => {
+      if (currentLogoMode === "text") {
+        imageVariant.classList.remove("is-hidden-top");
+        imageVariant.classList.add("is-hidden-bottom");
+      }
+    }, 650);
+  }
+}
+
+export function setupLogoMorphTransition(intervalMs = 4500) {
+  const logoBtn = document.getElementById("logo-btn");
+  if (!logoBtn) return;
+
+  function startAutoCycle() {
+    stopAutoCycle();
+    logoMorphIntervalId = setInterval(() => {
+      toggleLogoMode();
+    }, intervalMs);
+  }
+
+  function stopAutoCycle() {
+    if (logoMorphIntervalId) {
+      clearInterval(logoMorphIntervalId);
+      logoMorphIntervalId = null;
+    }
+  }
+
+  // Tự động luân phiên chuyển đổi giữa dạng chữ và dạng ảnh
+  startAutoCycle();
+
+  // Tạm dừng khi rê chuột vào để người dùng quan sát
+  logoBtn.addEventListener("mouseenter", stopAutoCycle);
+  logoBtn.addEventListener("mouseleave", startAutoCycle);
+
+  // Khi click: Chuyển ngay sang dạng kia và điều hướng về Dashboard
+  logoBtn.addEventListener("click", (e) => {
     e.preventDefault();
+    toggleLogoMode();
+    startAutoCycle();
     switchView("dashboard-view");
   });
 }
