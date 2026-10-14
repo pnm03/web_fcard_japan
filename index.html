@@ -266,14 +266,14 @@
         line-height: 1.4;
       }
 
-      .sync-status.status-local {
+      .sync-toast.status-local {
         border-color: #c7c0b2;
         background: rgba(28, 26, 23, 0.05);
         color: #56514a;
         cursor: pointer;
       }
 
-      .sync-status.status-local:hover {
+      .sync-toast.status-local:hover {
         background: rgba(28, 26, 23, 0.09);
         border-color: #b5482e;
         color: #b5482e;
@@ -407,10 +407,6 @@
           <div class="logo-icon">日</div>
           <span>Nihongo Flashcard</span>
         </a>
-        <div id="cloud-sync-status" class="sync-status" title="Trạng thái đồng bộ đám mây Supabase">
-          <span class="sync-icon">☁️</span>
-          <span class="sync-text">Đang kết nối...</span>
-        </div>
         <nav class="main-nav">
           <button class="nav-btn active" data-target="dashboard-view" id="nav-dashboard">
             Dashboard
@@ -470,6 +466,12 @@
           </div>
         </div>
       </header>
+
+      <!-- Floating Cloud Sync Toast (Thông báo trượt từ bên phải sang ~2s rồi ẩn) -->
+      <div id="cloud-sync-status" class="sync-status sync-toast" role="status" aria-live="polite" title="Bấm để kiểm tra hoặc đồng bộ đám mây">
+        <span class="sync-icon">☁️</span>
+        <span class="sync-text">Đã đồng bộ</span>
+      </div>
 
       <!-- Main Application Container -->
       <main class="container">

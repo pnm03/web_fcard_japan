@@ -1370,23 +1370,52 @@ async function setupAppAuth() {
   }
 }
 
+let syncToastTimeoutId = null;
+
+export function triggerSyncToast(icon, text, statusType, duration = 2000) {
+  const toastEl = document.getElementById("cloud-sync-status");
+  if (!toastEl) return;
+
+  const iconEl = toastEl.querySelector(".sync-icon");
+  const textEl = toastEl.querySelector(".sync-text");
+
+  if (syncToastTimeoutId) {
+    clearTimeout(syncToastTimeoutId);
+    syncToastTimeoutId = null;
+  }
+
+  if (iconEl) iconEl.textContent = icon;
+  if (textEl) textEl.textContent = text;
+
+  // Cập nhật class trạng thái
+  toastEl.className = `sync-status sync-toast status-${statusType}`;
+
+  // Force reflow để trigger hiệu ứng animation mượt mà
+  void toastEl.offsetWidth;
+
+  // Kích hoạt trượt hiển thị từ bên phải sang
+  toastEl.classList.add("is-visible");
+
+  // Tự động ẩn đi sau thời gian chỉ định (khoảng 2s)
+  syncToastTimeoutId = setTimeout(() => {
+    toastEl.classList.remove("is-visible");
+    syncToastTimeoutId = null;
+  }, duration);
+}
+
 function updateSyncStatusForLocal() {
   const syncStatusEl = document.getElementById("cloud-sync-status");
   if (!syncStatusEl) return;
   const iconEl = syncStatusEl.querySelector(".sync-icon");
   const textEl = syncStatusEl.querySelector(".sync-text");
-  syncStatusEl.className = "sync-status status-local";
   if (iconEl) iconEl.textContent = "💻";
-  if (textEl) textEl.textContent = "Chế độ Local (Offline)";
+  if (textEl) textEl.textContent = "Chế độ Local";
   syncStatusEl.title = "Đang chạy chế độ Local offline. Bấm để đăng nhập đồng bộ dữ liệu.";
 }
 
 function setupCloudSyncUI() {
   const syncStatusEl = document.getElementById("cloud-sync-status");
   if (!syncStatusEl) return;
-  
-  const iconEl = syncStatusEl.querySelector(".sync-icon");
-  const textEl = syncStatusEl.querySelector(".sync-text");
 
   syncStatusEl.addEventListener("click", () => {
     if (!currentAuthSession?.user) {
@@ -1396,32 +1425,32 @@ function setupCloudSyncUI() {
     }
   });
 
-  if (isLocalMode() && !currentAuthSession?.user) {
-    updateSyncStatusForLocal();
-  }
-  
+  // Tạm dừng ẩn toast khi người dùng hover vào
+  syncStatusEl.addEventListener("mouseenter", () => {
+    if (syncToastTimeoutId) {
+      clearTimeout(syncToastTimeoutId);
+      syncToastTimeoutId = null;
+    }
+  });
+  syncStatusEl.addEventListener("mouseleave", () => {
+    if (syncStatusEl.classList.contains("is-visible") && !syncToastTimeoutId) {
+      syncToastTimeoutId = setTimeout(() => {
+        syncStatusEl.classList.remove("is-visible");
+        syncToastTimeoutId = null;
+      }, 1500);
+    }
+  });
+
   setOnSyncStateChange((state) => {
-    syncStatusEl.className = "sync-status"; // reset classes
-    
     if (state === "syncing") {
-      syncStatusEl.classList.add("status-syncing");
-      iconEl.textContent = "🔄";
-      textEl.textContent = "Đang đồng bộ...";
+      triggerSyncToast("🔄", "Đang đồng bộ...", "syncing", 2000);
     } else if (state === "synced") {
-      syncStatusEl.classList.add("status-synced");
-      iconEl.textContent = "☁️";
-      textEl.textContent = "Đã đồng bộ";
+      triggerSyncToast("☁️", "Đã đồng bộ", "synced", 2000);
     } else if (state === "error") {
-      syncStatusEl.classList.add("status-error");
-      iconEl.textContent = "⚠️";
-      textEl.textContent = "Lỗi đồng bộ";
+      triggerSyncToast("⚠️", "Lỗi đồng bộ", "error", 2500);
     } else if (state === "auth") {
-      if (isLocalMode() || !currentAuthSession?.user) {
-        updateSyncStatusForLocal();
-      } else {
-        syncStatusEl.classList.add("status-error");
-        iconEl.textContent = "🔒";
-        textEl.textContent = "Cần đăng nhập";
+      if (!isLocalMode() && currentAuthSession?.user) {
+        triggerSyncToast("🔒", "Cần đăng nhập", "error", 2500);
       }
     }
   });
