@@ -1503,14 +1503,35 @@ async function setupAttendanceAuth() {
 
 // 1. Quản lý Điều hướng (Navigation)
 function setupNavigation() {
-  const navButtons = document.querySelectorAll(".nav-btn");
-  navButtons.forEach(btn => {
+  const navTargets = document.querySelectorAll(".nav-btn[data-target], .nav-dropdown-item[data-target]");
+  navTargets.forEach(btn => {
     btn.addEventListener("click", () => {
       const targetView = btn.getAttribute("data-target");
       if (targetView) {
+        // Đóng dropdown nếu đang mở
+        document.querySelectorAll(".nav-dropdown.is-open").forEach(d => d.classList.remove("is-open"));
         switchView(targetView);
       }
     });
+  });
+
+  // Hỗ trợ click toggle cho các dropdown trên mobile/touch
+  document.querySelectorAll(".nav-dropdown-trigger").forEach(trigger => {
+    trigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const parent = trigger.closest(".nav-dropdown");
+      const wasOpen = parent?.classList.contains("is-open");
+      document.querySelectorAll(".nav-dropdown.is-open").forEach(d => d.classList.remove("is-open"));
+      if (!wasOpen && parent) {
+        parent.classList.add("is-open");
+      }
+    });
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".nav-dropdown")) {
+      document.querySelectorAll(".nav-dropdown.is-open").forEach(d => d.classList.remove("is-open"));
+    }
   });
 
   const stealthNavBtn = document.getElementById("open-stealth-widget-btn");
@@ -1566,13 +1587,38 @@ export function switchView(viewId) {
     localStorage.removeItem("web_fcard_active_project_id");
   }
 
-  // Cập nhật trạng thái active trên thanh nav
-  const navButtons = document.querySelectorAll(".nav-btn");
-  navButtons.forEach(btn => {
+  // Cập nhật trạng thái active trên các nút nav và mục dropdown con
+  const navTargets = document.querySelectorAll(".nav-btn[data-target], .nav-dropdown-item[data-target]");
+  navTargets.forEach(btn => {
     if (btn.getAttribute("data-target") === viewId) {
       btn.classList.add("active");
     } else {
       btn.classList.remove("active");
+    }
+  });
+
+  // Highlight dropdown trigger cha tương ứng với nhóm view đang hiển thị
+  document.querySelectorAll(".nav-dropdown").forEach(dropdown => {
+    const trigger = dropdown.querySelector(".nav-dropdown-trigger");
+    const group = dropdown.getAttribute("data-nav-group");
+    let isGroupActive = false;
+
+    if (group === "projects") {
+      isGroupActive = viewId === "projects-view" || viewId === "project-detail-view" || viewId === "dictionary-view";
+    } else if (group === "review") {
+      isGroupActive = viewId === "smart-review-view" || viewId === "learning-goals-view" || viewId === "weak-vocab-view";
+    } else if (group === "quiz") {
+      isGroupActive = viewId === "quiz-setup-view" || viewId === "quiz-active-view" || viewId === "quiz-report-view" || viewId === "kana-setup-view" || viewId === "kana-practice-view";
+    } else if (group === "learn") {
+      isGroupActive = viewId === "grammar-view" || viewId === "spoken-notes-view";
+    }
+
+    if (trigger) {
+      if (isGroupActive) {
+        trigger.classList.add("active");
+      } else {
+        trigger.classList.remove("active");
+      }
     }
   });
 

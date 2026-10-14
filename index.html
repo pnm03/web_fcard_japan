@@ -408,36 +408,88 @@
           <span>Nihongo Flashcard</span>
         </a>
         <nav class="main-nav">
+          <!-- 1. Trang chủ (Đổi từ Dashboard) -->
           <button class="nav-btn active" data-target="dashboard-view" id="nav-dashboard">
-            Dashboard
+            Trang chủ
           </button>
-          <button class="nav-btn" data-target="projects-view" id="nav-projects">
-            Dự án
-          </button>
-          <button class="nav-btn" data-target="dictionary-view" id="nav-dictionary">
-            Tra từ
-          </button>
-          <button class="nav-btn" data-target="smart-review-view" id="nav-smart-review">
-            Lịch ôn
-          </button>
-          <button class="nav-btn" data-target="learning-goals-view" id="nav-learning-goals">
-            Mục tiêu
-          </button>
-          <button class="nav-btn" data-target="kana-setup-view" id="nav-kana">
-            Luyện chữ cái
-          </button>
-          <button class="nav-btn" data-target="weak-vocab-view" id="nav-weak-vocab">
-            Ôn từ yếu
-          </button>
-          <button class="nav-btn" data-target="quiz-setup-view" id="nav-quiz-setup">
-            Kiểm tra
-          </button>
-          <button class="nav-btn" data-target="grammar-view" id="nav-grammar">
-            Ngữ pháp N5
-          </button>
-          <button class="nav-btn" data-target="spoken-notes-view" id="nav-spoken-notes">
-            Lưu ý văn nói
-          </button>
+
+          <!-- 2. Dự án (Quản lý dự án, Tra từ) -->
+          <div class="nav-dropdown" data-nav-group="projects">
+            <button class="nav-btn nav-dropdown-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+              <span>Dự án</span>
+              <span class="dropdown-chevron">▾</span>
+            </button>
+            <div class="nav-dropdown-menu" role="menu">
+              <button class="nav-dropdown-item" data-target="projects-view" id="nav-projects" role="menuitem">
+                <span class="item-icon">📁</span>
+                <span class="item-text">Quản lý dự án</span>
+              </button>
+              <button class="nav-dropdown-item" data-target="dictionary-view" id="nav-dictionary" role="menuitem">
+                <span class="item-icon">🔍</span>
+                <span class="item-text">Tra từ</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 3. Ôn tập (Lịch ôn, Mục tiêu, Ôn từ yếu) -->
+          <div class="nav-dropdown" data-nav-group="review">
+            <button class="nav-btn nav-dropdown-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+              <span>Ôn tập</span>
+              <span class="dropdown-chevron">▾</span>
+            </button>
+            <div class="nav-dropdown-menu" role="menu">
+              <button class="nav-dropdown-item" data-target="smart-review-view" id="nav-smart-review" role="menuitem">
+                <span class="item-icon">📅</span>
+                <span class="item-text">Lịch ôn</span>
+              </button>
+              <button class="nav-dropdown-item" data-target="learning-goals-view" id="nav-learning-goals" role="menuitem">
+                <span class="item-icon">🎯</span>
+                <span class="item-text">Mục tiêu</span>
+              </button>
+              <button class="nav-dropdown-item" data-target="weak-vocab-view" id="nav-weak-vocab" role="menuitem">
+                <span class="item-icon">⚡</span>
+                <span class="item-text">Ôn từ yếu</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 4. Kiểm tra (Kiểm tra, Luyện chữ cái) -->
+          <div class="nav-dropdown" data-nav-group="quiz">
+            <button class="nav-btn nav-dropdown-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+              <span>Kiểm tra</span>
+              <span class="dropdown-chevron">▾</span>
+            </button>
+            <div class="nav-dropdown-menu" role="menu">
+              <button class="nav-dropdown-item" data-target="quiz-setup-view" id="nav-quiz-setup" role="menuitem">
+                <span class="item-icon">📝</span>
+                <span class="item-text">Kiểm tra</span>
+              </button>
+              <button class="nav-dropdown-item" data-target="kana-setup-view" id="nav-kana" role="menuitem">
+                <span class="item-icon">🈸</span>
+                <span class="item-text">Luyện chữ cái</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 5. Học tập (Ngữ pháp N5, Lưu ý văn nói) -->
+          <div class="nav-dropdown" data-nav-group="learn">
+            <button class="nav-btn nav-dropdown-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+              <span>Học tập</span>
+              <span class="dropdown-chevron">▾</span>
+            </button>
+            <div class="nav-dropdown-menu" role="menu">
+              <button class="nav-dropdown-item" data-target="grammar-view" id="nav-grammar" role="menuitem">
+                <span class="item-icon">📖</span>
+                <span class="item-text">Ngữ pháp N5</span>
+              </button>
+              <button class="nav-dropdown-item" data-target="spoken-notes-view" id="nav-spoken-notes" role="menuitem">
+                <span class="item-icon">🗣️</span>
+                <span class="item-text">Lưu ý văn nói</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Mini Widget Action -->
           <button class="nav-btn" id="open-stealth-widget-btn" title="Mở Popup Mini ghim góc màn hình để học kín đáo" style="color: var(--accent, #b5482e); font-weight: 600;">
             📌 Mini Widget
           </button>

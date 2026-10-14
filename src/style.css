@@ -1007,6 +1007,180 @@ button, input, select, textarea {
   box-shadow: none;
 }
 
+/* Navigation Dropdowns (Dự án, Ôn tập, Kiểm tra, Học tập) */
+.nav-dropdown {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.nav-dropdown-trigger {
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dropdown-chevron {
+  font-size: 9px;
+  line-height: 1;
+  display: inline-block;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+  opacity: 0.65;
+  margin-left: 2px;
+}
+
+.nav-dropdown:hover .dropdown-chevron,
+.nav-dropdown.is-open .dropdown-chevron {
+  transform: rotate(180deg);
+  opacity: 1;
+  color: var(--accent);
+}
+
+.nav-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  min-width: 175px;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  padding: 6px;
+  box-shadow: 0 14px 32px -4px rgba(0, 0, 0, 0.16), 0 4px 10px -2px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              visibility 0.2s;
+  pointer-events: none;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* Cầu nối vô hình giúp chuột không mất hover khi rê từ nút xuống menu */
+.nav-dropdown-menu::before {
+  content: "";
+  position: absolute;
+  top: -10px;
+  left: 0;
+  right: 0;
+  height: 10px;
+}
+
+.nav-dropdown:hover .nav-dropdown-menu,
+.nav-dropdown.is-open .nav-dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+.nav-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 7px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.nav-dropdown-item:hover {
+  background: var(--field);
+  color: var(--accent);
+  border-color: var(--line);
+  transform: translateX(2px);
+}
+
+.nav-dropdown-item.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: rgba(181, 72, 46, 0.25);
+  font-weight: 700;
+}
+
+.nav-dropdown-item .item-icon {
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-dropdown-item .item-text {
+  flex: 1;
+}
+
+/* Duolingo Theme for Nav Dropdown */
+html[data-theme="duolingo"] .nav-dropdown-menu {
+  background: #ffffff;
+  border: 2px solid #e5e5e5;
+  border-bottom: 4px solid #e5e5e5;
+  border-radius: 14px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme="duolingo"] .nav-dropdown-item {
+  color: #4b4b4b;
+  font-weight: 700;
+}
+
+html[data-theme="duolingo"] .nav-dropdown-item:hover {
+  background: #f7f7f7;
+  color: #58cc02;
+}
+
+html[data-theme="duolingo"] .nav-dropdown-item.active {
+  background: rgba(88, 204, 2, 0.12);
+  color: #58cc02;
+  border-color: rgba(88, 204, 2, 0.25);
+}
+
+/* Pure White & Black White Themes */
+html[data-theme="pure-white"] .nav-dropdown-menu {
+  background: #ffffff;
+  border: 1px solid #111111;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+html[data-theme="black-white"] .nav-dropdown-menu {
+  background: #111111;
+  border: 1px solid #333333;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+html[data-theme="black-white"] .nav-dropdown-item {
+  color: #eeeeee;
+}
+
+html[data-theme="black-white"] .nav-dropdown-item:hover {
+  background: #222222;
+  color: #ffffff;
+}
+
+html[data-theme="black-white"] .nav-dropdown-item.active {
+  background: #2a2a2a;
+  color: #ffffff;
+  border-color: #555555;
+}
+
 /* Container */
 .container {
   max-width: 1050px;
@@ -6077,17 +6251,10 @@ body,
     grid-area: nav;
     width: 100%;
     display: flex;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 6px;
-    overflow-x: auto;
-    padding: 0 1px 3px;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .main-nav::-webkit-scrollbar {
-    display: none;
+    padding: 2px 0;
   }
 
   .nav-btn {
