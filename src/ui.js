@@ -732,6 +732,17 @@ function setAccountAvatar(imageEl, fallbackEl, avatarUrl, displayName) {
   }
 }
 
+export function updateWelcomeGreeting(displayName = "") {
+  const welcomeEl = document.getElementById("welcome-text");
+  if (!welcomeEl) return;
+  const name = (displayName || "").trim();
+  if (name && name !== "Chế độ Local (Offline)" && name !== "Chế độ Local" && name !== "local@device") {
+    welcomeEl.textContent = `Kính chào Học viên ${name}!`;
+  } else {
+    welcomeEl.textContent = "Kính chào Học viên!";
+  }
+}
+
 function updateAuthShell(user) {
   const isLoggedIn = !!user;
   document.body.classList.remove("auth-loading");
@@ -757,6 +768,7 @@ function updateAuthShell(user) {
       currentAccountProfile?.displayName || email
     );
 
+    updateWelcomeGreeting(currentAccountProfile?.displayName || email);
     updateUserDropdownState(true);
   } else if (isLocalMode()) {
     document.body.classList.remove("auth-required");
@@ -782,11 +794,13 @@ function updateAuthShell(user) {
       "💻"
     );
 
+    updateWelcomeGreeting("");
     updateUserDropdownState(false);
   } else {
     document.body.classList.add("auth-required");
     document.body.classList.remove("auth-ready");
     currentAccountProfile = null;
+    updateWelcomeGreeting("");
     updateUserDropdownState(false);
   }
 }
@@ -1285,7 +1299,7 @@ async function applyAuthSession(session, { restore = false } = {}) {
 
   const shouldCheckOverdueAfterSync = !hasRestoredAfterAuth;
   if (currentAuthSession?.user) {
-    await fetchAndSyncFromSupabase();
+    await fetchAndSyncFromSupabase({ manual: false });
     await syncLearningGoalsFromCloud();
   } else {
     updateSyncStatusForLocal();
@@ -1345,6 +1359,21 @@ async function setupAppAuth() {
         enterPasswordRecoveryMode(session || currentAuthSession);
         return;
       }
+      if (event === "TOKEN_REFRESHED") {
+        currentAuthSession = session;
+        return;
+      }
+      // Khi người dùng chuyển tab / đổi app và quay lại, session không đổi: đồng bộ ngầm
+      if (session?.user?.id && session.user.id === currentAuthSession?.user?.id && hasRestoredAfterAuth) {
+        currentAuthSession = session;
+        fetchAndSyncFromSupabase({ manual: false }).then(res => {
+          if (res?.changed) {
+            rerenderActiveViewAfterSync();
+          }
+        }).catch(console.error);
+        return;
+      }
+
       applyAuthSession(session || null, {
         restore: !hasRestoredAfterAuth
       }).catch(error => {
@@ -1421,7 +1450,7 @@ function setupCloudSyncUI() {
     if (!currentAuthSession?.user) {
       openAuthModal("login");
     } else {
-      fetchAndSyncFromSupabase().catch(console.error);
+      fetchAndSyncFromSupabase({ manual: true }).catch(console.error);
     }
   });
 
@@ -1441,11 +1470,14 @@ function setupCloudSyncUI() {
     }
   });
 
-  setOnSyncStateChange((state) => {
+  setOnSyncStateChange((state, options = {}) => {
+    const notify = options?.notify !== false;
+    if (!notify) return;
+
     if (state === "syncing") {
       triggerSyncToast("🔄", "Đang đồng bộ...", "syncing", 2000);
     } else if (state === "synced") {
-      triggerSyncToast("☁️", "Đã đồng bộ", "synced", 2000);
+      triggerSyncToast("☁️", options?.message || "Đã đồng bộ", "synced", 2000);
     } else if (state === "error") {
       triggerSyncToast("⚠️", "Lỗi đồng bộ", "error", 2500);
     } else if (state === "auth") {
@@ -1694,6 +1726,8 @@ function renderDashboard() {
   const totalTests = totalCorrect + totalWrong;
   const accuracy = totalTests > 0 ? Math.round((totalCorrect / totalTests) * 100) : 0;
   document.getElementById("stat-accuracy").textContent = accuracy + "%";
+
+  updateWelcomeGreeting(currentAccountProfile?.displayName || currentAuthSession?.user?.email);
 
   renderDashboardReviewSchedule();
   renderDashboardGoalWidget();
@@ -6043,7 +6077,7 @@ function setupJsonImportExport() {
           const importedProj = JSON.parse(evt.target.result);
           
           if (!importedProj.name || !Array.isArray(importedProj.vocab)) {
-            alert("File JSON không đúng định dạng của một dự án Nihongo Flashcard.");
+            alert("File JSON không đúng định dạng của một dự án MIW Nihongo.");
             return;
           }
           

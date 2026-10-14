@@ -1,0 +1,61 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+test("index.html: Brand logo đổi thành MIW Nihongo và không còn banner xanh stealth ở dashboard", () => {
+  const htmlPath = path.resolve(__dirname, "../index.html");
+  const html = fs.readFileSync(htmlPath, "utf-8");
+
+  // Kiểm tra title
+  assert.ok(html.includes("<title>MIW Nihongo"), "Title trang phải chứa MIW Nihongo");
+
+  // Kiểm tra logo navbar
+  const logoMatch = html.match(/<a[^>]*class="logo"[^>]*>([\s\S]*?)<\/a>/);
+  assert.ok(logoMatch, "Phải có thẻ logo");
+  assert.ok(logoMatch[1].includes("MIW Nihongo"), "Logo text phải là MIW Nihongo");
+  assert.ok(!logoMatch[1].includes("Nihongo Flashcard"), "Logo text không còn chứa Nihongo Flashcard");
+
+  // Kiểm tra banner xanh stealth card đã được gỡ bỏ khỏi dashboard
+  assert.ok(!html.includes("stealth-banner-card"), "Banner xanh stealth-banner-card phải được gỡ bỏ khỏi dashboard");
+  assert.ok(!html.includes("Chế Độ Popup Ghim 2 Ô Mini (Văn Phòng Stealth)"), "Tiêu đề banner xanh stealth phải được gỡ bỏ");
+
+  // Kiểm tra welcome text
+  assert.ok(html.includes('id="welcome-text"'), "Phải có phần tử #welcome-text để hiển thị lời chào");
+  assert.ok(html.includes("Kính chào Học viên!"), "Mặc định hiển thị Kính chào Học viên!");
+});
+
+test("ui.js: export hàm updateWelcomeGreeting và cập nhật chính xác tên học viên", async () => {
+  const uiModule = await import("../src/ui.js");
+  assert.equal(typeof uiModule.updateWelcomeGreeting, "function", "ui.js phải export hàm updateWelcomeGreeting");
+
+  // Mock DOM
+  const mockElement = { textContent: "" };
+  const originalGetElementById = global.document?.getElementById;
+  global.document = {
+    ...(global.document || {}),
+    getElementById: (id) => {
+      if (id === "welcome-text") return mockElement;
+      return null;
+    }
+  };
+
+  try {
+    uiModule.updateWelcomeGreeting("MINHKA");
+    assert.equal(mockElement.textContent, "Kính chào Học viên MINHKA!", "Tên học viên phải được thêm vào lời chào");
+
+    uiModule.updateWelcomeGreeting("");
+    assert.equal(mockElement.textContent, "Kính chào Học viên!", "Khi không có tên thì giữ nguyên Kính chào Học viên!");
+
+    uiModule.updateWelcomeGreeting("Chế độ Local (Offline)");
+    assert.equal(mockElement.textContent, "Kính chào Học viên!", "Chế độ local không hiển thị tên hệ thống");
+  } finally {
+    if (originalGetElementById) {
+      global.document.getElementById = originalGetElementById;
+    }
+  }
+});

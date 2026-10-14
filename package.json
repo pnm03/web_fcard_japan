@@ -18,7 +18,7 @@
   },
   "build": {
     "appId": "com.nihongo.flashcard",
-    "productName": "Nihongo Flashcard",
+    "productName": "MIW Nihongo",
     "directories": {
       "output": "release"
     },
@@ -43,7 +43,7 @@
       "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Nihongo Flashcard",
+      "shortcutName": "MIW Nihongo",
       "runAfterFinish": true
     }
   },

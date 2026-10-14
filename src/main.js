@@ -31,5 +31,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  console.log("Nihongo Flashcard App đã khởi chạy thành công!");
+  console.log("MIW Nihongo App đã khởi chạy thành công!");
 });

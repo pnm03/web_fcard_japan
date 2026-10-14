@@ -111,9 +111,9 @@ export function setOnSyncStateChange(callback) {
   onSyncStateChangeCallback = callback;
 }
 
-function updateSyncState(state) {
+function updateSyncState(state, options = {}) {
   if (onSyncStateChangeCallback) {
-    onSyncStateChangeCallback(state);
+    onSyncStateChangeCallback(state, options);
   }
 }
 
@@ -637,15 +637,15 @@ function buildVocabUpsertPayload(vocab, projectId) {
   return payload;
 }
 
-// Bọc tác vụ đồng bộ để báo trạng thái lên giao diện và xử lý ngoại lệ
+// Bọc tác vụ đồng bộ để lưu ngầm lên Supabase và xử lý ngoại lệ
 async function safeSync(actionFn) {
-  updateSyncState("syncing");
+  updateSyncState("syncing", { notify: false });
   try {
     await actionFn();
-    updateSyncState("synced");
+    updateSyncState("synced", { notify: false });
   } catch (e) {
     console.error("Lỗi đồng bộ Supabase:", e);
-    updateSyncState("error");
+    updateSyncState("error", { notify: true });
   }
 }
 
@@ -1229,13 +1229,14 @@ export function updateVocabRescueCard(projectId, vocabId, rescuePatch = {}) {
 }
 
 // Kéo dữ liệu từ đám mây Supabase về ghi đè LocalStorage
-export async function fetchAndSyncFromSupabase() {
+export async function fetchAndSyncFromSupabase(options = {}) {
+  const manual = options?.manual === true;
   if (!getCloudUserId()) {
-    updateSyncState("auth");
-    return;
+    updateSyncState("auth", { notify: manual });
+    return { changed: false };
   }
 
-  updateSyncState("syncing");
+  updateSyncState("syncing", { notify: manual });
   try {
     const { data: dbProjects, error: projError } = await supabase
       .from("projects")
@@ -1284,8 +1285,8 @@ export async function fetchAndSyncFromSupabase() {
           if (uploadVocabError) throw uploadVocabError;
         }
       }
-      updateSyncState("synced");
-      return;
+      updateSyncState("synced", { notify: manual });
+      return { changed: false };
     }
 
     // Nếu có dữ liệu trên mây, ghi đè LocalStorage
@@ -1339,11 +1340,22 @@ export async function fetchAndSyncFromSupabase() {
       };
     });
 
-    saveProjects(mergedProjects);
-    updateSyncState("synced");
+    const currentLocalProjects = getProjects();
+    const hasDataChanged = JSON.stringify(currentLocalProjects) !== JSON.stringify(mergedProjects);
+
+    if (hasDataChanged) {
+      saveProjects(mergedProjects);
+      updateSyncState("synced", { notify: true, message: "Đã đồng bộ" });
+      return { changed: true };
+    } else {
+      // Dữ liệu giống hệt nhau, không có thay đổi -> chạy ngầm, không làm phiền người dùng
+      updateSyncState("synced", { notify: manual });
+      return { changed: false };
+    }
   } catch (e) {
     console.error("Lỗi khi kéo dữ liệu từ Supabase:", e);
-    updateSyncState("error");
+    updateSyncState("error", { notify: manual });
+    return { changed: false, error: e };
   }
 }
 

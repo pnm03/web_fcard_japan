@@ -147,7 +147,7 @@ function createMainWindow() {
       minWidth: 920,
       minHeight: 600,
       center: true,
-      title: 'Nihongo Flashcard',
+      title: 'MIW Nihongo',
       icon: iconPath || undefined,
       webPreferences: {
         preload: path.join(__dirname, 'preload.cjs'),
@@ -871,7 +871,7 @@ function createTray() {
       icon = icon.resize({ width: 16, height: 16 });
     }
     tray = new Tray(icon.isEmpty() ? iconPath : icon);
-    tray.setToolTip('Nihongo Flashcard - Desktop App');
+    tray.setToolTip('MIW Nihongo - Desktop App');
 
     const updateTrayMenu = () => {
       const isStealthActive = (promptWindow && promptWindow.isVisible()) || (inputWindow && inputWindow.isVisible());
