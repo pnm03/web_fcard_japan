@@ -609,8 +609,39 @@ function renderCenterWorkspace(lesson) {
   attachWorkspaceEventListeners(lesson);
 }
 
-// 1. Render Tab Lý Thuyết (đào sâu, gạch đầu dòng, highlight từ khóa)
+// 1. Render Tab Lý Thuyết (đào sâu, gạch đầu dòng, highlight từ khóa, có các đoạn ngắt giữa các phần)
 function renderTheoryTabHtml(lesson, progress) {
+  const dividerPhases = [
+    {
+      id: "sec-khang-dinh",
+      exId: "sec-khang-dinh-examples",
+      tag: "Bắt đầu",
+      title: "Phần 1: Dạng khẳng định (A は B です)",
+      phaseClass: "divider-phase-1"
+    },
+    {
+      id: "sec-phu-dinh",
+      exId: "sec-phu-dinh-examples",
+      tag: "Tiếp tục",
+      title: "Phần 2: Dạng phủ định (A は B じゃありません)",
+      phaseClass: "divider-phase-2"
+    },
+    {
+      id: "sec-nghi-van",
+      exId: "sec-nghi-van-examples",
+      tag: "Mở rộng",
+      title: "Phần 3: Dạng câu hỏi nghi vấn (A は B ですか)",
+      phaseClass: "divider-phase-3"
+    },
+    {
+      id: "sec-tro-tu-mo",
+      exId: "sec-tro-tu-mo-examples",
+      tag: "Nâng cao",
+      title: "Phần 4: Trợ từ đồng nhất (A も B です)",
+      phaseClass: "divider-phase-4"
+    }
+  ];
+
   return `
     <div class="theory-view-wrapper">
       <div class="theory-intro-banner">
@@ -619,55 +650,85 @@ function renderTheoryTabHtml(lesson, progress) {
       </div>
 
       <div class="grammar-patterns-stack">
-        ${(lesson.patterns || []).map((p, idx) => `
-          <article class="grammar-pattern-card">
-            <header class="pattern-header">
-              <span class="pattern-index">Mẫu ${idx + 1}</span>
-              <h3 class="pattern-title">${p.name}</h3>
-              <span class="pattern-meaning">${p.meaning}</span>
-            </header>
+        ${(lesson.patterns || []).map((p, idx) => {
+          const divInfo = dividerPhases[idx] || {
+            id: `sec-pattern-${idx + 1}`,
+            exId: `sec-pattern-${idx + 1}-examples`,
+            tag: `Phần ${idx + 1}`,
+            title: `Mẫu ${idx + 1}: ${p.name}`,
+            phaseClass: `divider-phase-${(idx % 4) + 1}`
+          };
 
-            <div class="pattern-formula-bar">
-              <code>${p.formula}</code>
+          return `
+            <!-- Đoạn ngắt phân cách phần học -->
+            <div class="grammar-section-divider ${divInfo.phaseClass}" id="${divInfo.id}">
+              <div class="divider-line divider-line-left"></div>
+              <div class="divider-pill">
+                <span class="divider-step-tag">${divInfo.tag}</span>
+                <span class="divider-title">${divInfo.title}</span>
+              </div>
+              <div class="divider-line divider-line-right"></div>
             </div>
 
-            <div class="pattern-desc">
-              <p class="pattern-main-summary">${p.explanation}</p>
+            <article class="grammar-pattern-card">
+              <header class="pattern-header">
+                <span class="pattern-index">Mẫu ${idx + 1}</span>
+                <h3 class="pattern-title">${p.name}</h3>
+                <span class="pattern-meaning">${p.meaning}</span>
+              </header>
 
-              <!-- Các gạch đầu dòng đào sâu cặn kẽ -->
-              <div class="deep-points-box">
-                <h4 class="deep-heading">🔍 Phân tích chi tiết từng điểm cốt lõi:</h4>
-                <ul class="deep-points-list">
-                  ${p.deepPoints.map(point => `<li>${point}</li>`).join('')}
-                </ul>
+              <div class="pattern-formula-bar">
+                <code>${p.formula}</code>
               </div>
 
-              ${p.notes ? `<div class="pattern-note-box">${p.notes}</div>` : ''}
-            </div>
+              <div class="pattern-desc">
+                <p class="pattern-main-summary">${p.explanation}</p>
 
-            <div class="pattern-examples-box">
-              <h4>🗣️ Các câu ví dụ thực tế (Bấm 🔊 để nghe phát âm):</h4>
-              <div class="pattern-examples-list">
-                ${p.examples.map(ex => `
-                  <div class="pattern-example-row">
-                    <button type="button" class="btn btn-secondary btn-sm g-speak-btn" data-audio="${ex.audio || ex.jp}" title="Nghe phát âm">
-                      🔊
-                    </button>
-                    <div class="example-content">
-                      <div class="ex-jp">${ex.jp}</div>
-                      <div class="ex-romaji">${ex.romaji}</div>
-                      <div class="ex-vi">${ex.vi}</div>
+                <!-- Các gạch đầu dòng đào sâu cặn kẽ -->
+                <div class="deep-points-box">
+                  <h4 class="deep-heading">🔍 Phân tích chi tiết từng điểm cốt lõi:</h4>
+                  <ul class="deep-points-list">
+                    ${p.deepPoints.map(point => `<li>${point}</li>`).join('')}
+                  </ul>
+                </div>
+
+                ${p.notes ? `<div class="pattern-note-box">${p.notes}</div>` : ''}
+              </div>
+
+              <div class="pattern-examples-box" id="${divInfo.exId}">
+                <h4>🗣️ Các câu ví dụ thực tế (Bấm 🔊 để nghe phát âm):</h4>
+                <div class="pattern-examples-list">
+                  ${p.examples.map(ex => `
+                    <div class="pattern-example-row">
+                      <button type="button" class="btn btn-secondary btn-sm g-speak-btn" data-audio="${ex.audio || ex.jp}" title="Nghe phát âm">
+                        🔊
+                      </button>
+                      <div class="example-content">
+                        <div class="ex-jp">${ex.jp}</div>
+                        <div class="ex-romaji">${ex.romaji}</div>
+                        <div class="ex-vi">${ex.vi}</div>
+                      </div>
                     </div>
-                  </div>
-                `).join('')}
+                  `).join('')}
+                </div>
               </div>
-            </div>
-          </article>
-        `).join('')}
+            </article>
+          `;
+        }).join('')}
       </div>
 
       ${lesson.readingArticle ? `
-        <article class="grammar-pattern-card reading-article-card">
+        <!-- Đoạn ngắt phân cách phần ứng dụng thực tế -->
+        <div class="grammar-section-divider divider-phase-reading" id="sec-ung-dung">
+          <div class="divider-line divider-line-left"></div>
+          <div class="divider-pill">
+            <span class="divider-step-tag">Ứng dụng</span>
+            <span class="divider-title">Phần 5: Tổng kết hội thoại & Đoạn văn thực tế</span>
+          </div>
+          <div class="divider-line divider-line-right"></div>
+        </div>
+
+        <article class="grammar-pattern-card reading-article-card" id="sec-ung-dung-card">
           <header class="pattern-header">
             <span class="pattern-index">Ứng dụng</span>
             <h3 class="pattern-title">${lesson.readingArticle.title}</h3>
@@ -969,6 +1030,27 @@ function renderRightToolsPanel(lesson) {
   sidebar.classList.remove("is-collapsed");
 
   sidebar.innerHTML = `
+    <!-- WIDGET LỘ TRÌNH BÀI HỌC VỚI ĐƯỜNG THẲNG ĐỨNG & CÁC DẤU CHẤM ĐỒNG BỘ CUỘN -->
+    <div class="grammar-roadmap-widget" id="grammar-roadmap-widget">
+      <div class="roadmap-widget-header">
+        <div class="roadmap-widget-title">
+          <span class="roadmap-icon">🧭</span>
+          <span>Lộ trình bài học</span>
+        </div>
+        <span class="roadmap-badge-progress" id="roadmap-badge-progress">Phần 1/5</span>
+      </div>
+
+      <div class="roadmap-timeline">
+        <div class="roadmap-line-track">
+          <div class="roadmap-line-progress" id="roadmap-line-progress"></div>
+        </div>
+
+        <div class="roadmap-steps-list" id="roadmap-steps-list">
+          ${generateRoadmapStepsHtml(lesson)}
+        </div>
+      </div>
+    </div>
+
     <div class="right-panel-header">
       <div class="right-tab-pills">
         <button type="button" class="r-tab-btn ${activeRightTab === 'notes' ? 'active-highlight' : ''}" data-rtab="notes">
@@ -1135,6 +1217,160 @@ function renderRightToolsPanel(lesson) {
       updateLessonProgress(lesson.id, { bookmarked: e.target.checked });
     });
   }
+
+  // Lộ trình bài học: Bấm vào mốc nhảy mượt mà tới phần đó
+  sidebar.querySelectorAll(".roadmap-step-item").forEach(item => {
+    item.addEventListener("click", () => {
+      const targetId = item.getAttribute("data-target");
+      if (currentSubStep !== "theory") {
+        currentSubStep = "theory";
+        renderCenterWorkspace(lesson);
+        renderLeftCourseMenu(lesson);
+      }
+      setTimeout(() => {
+        const el = document.getElementById(targetId);
+        if (el) {
+          const yOffset = -90;
+          const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
+          window.scrollTo({ top: y, behavior: "smooth" });
+        }
+      }, 60);
+    });
+  });
+
+  initGrammarRoadmapScrollspy();
+}
+
+export function generateRoadmapStepsHtml(lesson) {
+  const defaultPhases = [
+    { id: "sec-khang-dinh", exId: "sec-khang-dinh-examples", title: "Khẳng định", sub: "A は B です" },
+    { id: "sec-phu-dinh", exId: "sec-phu-dinh-examples", title: "Phủ định", sub: "じゃありません" },
+    { id: "sec-nghi-van", exId: "sec-nghi-van-examples", title: "Nghi vấn", sub: "A は B ですか" },
+    { id: "sec-tro-tu-mo", exId: "sec-tro-tu-mo-examples", title: "Trợ từ も (Cũng)", sub: "A も B です" }
+  ];
+
+  const patterns = lesson.patterns || [];
+  let html = "";
+
+  patterns.forEach((p, idx) => {
+    const meta = defaultPhases[idx] || {
+      id: `sec-pattern-${idx + 1}`,
+      exId: `sec-pattern-${idx + 1}-examples`,
+      title: p.name,
+      sub: p.targetHighlight || ""
+    };
+
+    html += `
+      <div class="roadmap-step-item ${idx === 0 ? 'active' : ''}" data-target="${meta.id}">
+        <div class="roadmap-dot dot-main"><span class="dot-inner">${idx + 1}</span></div>
+        <div class="roadmap-text-box">
+          <span class="roadmap-step-title">${meta.title}</span>
+          <span class="roadmap-step-sub">${meta.sub}</span>
+        </div>
+      </div>
+      <div class="roadmap-step-item step-sub" data-target="${meta.exId}">
+        <div class="roadmap-dot dot-sub"></div>
+        <div class="roadmap-text-box">
+          <span class="roadmap-step-title">Ví dụ minh họa</span>
+        </div>
+      </div>
+    `;
+  });
+
+  if (lesson.readingArticle) {
+    html += `
+      <div class="roadmap-step-item" data-target="sec-ung-dung">
+        <div class="roadmap-dot dot-main dot-finish"><span class="dot-inner">★</span></div>
+        <div class="roadmap-text-box">
+          <span class="roadmap-step-title">Ứng dụng thực tế</span>
+          <span class="roadmap-step-sub">Hội thoại & Đoạn văn</span>
+        </div>
+      </div>
+    `;
+  }
+
+  return html;
+}
+
+let grammarScrollspyHandler = null;
+
+export function initGrammarRoadmapScrollspy() {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+
+  if (grammarScrollspyHandler) {
+    window.removeEventListener("scroll", grammarScrollspyHandler);
+    document.removeEventListener("scroll", grammarScrollspyHandler);
+    grammarScrollspyHandler = null;
+  }
+
+  const steps = document.querySelectorAll(".roadmap-step-item");
+  if (!steps.length) return;
+
+  function updateRoadmapActiveStep() {
+    if (currentSubStep !== "theory") return;
+    const offset = 170;
+    let activeIdx = 0;
+
+    steps.forEach((step, idx) => {
+      const targetId = step.dataset.target;
+      const targetEl = document.getElementById(targetId);
+      if (targetEl) {
+        const rect = targetEl.getBoundingClientRect();
+        if (rect.top <= offset) {
+          activeIdx = idx;
+        }
+      }
+    });
+
+    steps.forEach((step, idx) => {
+      if (idx === activeIdx) {
+        step.classList.add("active");
+        step.classList.remove("passed");
+      } else if (idx < activeIdx) {
+        step.classList.remove("active");
+        step.classList.add("passed");
+      } else {
+        step.classList.remove("active", "passed");
+      }
+    });
+
+    // Cập nhật độ dài đường thẳng tiến độ
+    const trackEl = document.querySelector(".roadmap-line-track");
+    const progressLine = document.getElementById("roadmap-line-progress");
+    const activeStep = steps[activeIdx];
+    if (trackEl && progressLine && activeStep) {
+      const dot = activeStep.querySelector(".roadmap-dot");
+      if (dot) {
+        const trackRect = trackEl.getBoundingClientRect();
+        const dotRect = dot.getBoundingClientRect();
+        const fillHeight = Math.max(0, dotRect.top + dotRect.height / 2 - trackRect.top);
+        progressLine.style.height = `${fillHeight}px`;
+      }
+    }
+
+    // Cập nhật pill tiến độ
+    const progressPill = document.getElementById("roadmap-badge-progress");
+    if (progressPill) {
+      const phaseMap = ["1/5", "1/5", "2/5", "2/5", "3/5", "3/5", "4/5", "4/5", "5/5"];
+      progressPill.textContent = `Phần ${phaseMap[activeIdx] || '1/5'}`;
+    }
+  }
+
+  let ticking = false;
+  grammarScrollspyHandler = () => {
+    if (!ticking) {
+      requestAnimationFrame(() => {
+        updateRoadmapActiveStep();
+        ticking = false;
+      });
+      ticking = true;
+    }
+  };
+
+  window.addEventListener("scroll", grammarScrollspyHandler, { passive: true });
+  document.addEventListener("scroll", grammarScrollspyHandler, { passive: true });
+
+  setTimeout(updateRoadmapActiveStep, 80);
 }
 
 function escapeHtml(text) {

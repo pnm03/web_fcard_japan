@@ -8437,6 +8437,123 @@ body.view-grammar-active .container,
 }
 
 /* --------------------------------------------------------------------------
+   ĐOẠN NGẮT PHÂN CÁCH CÁC PHẦN BÀI HỌC (SECTION DIVIDERS)
+   -------------------------------------------------------------------------- */
+.grammar-section-divider {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 36px 0 20px 0;
+  width: 100%;
+  position: relative;
+  user-select: none;
+}
+
+.grammar-section-divider .divider-line {
+  flex: 1;
+  height: 2px;
+  border-radius: 2px;
+}
+
+.grammar-section-divider .divider-line-left {
+  background: linear-gradient(90deg, transparent, var(--line-strong));
+}
+
+.grammar-section-divider .divider-line-right {
+  background: linear-gradient(90deg, var(--line-strong), transparent);
+}
+
+.grammar-section-divider .divider-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 18px 6px 12px;
+  background: var(--paper);
+  border: 1.5px solid var(--line-strong);
+  border-radius: 9999px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.grammar-section-divider:hover .divider-pill {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+  box-shadow: 0 4px 16px rgba(181, 72, 46, 0.16);
+}
+
+.grammar-section-divider .divider-step-tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  color: #fff;
+  background: var(--accent);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.grammar-section-divider .divider-title {
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.2px;
+}
+
+/* Các biến thể màu sắc theo từng phần */
+.grammar-section-divider.divider-phase-1 .divider-step-tag {
+  background: #2563eb;
+}
+.grammar-section-divider.divider-phase-1 .divider-line-left {
+  background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.4));
+}
+.grammar-section-divider.divider-phase-1 .divider-line-right {
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.4), transparent);
+}
+
+.grammar-section-divider.divider-phase-2 .divider-step-tag {
+  background: #d97706;
+}
+.grammar-section-divider.divider-phase-2 .divider-line-left {
+  background: linear-gradient(90deg, transparent, rgba(217, 119, 6, 0.4));
+}
+.grammar-section-divider.divider-phase-2 .divider-line-right {
+  background: linear-gradient(90deg, rgba(217, 119, 6, 0.4), transparent);
+}
+
+.grammar-section-divider.divider-phase-3 .divider-step-tag {
+  background: #0891b2;
+}
+.grammar-section-divider.divider-phase-3 .divider-line-left {
+  background: linear-gradient(90deg, transparent, rgba(8, 145, 178, 0.4));
+}
+.grammar-section-divider.divider-phase-3 .divider-line-right {
+  background: linear-gradient(90deg, rgba(8, 145, 178, 0.4), transparent);
+}
+
+.grammar-section-divider.divider-phase-4 .divider-step-tag {
+  background: #dc2626;
+}
+.grammar-section-divider.divider-phase-4 .divider-line-left {
+  background: linear-gradient(90deg, transparent, rgba(220, 38, 38, 0.4));
+}
+.grammar-section-divider.divider-phase-4 .divider-line-right {
+  background: linear-gradient(90deg, rgba(220, 38, 38, 0.4), transparent);
+}
+
+.grammar-section-divider.divider-phase-reading .divider-step-tag {
+  background: #7c3aed;
+}
+.grammar-section-divider.divider-phase-reading .divider-line-left {
+  background: linear-gradient(90deg, transparent, rgba(124, 58, 237, 0.4));
+}
+.grammar-section-divider.divider-phase-reading .divider-line-right {
+  background: linear-gradient(90deg, rgba(124, 58, 237, 0.4), transparent);
+}
+
+/* --------------------------------------------------------------------------
    CỘT PHẢI (SÁT LỀ PHẢI): TIỆN ÍCH, GHI CHÚ, KẾT QUẢ & CÓ THỂ THU GỌN
    -------------------------------------------------------------------------- */
 .grammar-sidebar-right {
@@ -8449,6 +8566,208 @@ body.view-grammar-active .container,
   max-height: calc(100vh - 96px);
   overflow-y: auto;
   transition: all 0.25s ease;
+}
+
+/* --------------------------------------------------------------------------
+   WIDGET LỘ TRÌNH BÀI HỌC (STICKY VERTICAL TIMELINE ROADMAP)
+   -------------------------------------------------------------------------- */
+.grammar-roadmap-widget {
+  background: var(--field);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.roadmap-widget-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.roadmap-widget-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.roadmap-icon {
+  font-size: 14px;
+}
+
+.roadmap-badge-progress {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid rgba(181, 72, 46, 0.2);
+}
+
+.roadmap-timeline {
+  position: relative;
+  padding-left: 28px;
+}
+
+/* Đường thẳng đứng thể hiện lộ trình */
+.roadmap-line-track {
+  position: absolute;
+  left: 9px;
+  top: 10px;
+  bottom: 14px;
+  width: 2px;
+  background: var(--line-strong);
+  border-radius: 1px;
+}
+
+/* Tiến độ chạy dọc đường thẳng */
+.roadmap-line-progress {
+  width: 100%;
+  height: 0;
+  background: var(--accent);
+  border-radius: 1px;
+  transition: height 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 6px var(--accent-glow);
+}
+
+.roadmap-steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.roadmap-step-item {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.roadmap-step-item:hover {
+  background: var(--paper);
+}
+
+.roadmap-step-item:hover .roadmap-step-title {
+  color: var(--accent);
+}
+
+/* Điểm mốc chính (Main Dot) */
+.roadmap-dot.dot-main {
+  position: absolute;
+  left: -28px;
+  top: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--field);
+  border: 2px solid var(--line-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--ink-faint);
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 2;
+}
+
+/* Điểm mốc con: Ví dụ (Sub Dot) */
+.roadmap-dot.dot-sub {
+  position: absolute;
+  left: -22px;
+  top: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--field);
+  border: 1.5px solid var(--line-strong);
+  transition: all 0.25s ease;
+  z-index: 2;
+}
+
+.roadmap-step-item.step-sub {
+  padding-left: 2px;
+  opacity: 0.88;
+}
+
+.roadmap-step-item.step-sub .roadmap-step-title {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.roadmap-text-box {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.roadmap-step-title {
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  transition: color 0.2s ease;
+}
+
+.roadmap-step-sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+}
+
+/* Trạng thái đã hoàn thành / đã đi qua (Passed) */
+.roadmap-step-item.passed .roadmap-dot.dot-main {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  opacity: 0.9;
+}
+
+.roadmap-step-item.passed .roadmap-dot.dot-sub {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Trạng thái Đang ở vị trí hiện tại (Active) */
+.roadmap-step-item.active {
+  background: var(--accent-soft);
+}
+
+.roadmap-step-item.active .roadmap-step-title {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.roadmap-step-item.active .roadmap-dot.dot-main {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  transform: scale(1.15);
+  box-shadow: 0 0 0 4px var(--accent-glow);
+}
+
+.roadmap-step-item.active .roadmap-dot.dot-sub {
+  background: var(--accent);
+  border-color: var(--accent);
+  transform: scale(1.3);
+  box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
 /* Khi thu gọn khép sát lề phải */

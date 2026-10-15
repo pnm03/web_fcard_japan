@@ -156,3 +156,43 @@ test("style.css định nghĩa các quy tắc layout LMS 3 cột, highlight gp-m
   assert.ok(css.includes(".active-highlight"), "CSS phải có .active-highlight cho tab đang chọn");
   assert.ok(css.includes(".deep-points-box"), "CSS phải có .deep-points-box cho phân tích chuyên sâu");
 });
+
+test("grammar.js & style.css: Đoạn ngắt phân cách các phần học và widget lộ trình dọc Scrollspy cột phải", async () => {
+  const grammarModule = await import("../src/grammar.js");
+  const cssPath = path.resolve(__dirname, "../src/style.css");
+  const css = fs.readFileSync(cssPath, "utf-8");
+
+  // 1. Kiểm tra export hàm lộ trình & scrollspy
+  assert.equal(typeof grammarModule.generateRoadmapStepsHtml, "function", "grammar.js phải export generateRoadmapStepsHtml");
+  assert.equal(typeof grammarModule.initGrammarRoadmapScrollspy, "function", "grammar.js phải export initGrammarRoadmapScrollspy");
+
+  // 2. Kiểm tra HTML lộ trình được tạo ra đúng cấu trúc
+  const lesson1 = grammarModule.GRAMMAR_CHAPTERS[0].lessons[0];
+  const roadmapHtml = grammarModule.generateRoadmapStepsHtml(lesson1);
+
+  assert.ok(roadmapHtml.includes("Khẳng định"), "Lộ trình phải có mốc Khẳng định");
+  assert.ok(roadmapHtml.includes("Phủ định"), "Lộ trình phải có mốc Phủ định");
+  assert.ok(roadmapHtml.includes("Nghi vấn"), "Lộ trình phải có mốc Nghi vấn");
+  assert.ok(roadmapHtml.includes("Trợ từ も"), "Lộ trình phải có mốc Trợ từ も");
+  assert.ok(roadmapHtml.includes("Ứng dụng thực tế"), "Lộ trình phải có mốc Ứng dụng thực tế");
+  assert.ok(roadmapHtml.includes("Ví dụ minh họa"), "Lộ trình phải có các mốc con Ví dụ minh họa");
+  assert.ok(roadmapHtml.includes("dot-main"), "Lộ trình phải có các dấu chấm chính dot-main");
+  assert.ok(roadmapHtml.includes("dot-sub"), "Lộ trình phải có các dấu chấm con dot-sub");
+
+  // 3. Kiểm tra CSS định nghĩa đoạn ngắt bài học
+  assert.ok(css.includes(".grammar-section-divider"), "CSS phải có class .grammar-section-divider");
+  assert.ok(css.includes(".divider-pill"), "CSS phải có class .divider-pill");
+  assert.ok(css.includes(".divider-step-tag"), "CSS phải có class .divider-step-tag");
+  assert.ok(css.includes(".divider-phase-1"), "CSS phải có biến thể màu cho Phần 1");
+  assert.ok(css.includes(".divider-phase-2"), "CSS phải có biến thể màu cho Phần 2");
+
+  // 4. Kiểm tra CSS định nghĩa widget lộ trình thẳng đứng
+  assert.ok(css.includes(".grammar-roadmap-widget"), "CSS phải có class .grammar-roadmap-widget");
+  assert.ok(css.includes(".roadmap-line-track"), "CSS phải có đường thẳng đứng .roadmap-line-track");
+  assert.ok(css.includes(".roadmap-line-progress"), "CSS phải có thanh chạy tiến độ .roadmap-line-progress");
+  assert.ok(css.includes(".roadmap-step-item"), "CSS phải có class .roadmap-step-item");
+  assert.ok(css.includes(".roadmap-step-item.active"), "CSS phải có trạng thái active khi cuộn tới");
+  assert.ok(css.includes(".roadmap-dot.dot-main"), "CSS phải có dấu chấm tròn chính .dot-main");
+  assert.ok(css.includes(".roadmap-dot.dot-sub"), "CSS phải có dấu chấm tròn con .dot-sub");
+});
+
