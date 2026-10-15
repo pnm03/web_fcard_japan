@@ -1596,6 +1596,7 @@ export function toggleLogoMode(targetMode = null) {
   currentLogoMode = nextMode;
 
   if (nextMode === "image") {
+    imageVariant.style.display = "";
     // 1. Text trượt và lật lên trên
     textVariant.classList.remove("is-active", "is-hidden-bottom");
     textVariant.classList.add("is-hidden-top");
@@ -1625,6 +1626,7 @@ export function toggleLogoMode(targetMode = null) {
       if (currentLogoMode === "text") {
         imageVariant.classList.remove("is-hidden-top");
         imageVariant.classList.add("is-hidden-bottom");
+        imageVariant.style.display = "none";
       }
     }, 650);
   }
@@ -1634,32 +1636,18 @@ export function setupLogoMorphTransition(intervalMs = 4500) {
   const logoBtn = document.getElementById("logo-btn");
   if (!logoBtn) return;
 
-  function startAutoCycle() {
-    stopAutoCycle();
-    logoMorphIntervalId = setInterval(() => {
-      toggleLogoMode();
-    }, intervalMs);
+  // Dừng mọi interval tự động luân phiên (theo yêu cầu giữ dạng chữ cố định làm mặc định)
+  if (logoMorphIntervalId) {
+    clearInterval(logoMorphIntervalId);
+    logoMorphIntervalId = null;
   }
 
-  function stopAutoCycle() {
-    if (logoMorphIntervalId) {
-      clearInterval(logoMorphIntervalId);
-      logoMorphIntervalId = null;
-    }
-  }
+  // Đảm bảo dạng chữ có icon 3D luôn là mặc định
+  toggleLogoMode("text");
 
-  // Tự động luân phiên chuyển đổi giữa dạng chữ và dạng ảnh
-  startAutoCycle();
-
-  // Tạm dừng khi rê chuột vào để người dùng quan sát
-  logoBtn.addEventListener("mouseenter", stopAutoCycle);
-  logoBtn.addEventListener("mouseleave", startAutoCycle);
-
-  // Khi click: Chuyển ngay sang dạng kia và điều hướng về Dashboard
+  // Khi click vào Logo: Luôn điều hướng người dùng về Trang chủ (Dashboard)
   logoBtn.addEventListener("click", (e) => {
     e.preventDefault();
-    toggleLogoMode();
-    startAutoCycle();
     switchView("dashboard-view");
   });
 }

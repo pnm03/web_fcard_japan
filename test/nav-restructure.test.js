@@ -47,3 +47,42 @@ test("style.css: Định nghĩa quy tắc hiển thị và hover mượt mà cho
   assert.ok(css.includes(".nav-dropdown-item"), "CSS phải có .nav-dropdown-item");
   assert.ok(css.includes(".dropdown-chevron"), "CSS phải có .dropdown-chevron");
 });
+
+test("index.html & style.css: Thay thế emoji bằng badge vector SVG chuyên nghiệp", () => {
+  const htmlPath = path.resolve(__dirname, "../index.html");
+  const html = fs.readFileSync(htmlPath, "utf-8");
+  const cssPath = path.resolve(__dirname, "../src/style.css");
+  const css = fs.readFileSync(cssPath, "utf-8");
+
+  // Kiểm tra không còn dùng các emoji thô trong menu dropdown
+  const navDropdownMatch = html.match(/<nav class="main-nav">([\s\S]*?)<\/nav>/);
+  assert.ok(navDropdownMatch, "Phải có thẻ main-nav");
+  const navContent = navDropdownMatch[1];
+
+  assert.ok(!navContent.includes("📁"), "Không còn emoji 📁");
+  assert.ok(!navContent.includes("🔍"), "Không còn emoji 🔍");
+  assert.ok(!navContent.includes("📅"), "Không còn emoji 📅");
+  assert.ok(!navContent.includes("🎯"), "Không còn emoji 🎯");
+  assert.ok(!navContent.includes("⚡"), "Không còn emoji ⚡");
+  assert.ok(!navContent.includes("📝"), "Không còn emoji 📝");
+  assert.ok(!navContent.includes("🈸"), "Không còn emoji 🈸 (thay bằng ký tự あ tinh tế)");
+  assert.ok(!navContent.includes("📖"), "Không còn emoji 📖");
+  assert.ok(!navContent.includes("🗣️"), "Không còn emoji 🗣️");
+  assert.ok(!navContent.includes("📌"), "Không còn emoji 📌");
+
+  // Kiểm tra hệ thống badge vector SVG
+  assert.ok(html.includes("item-icon-badge"), "Menu phải sử dụng hệ thống item-icon-badge");
+  assert.ok(html.includes("badge-blue"), "Có badge-blue");
+  assert.ok(html.includes("badge-amber"), "Có badge-amber");
+  assert.ok(html.includes("badge-indigo"), "Có badge-indigo");
+  assert.ok(html.includes("badge-emerald"), "Có badge-emerald");
+  assert.ok(html.includes("badge-rose"), "Có badge-rose");
+  assert.ok(html.includes("badge-cyan"), "Có badge-cyan");
+  assert.ok(html.includes("badge-purple"), "Có badge-purple");
+  assert.ok(html.includes("kana-glyph"), "Luyện chữ cái hiển thị kana-glyph あ");
+
+  // Kiểm tra CSS cho badge
+  assert.ok(css.includes(".item-icon-badge"), "CSS phải có quy tắc định kiểu cho .item-icon-badge");
+  assert.ok(css.includes(".item-icon-badge.badge-blue"), "CSS phải có màu badge-blue");
+});
+

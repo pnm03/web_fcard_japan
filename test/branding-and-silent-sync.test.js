@@ -79,3 +79,27 @@ test("ui.js: export toggleLogoMode và setupLogoMorphTransition cho hiệu ứng
   assert.equal(typeof uiModule.toggleLogoMode, "function", "ui.js phải export toggleLogoMode");
   assert.equal(typeof uiModule.setupLogoMorphTransition, "function", "ui.js phải export setupLogoMorphTransition");
 });
+
+test("index.html & style.css: Logo mặc định dạng chữ, hiệu ứng lật 3D card và nghiêng ảnh khi hover", () => {
+  const htmlPath = path.resolve(__dirname, "../index.html");
+  const html = fs.readFileSync(htmlPath, "utf-8");
+  const cssPath = path.resolve(__dirname, "../src/style.css");
+  const css = fs.readFileSync(cssPath, "utf-8");
+
+  // HTML: Cấu trúc 3D flip card
+  assert.ok(html.includes("logo-icon-card"), "Logo icon phải có class logo-icon-card");
+  assert.ok(html.includes("logo-icon-inner"), "Logo icon phải có khung lật 3D logo-icon-inner");
+  assert.ok(html.includes("logo-icon-front"), "Logo icon phải có mặt trước logo-icon-front");
+  assert.ok(html.includes("logo-icon-back"), "Logo icon phải có mặt sau logo-icon-back");
+
+  // CSS: Hiệu ứng phóng to khi hover logo
+  assert.ok(css.includes(".logo:hover"), "CSS phải có quy tắc hover cho .logo");
+  assert.ok(css.includes("transform: scale"), "CSS phải có transform: scale khi hover logo");
+
+  // CSS: Hiệu ứng nghiêng ảnh và lật 3D
+  assert.ok(css.includes(".logo:hover .logo-icon"), "CSS phải có hover cho .logo-icon");
+  assert.ok(css.includes("rotateZ"), "CSS phải có hiệu ứng xoay nghiêng rotateZ");
+  assert.ok(css.includes(".logo:hover .logo-icon-inner"), "CSS phải có hover cho .logo-icon-inner");
+  assert.ok(css.includes("rotateY(180deg)"), "CSS phải có hiệu ứng lật 3D rotateY(180deg)");
+});
+
