@@ -584,7 +584,7 @@ function sendStealthUpdate() {
     if (q.mode === 'jp_to_meaning' || q.mode === 'romaji_to_meaning' || q.mode === 'audio_to_meaning') {
       placeholder = 'Nghĩa tiếng Việt... ↵';
     } else if (q.mode === 'meaning_to_romaji' || q.mode === 'jp_to_romaji') {
-      placeholder = 'Gõ Romaji... ↵';
+      placeholder = 'Gõ Romaji (không dấu)... ↵';
     } else if (q.mode === 'meaning_to_japanese') {
       placeholder = 'Gõ chữ Nhật... ↵';
     }

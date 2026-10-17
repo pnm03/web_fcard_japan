@@ -23,14 +23,14 @@ function updateWidgetImeBadge(mode, isControllerActive) {
       imeBadge.textContent = "A";
       imeBadge.title = "Gõ trực tiếp (F2 để bật lại gõ Kana tự động)";
     }
-  } else if (mode === "meaning_to_romaji" || mode === "jp_to_romaji") {
+  } else if (mode === "meaning_to_romaji" || mode === "jp_to_romaji" || mode === "japanese_to_romaji") {
     imeBadge.classList.add("mode-romaji");
     imeBadge.textContent = "RO";
-    imeBadge.title = "Gõ Romaji";
+    imeBadge.title = "Gõ Romaji (chữ Latin không dấu)";
   } else {
     imeBadge.classList.add("mode-vietnamese");
     imeBadge.textContent = "VI";
-    imeBadge.title = "Gõ Tiếng Việt";
+    imeBadge.title = "Gõ Tiếng Việt (hỗ trợ có dấu và không dấu)";
   }
 }
 
@@ -100,6 +100,9 @@ if (window.electronAPI && window.electronAPI.onStealthInputUpdate) {
       if (currentMode === "meaning_to_japanese") {
         kanaController.setMode("kana");
         updateWidgetImeBadge(currentMode, true);
+      } else if (currentMode === "meaning_to_romaji" || currentMode === "jp_to_romaji" || currentMode === "japanese_to_romaji") {
+        kanaController.setMode("romaji");
+        updateWidgetImeBadge(currentMode, false);
       } else {
         kanaController.setMode("raw");
         updateWidgetImeBadge(currentMode, false);

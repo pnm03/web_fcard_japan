@@ -1,5 +1,8 @@
+import { removeVietnameseAccents } from "./kana-ime.js";
+
 function normalizeRomajiAnswer(value) {
-  return String(value || "")
+  const stripped = removeVietnameseAccents(String(value || ""));
+  return stripped
     .normalize("NFKC")
     .toLowerCase()
     .replaceAll("ā", "aa")

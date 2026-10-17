@@ -97,6 +97,11 @@ export function normalizeTelexAccents(str) {
     .replace(/([bcdfghjklmnpqrstvwxyz])ư/gi, "$1u")
     .replace(/^ư/gi, "w")
     .replace(/\sư/gi, " w")
+    // Khi ký tự ư đứng sau một ký tự không phải chữ cái Latin (như Kana hoặc Kanji), nó đại diện cho phím 'w' vừa gõ
+    .replace(/([^\x00-\x7F])ư/gi, "$1w")
+    .replace(/ư/gi, "w")
+    .replace(/ă/gi, "aw")
+    .replace(/ơ/gi, "o")
     .replace(/[àáạảãâầấậẩẫăằắặẳẵ]/gi, "a")
     .replace(/[èéẹẻẽêềếệểễ]/gi, "e")
     .replace(/[ìíịỉĩ]/gi, "i")
@@ -104,6 +109,22 @@ export function normalizeTelexAccents(str) {
     .replace(/[ùúụủũưừứựửữ]/gi, "u")
     .replace(/[ỳýỵỷỹ]/gi, "y")
     .replace(/[đ]/gi, "d");
+}
+
+/**
+ * Loại bỏ toàn bộ dấu tiếng Việt, đưa về ký tự Latin cơ bản (A-Z, a-z) cho chế độ Romaji.
+ */
+export function removeVietnameseAccents(str) {
+  if (!str) return "";
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[đĐ]/g, m => (m === "Đ" ? "D" : "d"))
+    .replace(/[ưƯ]/g, m => (m === "Ư" ? "U" : "u"))
+    .replace(/[ơƠ]/g, m => (m === "Ơ" ? "O" : "o"))
+    .replace(/[âăÂĂ]/g, m => (m === "Â" || m === "Ă" ? "A" : "a"))
+    .replace(/[êÊ]/g, m => (m === "Ê" ? "E" : "e"))
+    .replace(/[ôÔ]/g, m => (m === "Ô" ? "O" : "o"));
 }
 
 /**
@@ -148,7 +169,7 @@ export function romajiToHiragana(text, { finalize = true } = {}) {
           i += 2;
           continue;
         } else if (!"aeiouy".includes(next)) {
-          // n đứng trước một phụ âm (như nk, ns, nt, nm, nr, nb, np...) -> thành 'ん'
+          // n đứng trước một phụ âm hoặc khoảng trắng/dấu câu -> thành 'ん'
           result += "ん";
           i += 1;
           continue;
@@ -195,6 +216,16 @@ export function hiraganaToKatakana(hiraganaText) {
 }
 
 /**
+ * Chuyển Katakana sang Hiragana
+ */
+export function katakanaToHiragana(katakanaText) {
+  if (!katakanaText) return "";
+  return katakanaText.replace(/[\u30a1-\u30f6]/g, ch =>
+    String.fromCharCode(ch.charCodeAt(0) - 0x60)
+  );
+}
+
+/**
  * Gắn bộ gõ Kana tự động vào một phần tử <input>
  * @param {HTMLInputElement} inputEl
  * @param {Object} options
@@ -204,66 +235,95 @@ export function bindKanaInput(inputEl, options = {}) {
   if (!inputEl) return null;
 
   let isEnabled = options.enabled !== false;
-  let mode = options.mode || "kana"; // "kana" | "raw"
-  function update() {
-    if (!isEnabled || mode !== "kana") return;
-    const original = inputEl.value;
-    const oldCursor = inputEl.selectionStart;
+  let mode = options.mode || "kana"; // "kana" | "romaji" | "raw"
+  let isComposing = false;
 
-    const converted = romajiToHiragana(original, { finalize: false });
-    if (converted !== original) {
-      const diff = converted.length - original.length;
-      inputEl.value = converted;
-      const newPos = Math.max(0, Math.min(converted.length, oldCursor + diff));
-      try {
-        inputEl.setSelectionRange(newPos, newPos);
-      } catch (e) {}
+  function update() {
+    if (!isEnabled || isComposing) return;
+    if (mode === "raw") return;
+
+    const original = inputEl.value;
+    const cursorPos = inputEl.selectionStart ?? original.length;
+
+    if (mode === "romaji") {
+      const converted = removeVietnameseAccents(original);
+      if (converted !== original) {
+        const textBeforeCursor = original.slice(0, cursorPos);
+        const convertedBefore = removeVietnameseAccents(textBeforeCursor);
+        inputEl.value = converted;
+        const newPos = convertedBefore.length;
+        try {
+          inputEl.setSelectionRange(newPos, newPos);
+        } catch (e) {}
+      }
+      return;
+    }
+
+    if (mode === "kana") {
+      const converted = romajiToHiragana(original, { finalize: false });
+      if (converted !== original) {
+        const textBeforeCursor = original.slice(0, cursorPos);
+        const convertedBefore = romajiToHiragana(textBeforeCursor, { finalize: false });
+        inputEl.value = converted;
+        const newPos = convertedBefore.length;
+        try {
+          inputEl.setSelectionRange(newPos, newPos);
+        } catch (e) {}
+      }
     }
   }
 
-  const handleInput = () => {
+  const handleInput = (e) => {
+    if (e && e.isComposing) return;
+    if (isComposing) return;
     update();
   };
 
-  const handleCompositionUpdate = () => {
-    update();
+  const handleCompositionStart = () => {
+    isComposing = true;
   };
 
   const handleCompositionEnd = () => {
-    update();
-  };
-
-  const handleKeyUp = (e) => {
-    if (e.key && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Shift", "Control", "Alt", "Meta", "Escape", "Tab"].includes(e.key)) {
-      return;
-    }
+    isComposing = false;
     update();
   };
 
   const handleKeyDown = (e) => {
-    // Phím F2 để bật/tắt nhanh chế độ tự động gõ Kana
+    // Phím F2 để bật/tắt nhanh chế độ
     if (e.key === "F2") {
       e.preventDefault();
       controller.toggleMode();
       return;
     }
 
-    // Khi ấn phím Space: nếu chuỗi kết thúc bằng âm 'n' lẻ thì biến ngay thành 'ん'
-    if (e.key === " " && isEnabled && mode === "kana") {
+    // Phím F7: Chuyển Hiragana sang Katakana
+    if (e.key === "F7" && isEnabled && mode === "kana") {
+      e.preventDefault();
       const val = inputEl.value;
-      if (val.endsWith("n")) {
-        e.preventDefault();
-        const finalized = val.slice(0, -1) + "ん";
-        inputEl.value = finalized;
-        inputEl.setSelectionRange(finalized.length, finalized.length);
+      const converted = hiraganaToKatakana(val);
+      if (converted !== val) {
+        inputEl.value = converted;
+        inputEl.setSelectionRange(converted.length, converted.length);
       }
+      return;
+    }
+
+    // Phím F6: Chuyển Katakana về Hiragana
+    if (e.key === "F6" && isEnabled && mode === "kana") {
+      e.preventDefault();
+      const val = inputEl.value;
+      const converted = katakanaToHiragana(val);
+      if (converted !== val) {
+        inputEl.value = converted;
+        inputEl.setSelectionRange(converted.length, converted.length);
+      }
+      return;
     }
   };
 
   inputEl.addEventListener("input", handleInput);
-  inputEl.addEventListener("compositionupdate", handleCompositionUpdate);
+  inputEl.addEventListener("compositionstart", handleCompositionStart);
   inputEl.addEventListener("compositionend", handleCompositionEnd);
-  inputEl.addEventListener("keyup", handleKeyUp);
   inputEl.addEventListener("keydown", handleKeyDown);
 
   const controller = {
@@ -280,11 +340,16 @@ export function bindKanaInput(inputEl, options = {}) {
       }
     },
     setMode(newMode) {
-      mode = newMode === "raw" ? "raw" : "kana";
-      if (mode === "kana") isEnabled = true;
+      if (newMode === "raw" || newMode === "romaji" || newMode === "kana") {
+        mode = newMode;
+      } else {
+        mode = "kana";
+      }
+      if (mode !== "raw") isEnabled = true;
       if (typeof options.onStateChange === "function") {
         options.onStateChange({ isEnabled, mode });
       }
+      update();
     },
     getMode() {
       return isEnabled ? mode : "raw";
@@ -305,13 +370,20 @@ export function bindKanaInput(inputEl, options = {}) {
         }
         return finalized;
       }
+      if (isEnabled && mode === "romaji") {
+        const val = inputEl.value;
+        const sanitized = removeVietnameseAccents(val);
+        if (sanitized !== val) {
+          inputEl.value = sanitized;
+        }
+        return sanitized;
+      }
       return inputEl.value;
     },
     destroy() {
       inputEl.removeEventListener("input", handleInput);
-      inputEl.removeEventListener("compositionupdate", handleCompositionUpdate);
+      inputEl.removeEventListener("compositionstart", handleCompositionStart);
       inputEl.removeEventListener("compositionend", handleCompositionEnd);
-      inputEl.removeEventListener("keyup", handleKeyUp);
       inputEl.removeEventListener("keydown", handleKeyDown);
     }
   };

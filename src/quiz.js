@@ -408,7 +408,7 @@ function maskJapaneseAnswer(answer) {
 }
 
 function isMeaningAnswerMode(mode) {
-  return mode === "jp_to_meaning" || mode === "romaji_to_meaning" || mode === "audio_to_meaning";
+  return mode === "jp_to_meaning" || mode === "japanese_to_meaning" || mode === "romaji_to_meaning" || mode === "audio_to_meaning";
 }
 
 // Tạo gợi ý (Hint) cho một chuỗi đáp án

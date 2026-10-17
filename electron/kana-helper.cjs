@@ -92,6 +92,10 @@ function normalizeTelexAccents(str) {
     .replace(/([bcdfghjklmnpqrstvwxyz])ư/gi, "$1u")
     .replace(/^ư/gi, "w")
     .replace(/\sư/gi, " w")
+    .replace(/([^\x00-\x7F])ư/gi, "$1w")
+    .replace(/ư/gi, "w")
+    .replace(/ă/gi, "aw")
+    .replace(/ơ/gi, "o")
     .replace(/[àáạảãâầấậẩẫăằắặẳẵ]/gi, "a")
     .replace(/[èéẹẻẽêềếệểễ]/gi, "e")
     .replace(/[ìíịỉĩ]/gi, "i")
@@ -99,6 +103,19 @@ function normalizeTelexAccents(str) {
     .replace(/[ùúụủũưừứựửữ]/gi, "u")
     .replace(/[ỳýỵỷỹ]/gi, "y")
     .replace(/[đ]/gi, "d");
+}
+
+function removeVietnameseAccents(str) {
+  if (!str) return "";
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[đĐ]/g, m => (m === "Đ" ? "D" : "d"))
+    .replace(/[ưƯ]/g, m => (m === "Ư" ? "U" : "u"))
+    .replace(/[ơƠ]/g, m => (m === "Ơ" ? "O" : "o"))
+    .replace(/[âăÂĂ]/g, m => (m === "Â" || m === "Ă" ? "A" : "a"))
+    .replace(/[êÊ]/g, m => (m === "Ê" ? "E" : "e"))
+    .replace(/[ôÔ]/g, m => (m === "Ô" ? "O" : "o"));
 }
 
 function romajiToHiragana(text, { finalize = true } = {}) {
@@ -167,8 +184,25 @@ function romajiToHiragana(text, { finalize = true } = {}) {
   return result;
 }
 
+function hiraganaToKatakana(hiraganaText) {
+  if (!hiraganaText) return "";
+  return hiraganaText.replace(/[\u3041-\u3096]/g, ch =>
+    String.fromCharCode(ch.charCodeAt(0) + 0x60)
+  );
+}
+
+function katakanaToHiragana(katakanaText) {
+  if (!katakanaText) return "";
+  return katakanaText.replace(/[\u30a1-\u30f6]/g, ch =>
+    String.fromCharCode(ch.charCodeAt(0) - 0x60)
+  );
+}
+
 module.exports = {
   HIRAGANA_MAP,
   normalizeTelexAccents,
-  romajiToHiragana
+  removeVietnameseAccents,
+  romajiToHiragana,
+  hiraganaToKatakana,
+  katakanaToHiragana
 };

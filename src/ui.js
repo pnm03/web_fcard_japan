@@ -5407,14 +5407,18 @@ function renderCurrentQuestion() {
   inputEl.value = "";
   inputEl.className = "quiz-input";
   inputEl.disabled = false;
-  inputEl.lang = question.mode === "meaning_to_japanese" ? "ja" : "vi";
-  inputEl.placeholder = question.mode === "meaning_to_japanese"
+  const isMeaning = isQuizMeaningAnswerMode(question.mode);
+  const isKana = question.mode === "meaning_to_japanese";
+  inputEl.lang = isKana ? "ja" : (isMeaning ? "vi" : "en");
+  inputEl.placeholder = isKana
     ? "Nhập chữ Nhật (gõ kasa tự ra かさ)..."
-    : (isQuizMeaningAnswerMode(question.mode) ? "Nhập nghĩa tiếng Việt (không dấu)..." : "Nhập cách đọc bằng Romaji...");
+    : (isMeaning ? "Nhập nghĩa tiếng Việt (có dấu hoặc không dấu)..." : "Nhập cách đọc bằng Romaji (không dấu)...");
+
+  const targetImeMode = isKana ? "kana" : (isMeaning ? "raw" : "romaji");
 
   if (!quizKanaImeController && inputEl) {
     quizKanaImeController = bindKanaInput(inputEl, {
-      mode: question.mode === "meaning_to_japanese" ? "kana" : "raw",
+      mode: targetImeMode,
       onStateChange: ({ isEnabled, mode }) => {
         const q = activeQuizSession?.getCurrentQuestion();
         updateQuizImeBadge(q?.mode, isEnabled && mode === "kana");
@@ -5423,13 +5427,8 @@ function renderCurrentQuestion() {
   }
 
   if (quizKanaImeController) {
-    if (question.mode === "meaning_to_japanese") {
-      quizKanaImeController.setMode("kana");
-      updateQuizImeBadge(question.mode, true);
-    } else {
-      quizKanaImeController.setMode("raw");
-      updateQuizImeBadge(question.mode, false);
-    }
+    quizKanaImeController.setMode(targetImeMode);
+    updateQuizImeBadge(question.mode, isKana);
   }
   
   setTimeout(() => {

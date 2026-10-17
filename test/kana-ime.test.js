@@ -4,7 +4,9 @@ import assert from "node:assert/strict";
 import {
   romajiToHiragana,
   normalizeTelexAccents,
+  removeVietnameseAccents,
   hiraganaToKatakana,
+  katakanaToHiragana,
   bindKanaInput
 } from "../src/kana-ime.js";
 
@@ -38,43 +40,90 @@ test("romajiToHiragana xử lý âm n và n cuối câu", () => {
   assert.equal(romajiToHiragana("konnichiha"), "こんにちは");
 });
 
+test("romajiToHiragana xử lý câu dài và cụm từ như kochirawa san desu", () => {
+  assert.equal(romajiToHiragana("kochirawa san desu"), "こちらわ さん です");
+  assert.equal(romajiToHiragana("kochirawa san de", { finalize: false }), "こちらわ さん で");
+  assert.equal(romajiToHiragana("こちらわ さnd", { finalize: false }), "こちらわ さんd");
+  assert.equal(romajiToHiragana("こちらわ さnde", { finalize: false }), "こちらわ さんで");
+  assert.equal(romajiToHiragana("コチラワ san desu"), "コチラワ さん です");
+});
+
 test("normalizeTelexAccents khử sạch dấu Telex từ Unikey", () => {
   assert.equal(normalizeTelexAccents("kás"), "kas");
   assert.equal(normalizeTelexAccents("nê"), "ne");
   assert.equal(normalizeTelexAccents("thô"), "tho");
   assert.equal(normalizeTelexAccents("đo"), "do");
+  assert.equal(normalizeTelexAccents("こちらư"), "こちらw");
+  assert.equal(normalizeTelexAccents("こちらưa"), "こちらwa");
   // Khi kết hợp với romajiToHiragana
   assert.equal(romajiToHiragana("kása"), "かさ");
   assert.equal(romajiToHiragana("nêkô"), "ねこ");
 });
 
-test("hiraganaToKatakana chuyển đổi Hiragana sang Katakana", () => {
-  assert.equal(hiraganaToKatakana("こーひー"), "コーヒー");
-  assert.equal(hiraganaToKatakana("あめりか"), "アメリカ");
+test("removeVietnameseAccents loại bỏ toàn bộ dấu tiếng Việt cho Romaji", () => {
+  assert.equal(removeVietnameseAccents("kása"), "kasa");
+  assert.equal(removeVietnameseAccents("đesu"), "desu");
+  assert.equal(removeVietnameseAccents("sản"), "san");
+  assert.equal(removeVietnameseAccents("watáshi"), "watashi");
+  assert.equal(removeVietnameseAccents("arigatô"), "arigato");
+  assert.equal(removeVietnameseAccents("cái ô"), "cai o");
 });
 
-test("bindKanaInput khởi tạo controller và điều khiển chế độ", () => {
+test("hiraganaToKatakana và katakanaToHiragana chuyển đổi qua lại chính xác", () => {
+  assert.equal(hiraganaToKatakana("こーひー"), "コーヒー");
+  assert.equal(hiraganaToKatakana("あめりか"), "アメリカ");
+  assert.equal(hiraganaToKatakana("こちらわ"), "コチラワ");
+  assert.equal(katakanaToHiragana("コチラワ"), "こちらわ");
+});
+
+test("bindKanaInput hỗ trợ chế độ romaji khử dấu và chế độ kana giữ đúng chữ", () => {
+  const listeners = {};
   const dummyEl = {
-    value: "kasa",
+    value: "kása",
     selectionStart: 4,
-    setSelectionRange() {},
-    addEventListener() {},
-    removeEventListener() {}
+    selectionEnd: 4,
+    setSelectionRange(s, e) {
+      this.selectionStart = s;
+      this.selectionEnd = e;
+    },
+    addEventListener(evt, fn) {
+      listeners[evt] = fn;
+    },
+    removeEventListener(evt) {
+      delete listeners[evt];
+    }
   };
 
-  const controller = bindKanaInput(dummyEl, { mode: "kana" });
+  const controller = bindKanaInput(dummyEl, { mode: "romaji" });
   assert.ok(controller);
-  assert.equal(controller.getMode(), "kana");
+  assert.equal(controller.getMode(), "romaji");
 
+  // Giả lập nhập kása ở chế độ romaji -> tự động thành kasa
+  dummyEl.value = "kása";
+  listeners.input();
+  assert.equal(dummyEl.value, "kasa");
+
+  // Chuyển sang kana
+  controller.setMode("kana");
+  dummyEl.value = "kochirawa san desu";
+  listeners.input();
+  assert.equal(dummyEl.value, "こちらわ さん です");
+
+  // Chuyển sang raw
   controller.setMode("raw");
   assert.equal(controller.getMode(), "raw");
-
-  controller.setMode("kana");
-  assert.equal(controller.getMode(), "kana");
 });
 
 import { QuizSession } from "../src/quiz.js";
+import { getRomajiAnswerMatch } from "../src/quiz-signals.js";
 import { saveProjects } from "../src/storage.js";
+
+test("getRomajiAnswerMatch chấp nhận đáp án Romaji dù người dùng có gõ dính dấu Telex", () => {
+  assert.equal(getRomajiAnswerMatch("kása", "kasa"), "correct");
+  assert.equal(getRomajiAnswerMatch("đesu", "desu"), "correct");
+  assert.equal(getRomajiAnswerMatch("sản", "san"), "correct");
+  assert.equal(getRomajiAnswerMatch("watáshi", "watashi"), "correct");
+});
 
 test("QuizSession chấp nhận câu trả lời dạng Kana khi từ vựng là chữ Hán (Kanji)", () => {
   const store = new Map();
@@ -122,4 +171,21 @@ test("QuizSession chấp nhận câu trả lời dạng Kana khi từ vựng là
   });
   const result3 = session3.submitAnswer("kasa");
   assert.equal(result3.status, "correct");
+
+  // Kiểm tra nhập tiếng Việt có dấu và không dấu
+  const sessionVi1 = new QuizSession({
+    quizMode: "jp_to_meaning",
+    vocabIds: ["v1"],
+    questionCount: 1
+  });
+  const resultVi1 = sessionVi1.submitAnswer("cái ô");
+  assert.equal(resultVi1.status, "correct");
+
+  const sessionVi2 = new QuizSession({
+    quizMode: "jp_to_meaning",
+    vocabIds: ["v1"],
+    questionCount: 1
+  });
+  const resultVi2 = sessionVi2.submitAnswer("cai o");
+  assert.equal(resultVi2.status, "correct");
 });
