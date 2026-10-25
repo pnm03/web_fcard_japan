@@ -196,3 +196,111 @@ test("grammar.js & style.css: Đoạn ngắt phân cách các phần học và w
   assert.ok(css.includes(".roadmap-dot.dot-sub"), "CSS phải có dấu chấm tròn con .dot-sub");
 });
 
+test("grammar.js & style.css: Bước 4 Ôn tập & Tạo ví dụ riêng, Bộ sinh đề thi JLPT N5 (Dịch câu, Điền từ, Đọc hiểu)", async () => {
+  const grammarModule = await import("../src/grammar.js");
+  const cssPath = path.resolve(__dirname, "../src/style.css");
+  const css = fs.readFileSync(cssPath, "utf-8");
+
+  // 1. Kiểm tra export các hàm cốt lõi cho Ôn tập & Sinh đề
+  assert.equal(typeof grammarModule.getCustomExamples, "function", "Phải export getCustomExamples");
+  assert.equal(typeof grammarModule.addCustomExample, "function", "Phải export addCustomExample");
+  assert.equal(typeof grammarModule.deleteCustomExample, "function", "Phải export deleteCustomExample");
+  assert.equal(typeof grammarModule.extractLessonAndProjectVocab, "function", "Phải export extractLessonAndProjectVocab");
+  assert.equal(typeof grammarModule.generateLessonReviewQuestions, "function", "Phải export generateLessonReviewQuestions");
+  assert.equal(typeof grammarModule.checkTranslationAnswer, "function", "Phải export checkTranslationAnswer");
+  assert.equal(typeof grammarModule.normalizeSentenceForComparison, "function", "Phải export normalizeSentenceForComparison");
+
+  // 2. Kiểm tra quản lý ví dụ tự tạo (Custom Examples)
+  const lessonId = "n5-lesson-1";
+  const initialExamples = grammarModule.getCustomExamples(lessonId);
+  assert.ok(Array.isArray(initialExamples), "Custom examples ban đầu phải là một mảng");
+
+  const newExample = grammarModule.addCustomExample(lessonId, {
+    jp: "アンさんはがくせいです。",
+    romaji: "An san wa gakusei desu.",
+    vn: "Bạn An là học sinh.",
+    patternId: "pattern-1",
+    note: "Ví dụ tự đặt với bạn An"
+  });
+  assert.ok(newExample.id, "Ví dụ mới phải được gán ID");
+  assert.equal(newExample.jp, "アンさんはがくせいです。");
+
+  const listAfterAdd = grammarModule.getCustomExamples(lessonId);
+  assert.ok(listAfterAdd.some(ex => ex.id === newExample.id), "Danh sách phải chứa ví dụ vừa thêm");
+
+  const deleted = grammarModule.deleteCustomExample(lessonId, newExample.id);
+  assert.ok(deleted, "Xóa ví dụ thành công");
+  const listAfterDelete = grammarModule.getCustomExamples(lessonId);
+  assert.ok(!listAfterDelete.some(ex => ex.id === newExample.id), "Danh sách không còn chứa ví dụ đã xóa");
+
+  // 3. Kiểm tra trích xuất từ vựng bài học & dự án (extractLessonAndProjectVocab)
+  const lesson1 = grammarModule.GRAMMAR_CHAPTERS[0].lessons[0];
+  const vocabData = grammarModule.extractLessonAndProjectVocab(lesson1);
+  assert.ok(vocabData && typeof vocabData === "object", "Kết quả trích xuất phải là object");
+  assert.ok(Array.isArray(vocabData.baseSubjects), "Phải có danh sách chủ ngữ");
+  assert.ok(Array.isArray(vocabData.baseNouns), "Phải có danh sách danh từ");
+  assert.ok(vocabData.baseSubjects.some(s => s.jp === "わたし" || s.vi.includes("tôi")), "Phải có chủ ngữ 'tôi'");
+  assert.ok(vocabData.baseNouns.some(n => n.vi.includes("học sinh")), "Phải có danh từ 'học sinh'");
+
+  // 4. Kiểm tra sinh đề thi đúng 1 dạng theo yêu cầu: translate, cloze, reading
+  // Dạng 1: Dịch câu (translate)
+  const translateQuestions = grammarModule.generateLessonReviewQuestions(lesson1, "translate");
+  assert.equal(translateQuestions.mode, "translate", "Chế độ phải là translate");
+  assert.ok(Array.isArray(translateQuestions.questions), "Phải có danh sách câu hỏi");
+  assert.ok(translateQuestions.questions.length >= 3, "Phải có ít nhất 3 câu hỏi dịch");
+  const qTranslate = translateQuestions.questions[0];
+  assert.ok(qTranslate.prompt || qTranslate.vi, "Câu dịch phải có đề bài tiếng Việt");
+  assert.ok(qTranslate.targetJp, "Câu dịch phải có đáp án tiếng Nhật");
+  assert.ok(qTranslate.targetRomaji, "Câu dịch phải có đáp án Romaji");
+
+  // Dạng 2: Điền từ (cloze)
+  const clozeQuestions = grammarModule.generateLessonReviewQuestions(lesson1, "cloze");
+  assert.equal(clozeQuestions.mode, "cloze", "Chế độ phải là cloze");
+  assert.ok(clozeQuestions.questions.length >= 3, "Phải có ít nhất 3 câu điền từ");
+  const qCloze = clozeQuestions.questions[0];
+  assert.ok(qCloze.question.includes("[ ... ]") || qCloze.question.includes("（　★　）"), "Câu điền từ phải có chỗ trống khuyết");
+  assert.ok(Array.isArray(qCloze.options) && qCloze.options.length === 4, "Phải có đúng 4 phương án trắc nghiệm chuẩn JLPT");
+  assert.ok(typeof qCloze.correct === "number" && qCloze.correct >= 0 && qCloze.correct <= 3, "Chỉ số đáp án đúng hợp lệ");
+
+  // Dạng 3: Đọc hiểu đoạn văn & khuyết từ (reading / Dokkai)
+  const readingQuestions = grammarModule.generateLessonReviewQuestions(lesson1, "reading");
+  assert.equal(readingQuestions.mode, "reading", "Chế độ phải là reading");
+  assert.ok(readingQuestions.passage, "Phải có đoạn văn đọc hiểu");
+  assert.ok(readingQuestions.passage.jp.length > 20, "Đoạn văn đọc hiểu phải có nội dung đủ dài");
+  assert.ok(readingQuestions.questions.length >= 2, "Phải có ít nhất 2 câu hỏi đọc hiểu");
+
+  // 5. Kiểm tra thuật toán chấm điểm dịch câu thông minh (checkTranslationAnswer)
+  // Khớp chính xác tiếng Nhật
+  const resExactJp = grammarModule.checkTranslationAnswer("わたしはがくせいです。", "わたしはがくせいです。", "watashi wa gakusei desu", []);
+  assert.equal(resExactJp.isCorrect, true, "Gõ đúng tiếng Nhật có dấu chấm phải đúng");
+
+  // Khớp không có dấu chấm câu
+  const resNoPunct = grammarModule.checkTranslationAnswer("わたしはがくせい です", "わたしはがくせいです。", "watashi wa gakusei desu", []);
+  assert.equal(resNoPunct.isCorrect, true, "Bỏ qua khoảng trắng và dấu chấm câu");
+
+  // Khớp Romaji gõ chuẩn
+  const resRomaji = grammarModule.checkTranslationAnswer("watashi wa gakusei desu", "わたしはがくせいです。", "watashi wa gakusei desu", []);
+  assert.equal(resRomaji.isCorrect, true, "Gõ Romaji chuẩn phải đúng");
+
+  // Gõ Romaji tự động chuyển đổi sang Hiragana để so sánh
+  const resRomajiConverted = grammarModule.checkTranslationAnswer("watashiwagakuseidesu", "わたしはがくせいです。", "watashi wa gakusei desu", []);
+  assert.equal(resRomajiConverted.isCorrect, true, "Romaji liền nhau phải được Hiragana hóa và so sánh đúng");
+
+  // Trả lời sai
+  const resWrong = grammarModule.checkTranslationAnswer("anata wa sensei desu", "わたしはがくせいです。", "watashi wa gakusei desu", []);
+  assert.equal(resWrong.isCorrect, false, "Câu trả lời sai nội dung phải bị chấm sai");
+
+  // 6. Kiểm tra CSS cho Ôn tập & Sinh đề thi
+  assert.ok(css.includes(".review-view-wrapper"), "CSS phải có .review-view-wrapper");
+  assert.ok(css.includes(".custom-examples-container"), "CSS phải có .custom-examples-container");
+  assert.ok(css.includes(".custom-example-item-card"), "CSS phải có .custom-example-item-card");
+  assert.ok(css.includes(".review-mode-selector-bar"), "CSS phải có thanh chọn dạng bài .review-mode-selector-bar");
+  assert.ok(css.includes(".rev-mode-btn"), "CSS phải có .rev-mode-btn");
+  assert.ok(css.includes(".review-question-card"), "CSS phải có .review-question-card");
+  assert.ok(css.includes(".rev-typing-input"), "CSS phải có input gõ bài dịch .rev-typing-input");
+  assert.ok(css.includes(".rev-options-grid"), "CSS phải có lưới chọn phương án JLPT .rev-options-grid");
+  assert.ok(css.includes(".dokkai-passage-card"), "CSS phải có thẻ đoạn văn đọc hiểu .dokkai-passage-card");
+  assert.ok(css.includes(".review-result-panel"), "CSS phải có bảng tổng kết điểm .review-result-panel");
+});
+
+

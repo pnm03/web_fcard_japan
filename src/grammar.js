@@ -2,6 +2,8 @@
 // Quản lý hệ thống học Ngữ pháp Tiếng Nhật LMS chuyên sâu, bố cục 3 cột sát lề, highlight từ khóa, lộ trình phân cấp, ghi chú dạng danh sách và tab kết quả
 
 import { speakJapanese, triggerConfetti } from './ui.js';
+import { getProjects } from './storage.js';
+import { bindKanaInput, romajiToHiragana, removeVietnameseAccents } from './kana-ime.js';
 
 export const GRAMMAR_CHAPTERS = [
   {
@@ -306,6 +308,8 @@ export const GRAMMAR_CHAPTERS = [
 
 const STORAGE_KEY_GRAMMAR_PROGRESS = "nihongo_grammar_progress_v2";
 const STORAGE_KEY_RIGHT_COLLAPSED = "nihongo_grammar_right_collapsed";
+const STORAGE_KEY_CUSTOM_EXAMPLES_PREFIX = "nihongo_grammar_custom_examples_";
+const STORAGE_KEY_AI_CONFIG = "nihongo_grammar_ai_config";
 
 // Đọc toàn bộ tiến trình từ localStorage
 export function loadAllGrammarProgress() {
@@ -331,7 +335,7 @@ export function saveAllGrammarProgress(data) {
 function getDefaultProgressState() {
   return {
     activeLessonId: "n5-lesson-1",
-    activeSubStep: "theory", // theory | exercises | test
+    activeSubStep: "theory", // theory | exercises | test | review
     unlockedAll: false,
     lessons: {
       "n5-lesson-1": {
@@ -342,7 +346,9 @@ function getDefaultProgressState() {
         testScore: 0,
         testTotal: 8,
         notesList: [],
-        bookmarked: false
+        bookmarked: false,
+        reviewDone: false,
+        reviewQuizResult: null
       }
     }
   };
@@ -360,7 +366,9 @@ export function getLessonProgress(lessonId) {
       testScore: 0,
       testTotal: 8,
       notesList: [],
-      bookmarked: false
+      bookmarked: false,
+      reviewDone: false,
+      reviewQuizResult: null
     };
   }
   return all.lessons[lessonId];
@@ -378,7 +386,9 @@ export function updateLessonProgress(lessonId, partial) {
       testScore: 0,
       testTotal: 8,
       notesList: [],
-      bookmarked: false
+      bookmarked: false,
+      reviewDone: false,
+      reviewQuizResult: null
     };
   }
   all.lessons[lessonId] = { ...all.lessons[lessonId], ...partial };
@@ -386,7 +396,7 @@ export function updateLessonProgress(lessonId, partial) {
   return all.lessons[lessonId];
 }
 
-// Tính % hoàn thành của 1 bài học
+// Tính % hoàn thành của 1 bài học (Lý thuyết: 30%, Bài tập: 30%, Kiểm tra: 40%)
 export function calculateLessonPercent(lessonId) {
   const p = getLessonProgress(lessonId);
   let score = 0;
@@ -396,12 +406,466 @@ export function calculateLessonPercent(lessonId) {
   return score;
 }
 
+// Quản lý mẫu ví dụ tự tạo của người học
+export function getCustomExamples(lessonId) {
+  try {
+    const raw = localStorage.getItem(`${STORAGE_KEY_CUSTOM_EXAMPLES_PREFIX}${lessonId}`);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.warn("Lỗi đọc custom examples:", e);
+  }
+  return [
+    {
+      id: "cust-ex-default-1",
+      lessonId: "n5-lesson-1",
+      patternId: "pattern-1",
+      patternName: "A は B です",
+      jp: "リンさん は 先生 です。",
+      romaji: "Rin-san wa sensei desu.",
+      vi: "Chị Linh là giáo viên.",
+      audio: "リンさんはせんせいです",
+      createdAt: "Mẫu khởi đầu"
+    },
+    {
+      id: "cust-ex-default-2",
+      lessonId: "n5-lesson-1",
+      patternId: "pattern-2",
+      patternName: "A は B じゃありません",
+      jp: "ナムさん は 医者 じゃありません。",
+      romaji: "Nam-san wa isha ja arimasen.",
+      vi: "Anh Nam không phải là bác sĩ.",
+      audio: "ナムさんはいしゃじゃありません",
+      createdAt: "Mẫu khởi đầu"
+    }
+  ];
+}
+
+export function saveCustomExamples(lessonId, list) {
+  try {
+    localStorage.setItem(`${STORAGE_KEY_CUSTOM_EXAMPLES_PREFIX}${lessonId}`, JSON.stringify(list));
+  } catch (e) {
+    console.warn("Lỗi lưu custom examples:", e);
+  }
+}
+
+export function addCustomExample(lessonId, example) {
+  const list = getCustomExamples(lessonId);
+  const now = new Date();
+  const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')} - ${now.getDate()}/${now.getMonth() + 1}`;
+  const newEx = {
+    id: `cust-ex-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+    lessonId,
+    createdAt: timeStr,
+    ...example
+  };
+  list.unshift(newEx);
+  saveCustomExamples(lessonId, list);
+  return newEx;
+}
+
+export function deleteCustomExample(lessonId, exampleId) {
+  const list = getCustomExamples(lessonId);
+  const filtered = list.filter(item => item.id !== exampleId);
+  saveCustomExamples(lessonId, filtered);
+  return filtered;
+}
+
+// Quản lý cấu hình API AI (Gemini / OpenAI)
+export function getAIConfig() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_AI_CONFIG);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return {
+    provider: "gemini",
+    apiKey: "",
+    model: "gemini-1.5-flash"
+  };
+}
+
+export function saveAIConfig(config) {
+  try {
+    localStorage.setItem(STORAGE_KEY_AI_CONFIG, JSON.stringify(config));
+  } catch (e) {
+    console.warn("Lỗi lưu AI config:", e);
+  }
+}
+
 // Biến trạng thái runtime
 let currentChapterIndex = 0;
 let currentLessonId = "n5-lesson-1";
-let currentSubStep = "theory"; // theory | exercises | test
+let currentSubStep = "theory"; // theory | exercises | test | review
 let activeRightTab = "notes"; // notes | takeaways | results
 let isRightPanelCollapsed = typeof localStorage !== "undefined" ? (localStorage.getItem(STORAGE_KEY_RIGHT_COLLAPSED) === "true") : false;
+
+// Biến runtime cho phần Ôn tập & Sinh đề
+let currentReviewMode = "translate"; // translate | cloze | reading
+let currentReviewQuestions = null;
+let currentReviewAnswers = {};
+let currentReviewEvaluation = null;
+let isCustomExampleFormOpen = false;
+let isAIModalOpen = false;
+
+// Trích xuất từ vựng từ các dự án của người dùng + từ vựng trọng tâm bài 1
+export function extractLessonAndProjectVocab(lesson) {
+  let userVocab = [];
+  try {
+    const projects = getProjects() || [];
+    projects.forEach(p => {
+      if (Array.isArray(p.vocab)) {
+        p.vocab.forEach(v => {
+          if (v && v.japanese && v.meaning) {
+            userVocab.push({
+              japanese: v.japanese.split(/[\(\/]/)[0].trim(),
+              romaji: v.romaji || "",
+              meaning: v.meaning.split(/[\(\/]/)[0].trim(),
+              projectName: p.name || "Dự án cá nhân"
+            });
+          }
+        });
+      }
+    });
+  } catch (e) {
+    console.warn("Lỗi lấy từ vựng từ getProjects:", e);
+  }
+
+  const baseSubjects = [
+    { jp: "わたし", romaji: "watashi", vi: "tôi" },
+    { jp: "あなた", romaji: "anata", vi: "bạn" },
+    { jp: "あの方", romaji: "ano kata", vi: "vị kia" },
+    { jp: "タインさん", romaji: "Thanh-san", vi: "anh Thanh" },
+    { jp: "マイさん", romaji: "Mai-san", vi: "chị Mai" },
+    { jp: "ミラーさん", romaji: "Miraa-san", vi: "anh Miller" },
+    { jp: "ナムさん", romaji: "Nam-san", vi: "anh Nam" },
+    { jp: "ワンさん", romaji: "Wan-san", vi: "anh Wang" }
+  ];
+
+  const baseNouns = [
+    { jp: "学生", romaji: "gakusei", vi: "học sinh" },
+    { jp: "先生", romaji: "sensei", vi: "giáo viên" },
+    { jp: "会社員", romaji: "kaishain", vi: "nhân viên công ty" },
+    { jp: "エンジニア", romaji: "enjinia", vi: "kỹ sư" },
+    { jp: "医者", romaji: "isha", vi: "bác sĩ" },
+    { jp: "ベトナム人", romaji: "Betonamu-jin", vi: "người Việt Nam" },
+    { jp: "日本人", romaji: "Nihon-jin", vi: "người Nhật" },
+    { jp: "アメリカ人", romaji: "Amerika-jin", vi: "người Mỹ" }
+  ];
+
+  return { userVocab, baseSubjects, baseNouns };
+}
+
+// Chuẩn hóa câu để so sánh kết quả dịch
+export function normalizeSentenceForComparison(str) {
+  if (!str) return "";
+  let s = String(str).trim();
+  s = s.replace(/[。\.!?！？]+$/g, "");
+  s = s.replace(/\u3000/g, " ");
+  return s.replace(/\s+/g, "").toLowerCase();
+}
+
+// Kiểm tra câu trả lời người dùng nhập
+export function checkTranslationAnswer(userAnswer, targetJp, targetRomaji, acceptedVariations = []) {
+  if (!userAnswer || !userAnswer.trim()) {
+    return { isCorrect: false, matchType: "empty" };
+  }
+  const normUser = normalizeSentenceForComparison(userAnswer);
+  const normTargetJp = normalizeSentenceForComparison(targetJp);
+  const normTargetRomaji = normalizeSentenceForComparison(targetRomaji);
+  const userAsKana = normalizeSentenceForComparison(romajiToHiragana(userAnswer));
+
+  if (normUser === normTargetJp || userAsKana === normTargetJp) {
+    return { isCorrect: true, matchType: "exact_jp" };
+  }
+  if (normUser === normTargetRomaji) {
+    return { isCorrect: true, matchType: "exact_romaji" };
+  }
+  for (const variation of acceptedVariations) {
+    const normVar = normalizeSentenceForComparison(variation);
+    if (normUser === normVar || userAsKana === normVar) {
+      return { isCorrect: true, matchType: "variation" };
+    }
+  }
+  return { isCorrect: false, matchType: "mismatch" };
+}
+
+// Bộ sinh câu hỏi luyện tập thông minh nội bộ (100% ngữ pháp Bài 1 & từ vựng dự án)
+export function generateLessonReviewQuestions(lesson, mode) {
+  const { userVocab, baseSubjects, baseNouns } = extractLessonAndProjectVocab(lesson);
+
+  if (mode === "translate") {
+    return {
+      mode: "translate",
+      questions: [
+        {
+          id: "q-tr-1",
+          type: "translate",
+          pattern: "A は B です",
+          prompt: "Dịch sang tiếng Nhật: 'Tôi là kỹ sư.'",
+          vi: "Tôi là kỹ sư.",
+          targetJp: "わたしはエンジニアです",
+          targetRomaji: "watashi wa enjinia desu",
+          acceptedVariations: [
+            "わたしはエンジニアです",
+            "わたし は エンジニア です",
+            "watashi wa enjinia desu",
+            "わたしはえんじにあです"
+          ],
+          explanation: "Mẫu câu khẳng định danh từ cơ bản: わたし (Tôi) + は (wa) + エンジニア (kỹ sư) + です (desu)."
+        },
+        {
+          id: "q-tr-2",
+          type: "translate",
+          pattern: "A は B じゃありません",
+          prompt: "Dịch sang tiếng Nhật: 'Anh Miller không phải là bác sĩ.'",
+          vi: "Anh Miller không phải là bác sĩ.",
+          targetJp: "ミラーさんは医者じゃありません",
+          targetRomaji: "miraa-san wa isha ja arimasen",
+          acceptedVariations: [
+            "ミラーさんは医者じゃありません",
+            "ミラーさんは医者ではありません",
+            "ミラーさんはいしゃじゃありません",
+            "ミラーさんはいしゃではありません",
+            "miraa-san wa isha ja arimasen",
+            "miraa san wa isha ja arimasen"
+          ],
+          explanation: "Mẫu câu phủ định danh từ: ミラーさん + は + 医者 + じゃありません (hoặc ではありません trong văn viết)."
+        },
+        {
+          id: "q-tr-3",
+          type: "translate",
+          pattern: "A は B ですか",
+          prompt: "Dịch sang tiếng Nhật: 'Bạn có phải là học sinh không?'",
+          vi: "Bạn có phải là học sinh không?",
+          targetJp: "あなたは学生ですか",
+          targetRomaji: "anata wa gakusei desu ka",
+          acceptedVariations: [
+            "あなたは学生ですか",
+            "あなたはがくせいですか",
+            "あなた は 学生 ですか",
+            "anata wa gakusei desu ka",
+            "anata wa gakusei desuka"
+          ],
+          explanation: "Mẫu câu hỏi xác nhận thông tin: あなた + は + 学生 + ですか (ngữ điệu trợ từ か lên giọng nhẹ)."
+        },
+        {
+          id: "q-tr-4",
+          type: "translate",
+          pattern: "A も B です",
+          prompt: "Dịch sang tiếng Nhật: 'Anh Thanh là người Việt Nam. Tôi cũng là người Việt Nam.'",
+          vi: "Anh Thanh là người Việt Nam. Tôi cũng là người Việt Nam.",
+          targetJp: "タインさんはベトナム人です。わたしもベトナム人です",
+          targetRomaji: "thanh-san wa betonamujin desu. watashi mo betonamujin desu",
+          acceptedVariations: [
+            "タインさんはベトナム人です。わたしもベトナム人です",
+            "タインさんはベトナムじんです。わたしもベトナムじんです",
+            "タインさんはベトナム人です。わたしもベトナム人です。",
+            "thanh-san wa betonamujin desu. watashi mo betonamujin desu",
+            "thanh san wa betonamu jin desu. watashi mo betonamu jin desu"
+          ],
+          explanation: "Trợ từ も (cũng) thay thế hoàn toàn cho は ở câu thứ hai khi có cùng tính chất 'ベトナム人'."
+        },
+        {
+          id: "q-tr-5",
+          type: "translate",
+          pattern: "A は B ではありません",
+          prompt: "Dịch sang tiếng Nhật (dạng trang trọng): 'Vị kia không phải là giáo viên.'",
+          vi: "Vị kia không phải là giáo viên.",
+          targetJp: "あの方は先生ではありません",
+          targetRomaji: "ano kata wa sensei dewa arimasen",
+          acceptedVariations: [
+            "あの方は先生ではありません",
+            "あのかたはせんせいではありません",
+            "あの方は先生じゃありません",
+            "あのかたはせんせいじゃありません",
+            "ano kata wa sensei dewa arimasen",
+            "ano kata wa sensei ja arimasen"
+          ],
+          explanation: "Dạng phủ định trang trọng (văn viết hoặc phát biểu): あの方 + は + 先生 + ではありません."
+        }
+      ]
+    };
+  }
+
+  if (mode === "cloze") {
+    return {
+      mode: "cloze",
+      questions: [
+        {
+          id: "q-cl-1",
+          type: "cloze",
+          question: "タインさん [ ... ] ベトナム人 です。",
+          options: ["は", "も", "か", "の"],
+          correct: 0,
+          explanation: "Trợ từ 'は' (phát âm là wa) đứng sau chủ ngữ タインさん để xác định chủ đề của câu khẳng định."
+        },
+        {
+          id: "q-cl-2",
+          type: "cloze",
+          question: "マイさん は 学生 です。ナムさん [ ... ] 学生 です。",
+          options: ["は", "も", "が", "か"],
+          correct: 1,
+          explanation: "Cả Mai và Nam đều là học sinh, câu thứ hai dùng trợ từ 'も' (cũng) để biểu thị tính tương đồng, thay thế cho は."
+        },
+        {
+          id: "q-cl-3",
+          type: "cloze",
+          question: "ワンさん は 医者 [ ... ]。エンジニア です。",
+          options: ["です", "じゃありません", "ですか", "も"],
+          correct: 1,
+          explanation: "Vế sau đính chính 'エンジニア です' nên vế trước phải phủ định bằng 'じゃありません' (không phải là bác sĩ)."
+        },
+        {
+          id: "q-cl-4",
+          type: "cloze",
+          question: "ミラーさん は アメリカ人 です [ ... ]。 ➔ はい、アメリカ人 です。",
+          options: ["ね", "か", "よ", "も"],
+          correct: 1,
+          explanation: "Câu đối thoại kết thúc bằng 'ですか' để hỏi xác nhận: 'Anh Miller có phải người Mỹ không?'."
+        },
+        {
+          id: "q-cl-5",
+          type: "cloze",
+          question: "あの方 は 先生 [ ... ]。（Dạng văn viết lịch sự chuẩn mực）",
+          options: ["ではありません", "じゃありませんか", "でした", "もではありません"],
+          correct: 0,
+          explanation: "ではありません mang sắc thái trang trọng, chuẩn mực nhất trong văn viết và phát biểu công sở."
+        }
+      ]
+    };
+  }
+
+  // mode === "reading"
+  return {
+    mode: "reading",
+    passage: {
+      jp: "初めまして。わたしはマイです。ベトナム人です。23歳です。エンジニアです。医者じゃありません。ナムさんもベトナム人です。ナムさんは会社員です。どうぞよろしくお願いします。",
+      romaji: "Hajimemashite. Watashi wa Mai desu. Betonamu-jin desu. 23-sai desu. Enjinia desu. Isha ja arimasen. Nam-san mo Betonamu-jin desu. Nam-san wa kaishain desu. Douzo yoroshiku onegaishimasu.",
+      vi: "Rất vui được gặp bạn. Tôi là Mai. Tôi là người Việt Nam. Tôi 23 tuổi. Tôi là kỹ sư. Tôi không phải là bác sĩ. Anh Nam cũng là người Việt Nam. Anh Nam là nhân viên công ty. Rất mong nhận được sự giúp đỡ."
+    },
+    questions: [
+      {
+        id: "q-rd-1",
+        type: "reading",
+        question: "マイさんの仕事（職業）は何ですか？",
+        options: ["学生", "医者", "エンジニア", "先生"],
+        correct: 2,
+        explanation: "Trong đoạn văn giới thiệu rõ: 'エンジニアです。医者じゃありません。' (Mai là kỹ sư, không phải bác sĩ)."
+      },
+      {
+        id: "q-rd-2",
+        type: "reading",
+        question: "マイさんはどの国の人ですか？",
+        options: ["ベトナム人", "日本人", "アメリカ人", "中国人"],
+        correct: 0,
+        explanation: "Trong bài giới thiệu: 'わたしはマイです。ベトナム人です。' (Mai là người Việt Nam)."
+      },
+      {
+        id: "q-rd-3",
+        type: "reading",
+        question: "ナムさんについて、đoạn văn trên cho biết điều gì đúng nhất?",
+        options: [
+          "ナムさんは医者です。",
+          "ナムさんもベトナム人です。",
+          "ナムさんはアメリカ人です。",
+          "ナムさんは学生です。"
+        ],
+        correct: 1,
+        explanation: "Trong bài có câu: 'ナムさんもベトナム人です。ナムさんは会社員です。' (Anh Nam cũng là người Việt Nam)."
+      },
+      {
+        id: "q-rd-4",
+        type: "reading",
+        question: "[Điền từ vào chỗ trống theo ngữ cảnh đoạn văn] マイさんはエンジニアです。医者 [ ... ]。",
+        options: ["です", "じゃありません", "ですか", "も"],
+        correct: 1,
+        explanation: "Theo mạch văn tự giới thiệu: 'エンジニアです。医者じゃありません。' để bác bỏ việc mình là bác sĩ."
+      }
+    ]
+  };
+}
+
+// Gọi API AI ngoài (Gemini hoặc OpenAI) để sinh đề thi tùy biến
+export async function callAIReviewAPI({ lesson, mode, userVocab, config }) {
+  const { provider, apiKey, model } = config;
+  if (!apiKey) {
+    throw new Error("Chưa có API Key. Vui lòng bấm '⚙️ Cài đặt AI API' để nhập key của bạn.");
+  }
+
+  const vocabListStr = (userVocab || []).slice(0, 20).map(v => `${v.japanese} (${v.meaning})`).join(', ');
+
+  const prompt = `
+Bạn là chuyên gia khảo thí tiếng Nhật JLPT N5.
+Hãy tạo đề ôn tập ngữ pháp cho Bài 1: Giới thiệu bản thân (N5).
+Cấu trúc ngữ pháp Bài 1 gồm đúng 4 mẫu:
+1. Khẳng định: A は B です
+2. Phủ định: A は B じゃありません (hoặc ではありません)
+3. Nghi vấn: A は B ですか
+4. Trợ từ cũng: A も B です
+
+RÀNG BUỘC NGHIÊM NGẶT:
+- Chỉ sử dụng 4 cấu trúc ngữ pháp trên.
+- Sử dụng các từ vựng sau từ dự án học viên: ${vocabListStr || "わたし, あなた, タインさん, マイさん, ミラーさん, 学生, 会社員, エンジニア, 医者, ベトナム人, 日本人, アメリカ人"}.
+- Yêu cầu sinh duy nhất 1 dạng bài: "${mode}".
+
+TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON HỢP LỆ (không bọc trong markdown tick hay text nào khác):
+{
+  "mode": "${mode}",
+  "passage": ${mode === 'reading' ? '{"jp": "...", "romaji": "...", "vi": "..."}' : 'null'},
+  "questions": [
+    {
+      "id": "ai-1",
+      "type": "${mode}",
+      "prompt": "Dịch sang tiếng Nhật: '...'",
+      "sentence": "Câu điền từ [ ... ]",
+      "question": "Câu hỏi đọc hiểu",
+      "targetJp": "Câu tiếng Nhật chuẩn",
+      "targetRomaji": "Câu romaji",
+      "acceptedVariations": ["..."],
+      "options": ["A", "B", "C", "D"],
+      "correct": 0,
+      "explanation": "Giải thích ngữ pháp Bài 1"
+    }
+  ]
+}
+`;
+
+  if (provider === "openai") {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: model || "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7
+      })
+    });
+    if (!res.ok) throw new Error(`OpenAI API error: ${res.status}`);
+    const data = await res.json();
+    const content = data.choices?.[0]?.message?.content || "";
+    const cleanJson = content.replace(/```json/gi, "").replace(/```/g, "").trim();
+    return JSON.parse(cleanJson);
+  } else {
+    // Gemini
+    const geminiModel = model || "gemini-1.5-flash";
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseMimeType: "application/json" }
+      })
+    });
+    if (!res.ok) throw new Error(`Gemini API error: ${res.status}`);
+    const data = await res.json();
+    const content = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const cleanJson = content.replace(/```json/gi, "").replace(/```/g, "").trim();
+    return JSON.parse(cleanJson);
+  }
+}
 
 // Khởi tạo các sự kiện giao diện
 export function setupGrammarUI() {
@@ -497,6 +961,15 @@ function renderLeftCourseMenu(lesson) {
               <small>${progress.testPassed ? `Đạt ${progress.testScore}/${progress.testTotal} điểm` : (!progress.exercisesDone && !allState.unlockedAll ? 'Khóa (cần làm bài tập)' : 'Đạt ≥ 80% để qua bài')}</small>
             </div>
           </div>
+
+          <!-- Bước 4: Ôn tập & Sinh đề luyện tập (mở sau khi vượt qua bài kiểm tra) -->
+          <div class="acc-step-item ${currentSubStep === 'review' ? 'active-step' : ''} ${progress.reviewDone ? 'completed-step' : ''} ${!progress.testPassed && !allState.unlockedAll ? 'locked-step' : ''}" data-step="review">
+            <span class="step-indicator-icon">${progress.reviewDone ? '🌟' : (!progress.testPassed && !allState.unlockedAll ? '🔒' : '🔥')}</span>
+            <div class="step-info">
+              <span class="step-label">4. Ôn tập & Sinh đề luyện tập</span>
+              <small>${progress.reviewDone ? 'Đã hoàn thành ôn tập' : (!progress.testPassed && !allState.unlockedAll ? 'Khóa (cần xong Bài kiểm tra)' : 'Tự tạo ví dụ & Đề JLPT N5')}</small>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -547,6 +1020,8 @@ function renderLeftCourseMenu(lesson) {
         alert("🔒 Bước này đang bị khóa!\nBạn cần đọc qua '1. Lý thuyết bài giảng' và bấm nút '✓ Đã học xong lý thuyết' để mở khóa phần Luyện tập.");
       } else if (step === "test") {
         alert("🔒 Bài kiểm tra đang bị khóa!\nBạn cần hoàn thành phần '2. Luyện tập thực hành' trước khi làm Bài kiểm tra.");
+      } else if (step === "review") {
+        alert("🔒 Phần Ôn tập đang bị khóa!\nBạn cần vượt qua '3. Bài kiểm tra đánh giá' (đạt ≥ 80%) trước khi mở khóa Ôn tập & Sinh đề luyện tập.");
       }
     });
   });
@@ -582,20 +1057,28 @@ function renderCenterWorkspace(lesson) {
   if (!main) return;
 
   const progress = getLessonProgress(lesson.id);
+  const stepNums = { theory: '1/4', exercises: '2/4', test: '3/4', review: '4/4' };
+  const stepTitles = {
+    theory: '📖 1. Lý Thuyết & Mẫu Câu Bài Giảng',
+    exercises: '✍️ 2. Luyện Tập Thực Hành Đa Dạng',
+    test: '🎯 3. Bài Kiểm Tra Đánh Giá Năng Lực',
+    review: '🔥 4. Ôn Tập Chuyên Sâu, Tạo Mẫu Câu & Luyện Đề JLPT'
+  };
 
   // Render nội dung tương ứng theo bước lộ trình con đang chọn
   main.innerHTML = `
     <div class="workspace-header-bar">
       <div class="workspace-current-step-badge">
-        <span class="step-num-pill">Bước ${currentSubStep === 'theory' ? '1/3' : (currentSubStep === 'exercises' ? '2/3' : '3/3')}</span>
+        <span class="step-num-pill">Bước ${stepNums[currentSubStep] || '1/4'}</span>
         <h2 class="workspace-step-title">
-          ${currentSubStep === 'theory' ? '📖 1. Lý Thuyết & Mẫu Câu Bài Giảng' : (currentSubStep === 'exercises' ? '✍️ 2. Luyện Tập Thực Hành Đa Dạng' : '🎯 3. Bài Kiểm Tra Đánh Giá Năng Lực')}
+          ${stepTitles[currentSubStep] || '📖 1. Lý Thuyết & Mẫu Câu Bài Giảng'}
         </h2>
       </div>
       <div class="workspace-step-status">
         ${currentSubStep === 'theory' && progress.theoryDone ? '<span class="status-chip chip-done">✓ Đã học xong lý thuyết</span>' : ''}
         ${currentSubStep === 'exercises' && progress.exercisesDone ? '<span class="status-chip chip-done">✓ Đã làm xong bài tập</span>' : ''}
         ${currentSubStep === 'test' && progress.testPassed ? '<span class="status-chip chip-done">🏆 Đã đạt chuẩn chốt bài</span>' : ''}
+        ${currentSubStep === 'review' && progress.reviewDone ? '<span class="status-chip chip-done">🌟 Đã hoàn thành ôn tập</span>' : ''}
       </div>
     </div>
 
@@ -603,6 +1086,7 @@ function renderCenterWorkspace(lesson) {
       ${currentSubStep === 'theory' ? renderTheoryTabHtml(lesson, progress) : ''}
       ${currentSubStep === 'exercises' ? renderExercisesTabHtml(lesson, progress) : ''}
       ${currentSubStep === 'test' ? renderTestTabHtml(lesson, progress) : ''}
+      ${currentSubStep === 'review' ? renderReviewTabHtml(lesson, progress) : ''}
     </div>
   `;
 
@@ -875,12 +1359,386 @@ function renderTestTabHtml(lesson, progress) {
           `).join('')}
         </div>
 
-        <div class="test-submit-box">
+        <div class="test-submit-box" style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
           <button type="submit" class="btn btn-primary btn-lg" id="g-submit-test-btn">
-            Nộp bài & Chấm điểm tức thì 📝
+            ${hasPassed ? 'Nộp bài & Chấm điểm lại 📝' : 'Nộp bài & Chấm điểm tức thì 📝'}
           </button>
+          ${hasPassed ? `
+            <button type="button" class="btn btn-primary btn-lg" id="g-go-to-review-btn" style="background: linear-gradient(135deg, #b5482e, #e05b38); border: none;">
+              🔥 Tiến vào Bước 4: Ôn tập & Sinh đề luyện tập ➔
+            </button>
+          ` : ''}
         </div>
       </form>
+    </div>
+  `;
+}
+
+// 4. Render Tab Ôn Tập & Sinh Đề Luyện Tập Thông Minh
+function renderReviewTabHtml(lesson, progress) {
+  if (!currentReviewQuestions) {
+    currentReviewQuestions = generateLessonReviewQuestions(lesson, currentReviewMode);
+  }
+
+  const customExamples = getCustomExamples(lesson.id);
+  const { userVocab } = extractLessonAndProjectVocab(lesson);
+  const aiConfig = getAIConfig();
+  const hasResult = currentReviewEvaluation && currentReviewEvaluation.submitted;
+
+  return `
+    <div class="review-view-wrapper">
+      <!-- 1. Header Banner -->
+      <div class="review-intro-banner">
+        <div class="review-banner-left">
+          <span class="review-badge-step">Bước 4/4</span>
+          <h3>Ôn Tập Chuyên Sâu, Tạo Mẫu Câu & Luyện Thi Thông Minh</h3>
+          <p>
+            Rèn luyện toàn diện theo cấu trúc đề thi JLPT N5. Bạn có thể tự tạo các mẫu câu của riêng mình, 
+            hoặc để hệ thống tự động sinh đề kiểm tra bám sát <strong>ngữ pháp Bài 1</strong> và <strong>từ vựng trong dự án</strong> của bạn!
+          </p>
+        </div>
+        <div class="review-banner-right">
+          ${progress.reviewDone ? '<span class="status-badge badge-pass">🌟 Đã hoàn thành ôn tập</span>' : '<span class="status-badge badge-doing">⚡ Đang rèn luyện</span>'}
+        </div>
+      </div>
+
+      <!-- 2. Phần: Kho Mẫu Ví Dụ Của Riêng Bạn -->
+      <div class="custom-examples-container glass-panel">
+        <div class="custom-examples-header">
+          <div class="cust-header-left">
+            <h4>📚 Kho Ví Dụ Của Riêng Bạn</h4>
+            <span class="badge-count">${customExamples.length} mẫu câu đã tạo</span>
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" id="toggle-add-cust-ex-btn">
+            ${isCustomExampleFormOpen ? '✖ Đóng khung nhập' : '➕ Thêm ví dụ của bạn'}
+          </button>
+        </div>
+
+        ${isCustomExampleFormOpen ? `
+          <div class="add-cust-ex-form-card">
+            <h5 style="margin: 0 0 10px 0; color: var(--accent); font-size: 13px;">✍️ Tạo mẫu câu ví dụ mới cho Bài 1</h5>
+            <div class="form-grid-row" style="margin-bottom: 8px;">
+              <div class="form-group-item">
+                <label style="font-size: 11.5px; font-weight: 700; display: block; margin-bottom: 3px;">Áp dụng cấu trúc ngữ pháp:</label>
+                <select id="new-ex-pattern" class="form-control" style="font-size: 12.5px;">
+                  <option value="pattern-1">Mẫu 1: A は B です (Khẳng định)</option>
+                  <option value="pattern-2">Mẫu 2: A は B じゃありません (Phủ định)</option>
+                  <option value="pattern-3">Mẫu 3: A は B ですか (Nghi vấn)</option>
+                  <option value="pattern-4">Mẫu 4: A も B です (Trợ từ も - Cũng)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-grid-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+              <div class="form-group-item">
+                <label style="font-size: 11.5px; font-weight: 700; display: block; margin-bottom: 3px;">Câu tiếng Nhật (Gõ Romaji tự chuyển Kana):</label>
+                <input type="text" id="new-ex-jp" class="form-control review-kana-input" placeholder="Ví dụ: わたし は エンジニア です。" autocomplete="off">
+              </div>
+              <div class="form-group-item">
+                <label style="font-size: 11.5px; font-weight: 700; display: block; margin-bottom: 3px;">Cách đọc Romaji:</label>
+                <input type="text" id="new-ex-romaji" class="form-control" placeholder="Ví dụ: Watashi wa enjinia desu.">
+              </div>
+            </div>
+
+            <div class="form-grid-row" style="margin-bottom: 10px;">
+              <div class="form-group-item">
+                <label style="font-size: 11.5px; font-weight: 700; display: block; margin-bottom: 3px;">Ý nghĩa Tiếng Việt (Cho phép gõ có dấu đầy đủ):</label>
+                <input type="text" id="new-ex-vi" class="form-control" placeholder="Ví dụ: Tôi là kỹ sư.">
+              </div>
+            </div>
+
+            <div class="form-actions-row" style="display: flex; gap: 8px; justify-content: flex-end;">
+              <button type="button" class="btn btn-secondary btn-sm" id="cancel-cust-ex-btn">Hủy</button>
+              <button type="button" class="btn btn-primary btn-sm" id="save-cust-ex-btn">💾 Lưu mẫu ví dụ này</button>
+            </div>
+          </div>
+        ` : ''}
+
+        <div class="custom-examples-list">
+          ${customExamples.length === 0 ? `
+            <div class="empty-custom-ex-hint">Chưa có ví dụ tự tạo nào. Hãy bấm '➕ Thêm ví dụ của bạn' để tạo câu thực tế theo từ vựng bạn yêu thích!</div>
+          ` : customExamples.map(ex => `
+            <div class="custom-example-item-card">
+              <div class="ex-card-left">
+                <div class="ex-card-top-row">
+                  <span class="cust-ex-pattern-badge">${escapeHtml(ex.patternName || 'Ngữ pháp Bài 1')}</span>
+                  <small class="cust-ex-time">${escapeHtml(ex.createdAt || '')}</small>
+                </div>
+                <div class="cust-ex-jp">${ex.jp}</div>
+                <div class="cust-ex-romaji">${escapeHtml(ex.romaji || '')}</div>
+                <div class="cust-ex-vi">${escapeHtml(ex.vi || '')}</div>
+              </div>
+              <div class="ex-card-right-actions">
+                <button type="button" class="btn btn-secondary btn-sm g-speak-btn" data-audio="${ex.audio || ex.jp}" title="Nghe phát âm">
+                  🔊
+                </button>
+                <button type="button" class="btn-delete-cust-ex" data-ex-id="${ex.id}" title="Xóa ví dụ này">
+                  🗑️
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- 3. Phần: Bộ Sinh Đề Luyện Tập Thông Minh ("chỉ gen ra đúng 1 dạng thôi") -->
+      <div class="review-generator-container glass-panel">
+        <div class="review-generator-header">
+          <div class="gen-header-title-box">
+            <h4>⚡ Bộ Sinh Đề Luyện Tập Thông Minh Chuẩn JLPT</h4>
+            <span class="gen-scope-pill">🎯 100% ngữ pháp Bài 1 & ${userVocab.length} từ vựng từ các dự án của bạn</span>
+          </div>
+
+          <div class="review-action-toolbar">
+            <button type="button" class="btn btn-secondary btn-sm" id="rev-regen-btn" title="Sinh ngẫu nhiên đề mới">
+              🎲 Sinh đề mới
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" id="rev-ai-btn" title="Sinh câu hỏi với AI">
+              ✨ Sinh bằng AI
+            </button>
+            <button type="button" class="btn btn-outline btn-sm" id="rev-ai-config-btn" title="Cấu hình Gemini/OpenAI API">
+              ⚙️ AI API
+            </button>
+          </div>
+        </div>
+
+        <!-- Mode Selector: Chọn duy nhất 1 dạng bài như yêu cầu: "chỉ gen ra đúng 1 dạng thôi" -->
+        <div class="review-mode-selector-bar">
+          <button type="button" class="rev-mode-btn ${currentReviewMode === 'translate' ? 'active' : ''}" data-mode="translate">
+            <span class="mode-icon">🔤</span>
+            <span class="mode-title">Dạng 1: Dịch câu & Gõ chữ Nhật (Kana IME)</span>
+          </button>
+          <button type="button" class="rev-mode-btn ${currentReviewMode === 'cloze' ? 'active' : ''}" data-mode="cloze">
+            <span class="mode-icon">✏️</span>
+            <span class="mode-title">Dạng 2: Điền từ vào chỗ trống (JLPT Mondai)</span>
+          </button>
+          <button type="button" class="rev-mode-btn ${currentReviewMode === 'reading' ? 'active' : ''}" data-mode="reading">
+            <span class="mode-icon">📖</span>
+            <span class="mode-title">Dạng 3: Đọc hiểu đoạn văn & Khuyết từ (Dokkai)</span>
+          </button>
+        </div>
+
+        <!-- Nội dung đề bài tương ứng với dạng đang chọn -->
+        <div class="review-arena-questions-stack">
+          ${renderReviewQuestionsArena(lesson, currentReviewQuestions, currentReviewMode, currentReviewAnswers, currentReviewEvaluation)}
+        </div>
+
+        <!-- Tổng kết điểm & Nộp bài -->
+        <div class="review-submit-section">
+          ${hasResult ? `
+            <div class="review-result-panel ${currentReviewEvaluation.passed ? 'panel-pass' : 'panel-tryagain'}">
+              <div class="result-score-heading">
+                <span class="score-main">${currentReviewEvaluation.score} / ${currentReviewEvaluation.total}</span>
+                <span class="score-percent">(${Math.round(currentReviewEvaluation.score / currentReviewEvaluation.total * 100)}%)</span>
+                <strong>${currentReviewEvaluation.passed ? '🎉 XUẤT SẮC! BẠN ĐÃ ĐẠT CHUẨN ÔN TẬP BÀI 1' : '⚠️ Hãy xem lại giải thích chi tiết bên dưới và thử lại nhé!'}</strong>
+              </div>
+              <div class="result-actions" style="margin-top: 10px; display: flex; gap: 8px;">
+                <button type="button" class="btn btn-primary btn-sm" id="rev-retry-btn">Làm lại dạng này</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="rev-next-mode-btn">Đổi sang dạng khác ➔</button>
+              </div>
+            </div>
+          ` : `
+            <button type="button" class="btn btn-primary btn-lg" id="rev-submit-all-btn">
+              📝 Nộp bài & Chấm điểm tức thì
+            </button>
+          `}
+        </div>
+      </div>
+
+      <!-- Modal Cấu hình AI API -->
+      <div class="modal-overlay ${isAIModalOpen ? 'active' : ''}" id="grammar-ai-config-modal">
+        <div class="modal-container glass-panel" style="max-width: 480px; width: 92%;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">
+            <h3 style="margin: 0; color: var(--accent); font-family: var(--font-display); font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">
+              ⚙️ Cấu Hình AI API Sinh Đề Thi
+            </h3>
+            <button type="button" id="close-ai-modal-x" style="background: none; border: none; font-size: 22px; cursor: pointer; color: var(--ink-soft);">×</button>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
+            <div>
+              <label style="font-size: 12.5px; font-weight: 700; display: block; margin-bottom: 4px;">Nhà cung cấp AI:</label>
+              <select id="ai-provider-select" class="form-control">
+                <option value="gemini" ${aiConfig.provider === 'gemini' ? 'selected' : ''}>Google Gemini (Gemini 1.5 Flash - Miễn phí/Nhanh)</option>
+                <option value="openai" ${aiConfig.provider === 'openai' ? 'selected' : ''}>OpenAI (GPT-4o mini)</option>
+              </select>
+            </div>
+
+            <div>
+              <label style="font-size: 12.5px; font-weight: 700; display: block; margin-bottom: 4px;">API Key:</label>
+              <input type="password" id="ai-api-key-input" class="form-control" placeholder="Nhập API Key của bạn..." value="${aiConfig.apiKey || ''}">
+              <small style="color: var(--ink-soft); font-size: 11px; display: block; margin-top: 3px;">
+                🔒 Key được lưu an toàn trực tiếp trên trình duyệt của bạn (Local Storage) để gọi sinh câu hỏi.
+              </small>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px;">
+            <button type="button" class="btn btn-secondary btn-sm" id="close-ai-modal-btn">Đóng</button>
+            <button type="button" class="btn btn-primary btn-sm" id="save-ai-modal-btn">Lưu cấu hình</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderReviewQuestionsArena(lesson, reviewData, mode, answers, evaluation) {
+  if (!reviewData) return '<div class="empty-arena" style="padding: 16px; text-align: center; color: var(--ink-soft);">Chưa có câu hỏi. Bấm Sinh đề mới để bắt đầu.</div>';
+  const questions = reviewData.questions || [];
+  const isSubmitted = evaluation && evaluation.submitted;
+
+  if (mode === "translate") {
+    return questions.map((q, idx) => {
+      const userAns = answers[q.id] || "";
+      let isCorrect = false;
+      if (userAns) {
+        const checkObj = checkTranslationAnswer(userAns, q.targetJp, q.targetRomaji, q.acceptedVariations);
+        isCorrect = checkObj.isCorrect;
+      }
+
+      return `
+        <div class="review-question-card ${isSubmitted ? (isCorrect ? 'card-correct' : 'card-wrong') : ''}" id="rev-card-${q.id}">
+          <div class="rev-q-head">
+            <span class="rev-q-badge">Câu ${idx + 1} · Dịch câu</span>
+            <span class="rev-q-pattern">${escapeHtml(q.pattern || 'A は B です')}</span>
+            ${isSubmitted ? (isCorrect ? '<span class="status-badge badge-pass">✓ Chính xác</span>' : '<span class="status-badge badge-fail">✗ Chưa đúng</span>') : ''}
+          </div>
+
+          <div class="rev-prompt-text">
+            <strong>Tiếng Việt:</strong> <span>${escapeHtml(q.prompt || q.vi || '')}</span>
+          </div>
+
+          <div class="rev-typing-input-group">
+            <input type="text" 
+              class="form-control review-kana-input" 
+              id="rev-input-${q.id}" 
+              data-qid="${q.id}" 
+              value="${escapeHtml(userAns)}" 
+              placeholder="Gõ tiếng Nhật (tự chuyển Kana tức thì)..." 
+              autocomplete="off" 
+              autocorrect="off"
+              ${isSubmitted ? 'readonly' : ''}>
+            <button type="button" class="btn btn-primary btn-sm check-typing-btn" data-qid="${q.id}" ${isSubmitted ? 'disabled' : ''}>
+              Kiểm tra
+            </button>
+          </div>
+
+          ${(isSubmitted || userAns) ? `
+            <div class="rev-answer-reveal">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <div><strong>Đáp án chuẩn:</strong> <span class="revealed-jp">${escapeHtml(q.targetJp)}</span> <span class="revealed-romaji">(${escapeHtml(q.targetRomaji)})</span></div>
+                <button type="button" class="btn btn-secondary btn-sm g-speak-btn" data-audio="${q.targetJp}" title="Nghe phát âm chuẩn">
+                  🔊
+                </button>
+              </div>
+              <div class="rev-explanation-text">💡 <strong>Giải thích ngữ pháp:</strong> ${escapeHtml(q.explanation || '')}</div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+
+  if (mode === "cloze") {
+    return questions.map((q, idx) => {
+      const userChoice = answers[q.id];
+      const isAnswered = typeof userChoice !== "undefined";
+      const isCorrect = userChoice === q.correct;
+
+      return `
+        <div class="review-question-card ${isSubmitted ? (isCorrect ? 'card-correct' : 'card-wrong') : ''}" id="rev-card-${q.id}">
+          <div class="rev-q-head">
+            <span class="rev-q-badge">Câu ${idx + 1} · Điền từ JLPT</span>
+            ${isSubmitted ? (isCorrect ? '<span class="status-badge badge-pass">✓ Đúng</span>' : '<span class="status-badge badge-fail">✗ Sai</span>') : ''}
+          </div>
+
+          <div class="rev-cloze-sentence">${escapeHtml(q.question || q.sentence || '')}</div>
+
+          <div class="rev-options-grid">
+            ${(q.options || []).map((opt, optIdx) => {
+              let optClass = "rev-opt-btn";
+              if (userChoice === optIdx) optClass += " opt-selected";
+              if (isSubmitted) {
+                if (optIdx === q.correct) optClass += " opt-correct";
+                else if (userChoice === optIdx) optClass += " opt-wrong";
+              }
+              return `
+                <button type="button" class="${optClass}" data-qid="${q.id}" data-opt-idx="${optIdx}" ${isSubmitted ? 'disabled' : ''}>
+                  <span class="opt-letter">${String.fromCharCode(65 + optIdx)}</span>
+                  <span class="opt-text">${escapeHtml(opt)}</span>
+                </button>
+              `;
+            }).join('')}
+          </div>
+
+          ${isSubmitted ? `
+            <div class="rev-answer-reveal">
+              <div class="rev-explanation-text">💡 <strong>Giải thích:</strong> ${escapeHtml(q.explanation || '')}</div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+
+  // mode === "reading"
+  const passage = reviewData.passage || {};
+  return `
+    <div class="dokkai-passage-card">
+      <div class="dokkai-head" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <span class="dokkai-tag">📖 Đoạn văn đọc hiểu & ngữ cảnh</span>
+        ${passage.jp ? `
+          <button type="button" class="btn btn-secondary btn-sm g-speak-btn" data-audio="${passage.jp}">
+            🔊 Nghe đoạn văn
+          </button>
+        ` : ''}
+      </div>
+      <p class="dokkai-jp">${passage.jp || ''}</p>
+      <p class="dokkai-romaji">${passage.romaji || ''}</p>
+      <p class="dokkai-vi">${passage.vi || ''}</p>
+    </div>
+
+    <div class="dokkai-questions-list">
+      ${questions.map((q, idx) => {
+        const userChoice = answers[q.id];
+        const isAnswered = typeof userChoice !== "undefined";
+        const isCorrect = userChoice === q.correct;
+
+        return `
+          <div class="review-question-card ${isSubmitted ? (isCorrect ? 'card-correct' : 'card-wrong') : ''}" id="rev-card-${q.id}">
+            <div class="rev-q-head">
+              <span class="rev-q-badge">Câu hỏi ${idx + 1}</span>
+              ${isSubmitted ? (isCorrect ? '<span class="status-badge badge-pass">✓ Đúng</span>' : '<span class="status-badge badge-fail">✗ Sai</span>') : ''}
+            </div>
+
+            <div class="rev-cloze-sentence">${escapeHtml(q.question || q.prompt || '')}</div>
+
+            <div class="rev-options-grid">
+              ${(q.options || []).map((opt, optIdx) => {
+                let optClass = "rev-opt-btn";
+                if (userChoice === optIdx) optClass += " opt-selected";
+                if (isSubmitted) {
+                  if (optIdx === q.correct) optClass += " opt-correct";
+                  else if (userChoice === optIdx) optClass += " opt-wrong";
+                }
+                return `
+                  <button type="button" class="${optClass}" data-qid="${q.id}" data-opt-idx="${optIdx}" ${isSubmitted ? 'disabled' : ''}>
+                    <span class="opt-letter">${String.fromCharCode(65 + optIdx)}</span>
+                    <span class="opt-text">${escapeHtml(opt)}</span>
+                  </button>
+                `;
+              }).join('')}
+            </div>
+
+            ${isSubmitted ? `
+              <div class="rev-answer-reveal">
+                <div class="rev-explanation-text">💡 <strong>Giải thích:</strong> ${escapeHtml(q.explanation || '')}</div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('')}
     </div>
   `;
 }
@@ -981,12 +1839,302 @@ function attachWorkspaceEventListeners(lesson) {
 
       if (passed) {
         try { triggerConfetti(); } catch (err) {}
-        alert(`🎉 XUẤT SẮC! Bạn đạt ${correctCount}/${total} điểm (${Math.round(correctCount / total * 100)}%).\nBạn đã xuất sắc hoàn thành Bài 1 và mở khóa Bài tiếp theo!`);
+        alert(`🎉 XUẤT SẮC! Bạn đạt ${correctCount}/${total} điểm (${Math.round(correctCount / total * 100)}%).\nBạn đã xuất sắc hoàn thành Bài 1! Hãy tiến vào Bước 4: Ôn tập & Sinh đề luyện tập.`);
       } else {
         alert(`Bạn đạt ${correctCount}/${total} điểm (${Math.round(correctCount / total * 100)}%).\nCần đạt từ 80% (7/8 câu) trở lên để qua bài. Hãy thử lại nhé!`);
       }
 
       renderGrammarView();
+    });
+  }
+
+  // Chuyển sang Bước 4: Ôn tập & Sinh đề
+  const goToReviewBtn = document.getElementById("g-go-to-review-btn");
+  if (goToReviewBtn) {
+    goToReviewBtn.addEventListener("click", () => {
+      currentSubStep = "review";
+      const all = loadAllGrammarProgress();
+      all.activeSubStep = "review";
+      saveAllGrammarProgress(all);
+      renderGrammarView();
+    });
+  }
+
+  // Gắn bộ gõ Kana thông minh cho tất cả ô nhập tiếng Nhật trong phần ôn tập & tạo ví dụ
+  document.querySelectorAll(".review-kana-input").forEach(inputEl => {
+    bindKanaInput(inputEl, { mode: "kana" });
+
+    inputEl.addEventListener("input", () => {
+      const qid = inputEl.getAttribute("data-qid");
+      if (qid) {
+        currentReviewAnswers[qid] = inputEl.value;
+      }
+    });
+
+    inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const qid = inputEl.getAttribute("data-qid");
+        const checkBtn = document.querySelector(`.check-typing-btn[data-qid="${qid}"]`);
+        if (checkBtn) checkBtn.click();
+      }
+    });
+  });
+
+  // Toggle mở/đóng form thêm ví dụ mới của người học
+  const toggleCustExBtn = document.getElementById("toggle-add-cust-ex-btn");
+  if (toggleCustExBtn) {
+    toggleCustExBtn.addEventListener("click", () => {
+      isCustomExampleFormOpen = !isCustomExampleFormOpen;
+      renderCenterWorkspace(lesson);
+    });
+  }
+
+  const cancelCustExBtn = document.getElementById("cancel-cust-ex-btn");
+  if (cancelCustExBtn) {
+    cancelCustExBtn.addEventListener("click", () => {
+      isCustomExampleFormOpen = false;
+      renderCenterWorkspace(lesson);
+    });
+  }
+
+  // Lưu mẫu ví dụ tự tạo mới
+  const saveCustExBtn = document.getElementById("save-cust-ex-btn");
+  if (saveCustExBtn) {
+    saveCustExBtn.addEventListener("click", () => {
+      const patSelect = document.getElementById("new-ex-pattern");
+      const jpInput = document.getElementById("new-ex-jp");
+      const romajiInput = document.getElementById("new-ex-romaji");
+      const viInput = document.getElementById("new-ex-vi");
+      if (!jpInput || !viInput) return;
+
+      const jp = jpInput.value.trim();
+      const vi = viInput.value.trim();
+      const romaji = romajiInput ? romajiInput.value.trim() : "";
+      const patternId = patSelect ? patSelect.value : "pattern-1";
+      const patternName = patSelect ? patSelect.options[patSelect.selectedIndex].text : "A は B です";
+
+      if (!jp || !vi) {
+        alert("Vui lòng nhập đầy đủ câu tiếng Nhật và ý nghĩa tiếng Việt.");
+        return;
+      }
+
+      addCustomExample(lesson.id, {
+        patternId,
+        patternName,
+        jp,
+        romaji: romaji || romajiToHiragana(jp),
+        vi,
+        audio: jp
+      });
+
+      isCustomExampleFormOpen = false;
+      renderCenterWorkspace(lesson);
+    });
+  }
+
+  // Xóa ví dụ tự tạo
+  document.querySelectorAll(".btn-delete-cust-ex").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const exId = btn.getAttribute("data-ex-id");
+      if (exId && confirm("Bạn có chắc muốn xóa ví dụ tự tạo này không?")) {
+        deleteCustomExample(lesson.id, exId);
+        renderCenterWorkspace(lesson);
+      }
+    });
+  });
+
+  // Chuyển chế độ sinh đề (chỉ chọn 1 dạng duy nhất)
+  document.querySelectorAll(".rev-mode-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const mode = btn.getAttribute("data-mode");
+      if (mode && mode !== currentReviewMode) {
+        currentReviewMode = mode;
+        currentReviewQuestions = generateLessonReviewQuestions(lesson, currentReviewMode);
+        currentReviewAnswers = {};
+        currentReviewEvaluation = null;
+        renderCenterWorkspace(lesson);
+      }
+    });
+  });
+
+  // Sinh đề mới nội bộ (Offline)
+  const regenBtn = document.getElementById("rev-regen-btn");
+  if (regenBtn) {
+    regenBtn.addEventListener("click", () => {
+      currentReviewQuestions = generateLessonReviewQuestions(lesson, currentReviewMode);
+      currentReviewAnswers = {};
+      currentReviewEvaluation = null;
+      renderCenterWorkspace(lesson);
+    });
+  }
+
+  // Mở/đóng cấu hình AI API
+  const aiConfigBtn = document.getElementById("rev-ai-config-btn");
+  if (aiConfigBtn) {
+    aiConfigBtn.addEventListener("click", () => {
+      isAIModalOpen = true;
+      renderCenterWorkspace(lesson);
+    });
+  }
+
+  const closeAiModalBtn = document.getElementById("close-ai-modal-btn");
+  const closeAiModalX = document.getElementById("close-ai-modal-x");
+  [closeAiModalBtn, closeAiModalX].forEach(b => {
+    if (b) {
+      b.addEventListener("click", () => {
+        isAIModalOpen = false;
+        renderCenterWorkspace(lesson);
+      });
+    }
+  });
+
+  const saveAiModalBtn = document.getElementById("save-ai-modal-btn");
+  if (saveAiModalBtn) {
+    saveAiModalBtn.addEventListener("click", () => {
+      const providerSelect = document.getElementById("ai-provider-select");
+      const apiKeyInput = document.getElementById("ai-api-key-input");
+      if (providerSelect && apiKeyInput) {
+        saveAIConfig({
+          provider: providerSelect.value,
+          apiKey: apiKeyInput.value.trim(),
+          model: providerSelect.value === "openai" ? "gpt-4o-mini" : "gemini-1.5-flash"
+        });
+        alert("✓ Đã lưu cấu hình AI API thành công!");
+        isAIModalOpen = false;
+        renderCenterWorkspace(lesson);
+      }
+    });
+  }
+
+  // Sinh đề bằng AI API
+  const aiGenBtn = document.getElementById("rev-ai-btn");
+  if (aiGenBtn) {
+    aiGenBtn.addEventListener("click", async () => {
+      const cfg = getAIConfig();
+      if (!cfg.apiKey) {
+        alert("Bạn chưa cấu hình API Key. Vui lòng nhập API Key để kết nối AI.");
+        isAIModalOpen = true;
+        renderCenterWorkspace(lesson);
+        return;
+      }
+
+      aiGenBtn.disabled = true;
+      aiGenBtn.textContent = "🤖 Đang gọi AI...";
+
+      try {
+        const { userVocab } = extractLessonAndProjectVocab(lesson);
+        const aiRes = await callAIReviewAPI({ lesson, mode: currentReviewMode, userVocab, config: cfg });
+        if (aiRes && aiRes.questions && aiRes.questions.length > 0) {
+          currentReviewQuestions = aiRes;
+          currentReviewAnswers = {};
+          currentReviewEvaluation = null;
+          alert(`✨ Đã sinh thành công ${aiRes.questions.length} câu hỏi ôn tập bằng AI!`);
+          renderCenterWorkspace(lesson);
+        } else {
+          throw new Error("Dữ liệu trả về từ AI không đúng cấu trúc.");
+        }
+      } catch (err) {
+        console.warn("AI generation error, fallback to local:", err);
+        alert(`⚠️ Không thể kết nối AI (${err.message}).\nHệ thống đã tự động chuyển sang Bộ sinh đề thông minh Offline để không làm gián đoạn bài học của bạn!`);
+        currentReviewQuestions = generateLessonReviewQuestions(lesson, currentReviewMode);
+        currentReviewAnswers = {};
+        currentReviewEvaluation = null;
+        renderCenterWorkspace(lesson);
+      }
+    });
+  }
+
+  // Chọn đáp án trắc nghiệm trong câu hỏi ôn tập
+  document.querySelectorAll(".rev-opt-btn:not([disabled])").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const qid = btn.getAttribute("data-qid");
+      const optIdx = parseInt(btn.getAttribute("data-opt-idx"), 10);
+      if (qid && !isNaN(optIdx)) {
+        currentReviewAnswers[qid] = optIdx;
+        renderCenterWorkspace(lesson);
+      }
+    });
+  });
+
+  // Nút kiểm tra câu dịch riêng lẻ
+  document.querySelectorAll(".check-typing-btn:not([disabled])").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const qid = btn.getAttribute("data-qid");
+      const inputEl = document.getElementById(`rev-input-${qid}`);
+      if (qid && inputEl) {
+        currentReviewAnswers[qid] = inputEl.value;
+        renderCenterWorkspace(lesson);
+      }
+    });
+  });
+
+  // Nộp bài & Chấm điểm toàn diện cho đề ôn tập
+  const revSubmitBtn = document.getElementById("rev-submit-all-btn");
+  if (revSubmitBtn) {
+    revSubmitBtn.addEventListener("click", () => {
+      if (!currentReviewQuestions) return;
+      const questions = currentReviewQuestions.questions || [];
+      let correctCount = 0;
+
+      questions.forEach(q => {
+        if (q.type === "translate") {
+          const inputEl = document.getElementById(`rev-input-${q.id}`);
+          const userVal = inputEl ? inputEl.value : (currentReviewAnswers[q.id] || "");
+          currentReviewAnswers[q.id] = userVal;
+          const checkObj = checkTranslationAnswer(userVal, q.targetJp, q.targetRomaji, q.acceptedVariations);
+          if (checkObj.isCorrect) correctCount++;
+        } else {
+          const userChoice = currentReviewAnswers[q.id];
+          if (userChoice === q.correct) correctCount++;
+        }
+      });
+
+      const total = questions.length;
+      const passed = total > 0 && (correctCount / total) >= 0.8;
+
+      if (passed) {
+        updateLessonProgress(lesson.id, {
+          reviewDone: true,
+          reviewQuizResult: { score: correctCount, total, date: new Date().toISOString() }
+        });
+        try { triggerConfetti(); } catch (e) {}
+      }
+
+      currentReviewEvaluation = {
+        submitted: true,
+        score: correctCount,
+        total,
+        passed
+      };
+
+      renderCenterWorkspace(lesson);
+      renderLeftCourseMenu(lesson);
+      renderRightToolsPanel(lesson);
+    });
+  }
+
+  // Làm lại bài ôn tập
+  const revRetryBtn = document.getElementById("rev-retry-btn");
+  if (revRetryBtn) {
+    revRetryBtn.addEventListener("click", () => {
+      currentReviewAnswers = {};
+      currentReviewEvaluation = null;
+      renderCenterWorkspace(lesson);
+    });
+  }
+
+  // Chuyển sang dạng tiếp theo
+  const revNextModeBtn = document.getElementById("rev-next-mode-btn");
+  if (revNextModeBtn) {
+    revNextModeBtn.addEventListener("click", () => {
+      const modes = ["translate", "cloze", "reading"];
+      const nextIdx = (modes.indexOf(currentReviewMode) + 1) % modes.length;
+      currentReviewMode = modes[nextIdx];
+      currentReviewQuestions = generateLessonReviewQuestions(lesson, currentReviewMode);
+      currentReviewAnswers = {};
+      currentReviewEvaluation = null;
+      renderCenterWorkspace(lesson);
     });
   }
 }
@@ -1150,6 +2298,14 @@ function renderRightToolsPanel(lesson) {
             <div class="res-info">
               <strong>3. Bài kiểm tra đánh giá</strong>
               <small>${progress.testPassed ? `Đạt ${progress.testScore}/${progress.testTotal} điểm (Xuất sắc ⭐⭐⭐)` : (progress.testScore > 0 ? `Đạt ${progress.testScore}/${progress.testTotal} (Chưa đạt ≥80%)` : 'Chưa nộp bài')}</small>
+            </div>
+          </div>
+
+          <div class="res-item-row ${progress.reviewDone ? 'done' : 'doing'}">
+            <div class="res-icon">${progress.reviewDone ? '🌟' : '🔥'}</div>
+            <div class="res-info">
+              <strong>4. Ôn tập & Sinh đề luyện tập</strong>
+              <small>${progress.reviewDone ? 'Đã hoàn thành ôn tập & luyện đề' : 'Chưa hoàn thành'}</small>
             </div>
           </div>
         </div>
