@@ -127,6 +127,26 @@ function romajiToHiragana(text, { finalize = true } = {}) {
   while (i < cleaned.length) {
     const char = cleaned[i];
 
+    // Xử lý khi có 'ん' đứng trước một nguyên âm hoặc 'y': ví dụ 'んa' -> 'な', 'んi' -> 'に', 'んya' -> 'にゃ'
+    if (char === 'ん' && i + 1 < cleaned.length) {
+      const nextChar = cleaned[i + 1];
+      if ("aeiou".includes(nextChar)) {
+        const naMap = { "a": "な", "i": "に", "u": "ぬ", "e": "ね", "o": "の" };
+        result += naMap[nextChar];
+        i += 2;
+        continue;
+      }
+      if (nextChar === 'y' && i + 2 < cleaned.length) {
+        const afterY = cleaned[i + 2];
+        const nyaMap = { "a": "にゃ", "u": "にゅ", "o": "にょ", "e": "にぇ" };
+        if (nyaMap[afterY]) {
+          result += nyaMap[afterY];
+          i += 3;
+          continue;
+        }
+      }
+    }
+
     if ((char >= '\u3000' && char <= '\u9FAF') || char === ' ' || char === '　') {
       result += char;
       i++;
@@ -155,7 +175,7 @@ function romajiToHiragana(text, { finalize = true } = {}) {
           i += 1;
           continue;
         }
-      } else if (finalize) {
+      } else {
         result += "ん";
         i++;
         continue;

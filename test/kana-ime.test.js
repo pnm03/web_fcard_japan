@@ -48,6 +48,82 @@ test("romajiToHiragana xử lý câu dài và cụm từ như kochirawa san desu
   assert.equal(romajiToHiragana("コチラワ san desu"), "コチラワ さん です");
 });
 
+test("romajiToHiragana và bindKanaInput kiểm tra và chuyển đổi tức thì trên từng ký tự (s -> sa -> san -> sanjuuroku)", () => {
+  assert.equal(romajiToHiragana("s"), "s");
+  assert.equal(romajiToHiragana("sa"), "さ");
+  assert.equal(romajiToHiragana("san"), "さん");
+  assert.equal(romajiToHiragana("sana"), "さな");
+  assert.equal(romajiToHiragana("sanjuuroku"), "さんじゅうろく");
+
+  const listeners = {};
+  const dummyEl = {
+    value: "",
+    selectionStart: 0,
+    selectionEnd: 0,
+    setSelectionRange(s, e) {
+      this.selectionStart = s;
+      this.selectionEnd = e;
+    },
+    addEventListener(evt, fn) {
+      listeners[evt] = fn;
+    },
+    removeEventListener(evt) {
+      delete listeners[evt];
+    }
+  };
+
+  bindKanaInput(dummyEl, { mode: "kana" });
+
+  function type(char) {
+    const before = dummyEl.value.slice(0, dummyEl.selectionStart);
+    const after = dummyEl.value.slice(dummyEl.selectionEnd);
+    dummyEl.value = before + char + after;
+    dummyEl.selectionStart = before.length + char.length;
+    dummyEl.selectionEnd = dummyEl.selectionStart;
+    listeners.input();
+  }
+
+  // Gõ s
+  type("s");
+  assert.equal(dummyEl.value, "s");
+
+  // Gõ a -> thành さ ngay lập tức
+  type("a");
+  assert.equal(dummyEl.value, "さ");
+
+  // Gõ n -> thành さん ngay lập tức mà không cần bấm cách hay enter
+  type("n");
+  assert.equal(dummyEl.value, "さん");
+
+  // Gõ j -> thành さんj
+  type("j");
+  assert.equal(dummyEl.value, "さんj");
+
+  // Gõ u -> thành さんじゅ
+  type("u");
+  assert.equal(dummyEl.value, "さんじゅ");
+
+  // Gõ u -> thành さんじゅう
+  type("u");
+  assert.equal(dummyEl.value, "さんじゅう");
+
+  // Gõ r -> thành さんじゅうr
+  type("r");
+  assert.equal(dummyEl.value, "さんじゅうr");
+
+  // Gõ o -> thành さんじゅうろ
+  type("o");
+  assert.equal(dummyEl.value, "さんじゅうろ");
+
+  // Gõ k -> thành さんじゅうろk
+  type("k");
+  assert.equal(dummyEl.value, "さんじゅうろk");
+
+  // Gõ u -> thành さんじゅうろく
+  type("u");
+  assert.equal(dummyEl.value, "さんじゅうろく");
+});
+
 test("normalizeTelexAccents khử sạch dấu Telex từ Unikey", () => {
   assert.equal(normalizeTelexAccents("kás"), "kas");
   assert.equal(normalizeTelexAccents("nê"), "ne");

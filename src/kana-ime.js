@@ -141,6 +141,26 @@ export function romajiToHiragana(text, { finalize = true } = {}) {
   while (i < cleaned.length) {
     const char = cleaned[i];
 
+    // Xử lý khi có 'ん' đứng trước một nguyên âm hoặc 'y': ví dụ 'んa' -> 'な', 'んi' -> 'に', 'んya' -> 'にゃ'
+    if (char === 'ん' && i + 1 < cleaned.length) {
+      const nextChar = cleaned[i + 1];
+      if ("aeiou".includes(nextChar)) {
+        const naMap = { "a": "な", "i": "に", "u": "ぬ", "e": "ね", "o": "の" };
+        result += naMap[nextChar];
+        i += 2;
+        continue;
+      }
+      if (nextChar === 'y' && i + 2 < cleaned.length) {
+        const afterY = cleaned[i + 2];
+        const nyaMap = { "a": "にゃ", "u": "にゅ", "o": "にょ", "e": "にぇ" };
+        if (nyaMap[afterY]) {
+          result += nyaMap[afterY];
+          i += 3;
+          continue;
+        }
+      }
+    }
+
     // Giữ nguyên các ký tự đã là Kana (Hiragana/Katakana), Kanji hoặc dấu câu/khoảng trắng
     if ((char >= '\u3000' && char <= '\u9FAF') || char === ' ' || char === '　') {
       result += char;
@@ -174,8 +194,8 @@ export function romajiToHiragana(text, { finalize = true } = {}) {
           i += 1;
           continue;
         }
-      } else if (finalize) {
-        // Ký tự 'n' ở cuối chuỗi khi finalize (ấn enter/space hoặc submit)
+      } else {
+        // Ký tự 'n' ở cuối chuỗi -> chuyển thành 'ん' ngay lập tức trong thời gian thực
         result += "ん";
         i++;
         continue;
@@ -236,10 +256,9 @@ export function bindKanaInput(inputEl, options = {}) {
 
   let isEnabled = options.enabled !== false;
   let mode = options.mode || "kana"; // "kana" | "romaji" | "raw"
-  let isComposing = false;
 
   function update() {
-    if (!isEnabled || isComposing) return;
+    if (!isEnabled) return;
     if (mode === "raw") return;
 
     const original = inputEl.value;
@@ -260,10 +279,10 @@ export function bindKanaInput(inputEl, options = {}) {
     }
 
     if (mode === "kana") {
-      const converted = romajiToHiragana(original, { finalize: false });
+      const converted = romajiToHiragana(original);
       if (converted !== original) {
         const textBeforeCursor = original.slice(0, cursorPos);
-        const convertedBefore = romajiToHiragana(textBeforeCursor, { finalize: false });
+        const convertedBefore = romajiToHiragana(textBeforeCursor);
         inputEl.value = converted;
         const newPos = convertedBefore.length;
         try {
@@ -273,18 +292,11 @@ export function bindKanaInput(inputEl, options = {}) {
     }
   }
 
-  const handleInput = (e) => {
-    if (e && e.isComposing) return;
-    if (isComposing) return;
+  const handleInput = () => {
     update();
   };
 
-  const handleCompositionStart = () => {
-    isComposing = true;
-  };
-
   const handleCompositionEnd = () => {
-    isComposing = false;
     update();
   };
 
@@ -322,7 +334,6 @@ export function bindKanaInput(inputEl, options = {}) {
   };
 
   inputEl.addEventListener("input", handleInput);
-  inputEl.addEventListener("compositionstart", handleCompositionStart);
   inputEl.addEventListener("compositionend", handleCompositionEnd);
   inputEl.addEventListener("keydown", handleKeyDown);
 
@@ -382,7 +393,6 @@ export function bindKanaInput(inputEl, options = {}) {
     },
     destroy() {
       inputEl.removeEventListener("input", handleInput);
-      inputEl.removeEventListener("compositionstart", handleCompositionStart);
       inputEl.removeEventListener("compositionend", handleCompositionEnd);
       inputEl.removeEventListener("keydown", handleKeyDown);
     }
