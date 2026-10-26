@@ -273,6 +273,29 @@ test("game-center.js: Hệ thống Mana, Quái vật nhiều HP & Đòn kết li
   assert.equal(mario.victory, true, "Giải mã thành công phong ấn phải chiến thắng giải cứu công chúa!");
 });
 
+test("game-center.js & assets: Bộ tài nguyên đồ họa HD 2D (Background Studio Ghibli, Chibi Hero, Princess, Oni, Chest, Cage)", () => {
+  const assetDir = path.resolve(__dirname, "../public/assets/game");
+  assert.ok(fs.existsSync(assetDir), "Thư mục public/assets/game phải tồn tại");
+
+  const requiredAssets = [
+    "bg_mount_fuji.jpg",
+    "hero_idle.png",
+    "hero_run.png",
+    "hero_slash.png",
+    "princess.png",
+    "oni.png",
+    "chest.png",
+    "cage.png"
+  ];
+
+  requiredAssets.forEach(asset => {
+    const fullPath = path.join(assetDir, asset);
+    assert.ok(fs.existsSync(fullPath), `Tài nguyên ${asset} phải tồn tại`);
+    const stat = fs.statSync(fullPath);
+    assert.ok(stat.size > 1000, `Tài nguyên ${asset} phải có dung lượng hợp lệ (> 1KB)`);
+  });
+});
+
 test("style.css: Chứa đầy đủ CSS sàn đấu quái vật, lâu đài công chúa, Mario 2D và lật thẻ đa kích thước", () => {
   const cssPath = path.resolve(__dirname, "../src/style.css");
   const css = fs.readFileSync(cssPath, "utf-8");

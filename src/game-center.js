@@ -1286,6 +1286,40 @@ function checkAABB(x1, y1, w1, h1, x2, y2, w2, h2) {
   return x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2;
 }
 
+// ==========================================
+// KHO TÀI NGUYÊN ĐỒ HỌA HD 2D (HD GAME ASSETS)
+// ==========================================
+const GAME_ASSET_URLS = {
+  bg: "./assets/game/bg_mount_fuji.jpg",
+  heroIdle: "./assets/game/hero_idle.png",
+  heroRun: "./assets/game/hero_run.png",
+  heroSlash: "./assets/game/hero_slash.png",
+  princess: "./assets/game/princess.png",
+  oni: "./assets/game/oni.png",
+  chest: "./assets/game/chest.png",
+  cage: "./assets/game/cage.png"
+};
+
+const loadedGameImages = {};
+
+function getLoadedAsset(key) {
+  if (typeof window === "undefined" || typeof Image === "undefined") return null;
+  if (!loadedGameImages[key]) {
+    const img = new Image();
+    const primaryUrl = GAME_ASSET_URLS[key];
+    img.src = primaryUrl;
+    img.onerror = () => {
+      const fallbackUrl = primaryUrl.startsWith("./") ? primaryUrl.slice(1) : primaryUrl;
+      if (img.src !== fallbackUrl) {
+        img.src = fallbackUrl;
+      }
+    };
+    loadedGameImages[key] = img;
+  }
+  const img = loadedGameImages[key];
+  return (img && img.complete && img.naturalWidth > 0) ? img : null;
+}
+
 function renderMarioCanvas(ctx) {
   if (!marioState) return;
   const cw = marioState.canvasWidth;
@@ -1297,108 +1331,135 @@ function renderMarioCanvas(ctx) {
 
   ctx.clearRect(0, 0, cw, ch);
 
-  // 1. Sky Gradient biến chuyển màu theo 4 khu vực
-  const skyGrad = ctx.createLinearGradient(0, 0, 0, ch);
-  if (worldProgress < 0.3) {
-    // Khu 1: Bình minh tươi sáng
-    skyGrad.addColorStop(0, "#38bdf8");
-    skyGrad.addColorStop(0.55, "#7dd3fc");
-    skyGrad.addColorStop(0.85, "#fef08a");
-    skyGrad.addColorStop(1, "#fed7aa");
-  } else if (worldProgress < 0.6) {
-    // Khu 2: Hoàng hôn rực lửa hẻm núi
-    skyGrad.addColorStop(0, "#ea580c");
-    skyGrad.addColorStop(0.5, "#f97316");
-    skyGrad.addColorStop(0.85, "#fdba74");
-    skyGrad.addColorStop(1, "#fef08a");
-  } else if (worldProgress < 0.85) {
-    // Khu 3: Hoàng hôn tím đền thần
-    skyGrad.addColorStop(0, "#4338ca");
-    skyGrad.addColorStop(0.5, "#7c3aed");
-    skyGrad.addColorStop(0.85, "#c084fc");
-    skyGrad.addColorStop(1, "#fbcfe8");
+  // 1. HẬU CẢNH: Sử dụng hình nền Studio Ghibli HD hoặc Procedural Gradient
+  const bgImg = getLoadedAsset("bg");
+  if (bgImg) {
+    const bgW = 1376;
+    const bgH = ch;
+    const parallaxX = (camX * 0.16) % bgW;
+    ctx.drawImage(bgImg, -parallaxX, 0, bgW, bgH);
+    if (parallaxX > bgW - cw) {
+      ctx.drawImage(bgImg, bgW - parallaxX, 0, bgW, bgH);
+    }
+    // Lớp phủ khí quyển huyền ảo theo phân vùng map
+    const tintGrad = ctx.createLinearGradient(0, 0, 0, ch);
+    if (worldProgress > 0.75) {
+      tintGrad.addColorStop(0, "rgba(15, 23, 42, 0.25)");
+      tintGrad.addColorStop(0.7, "rgba(30, 27, 75, 0.3)");
+      tintGrad.addColorStop(1, "rgba(15, 23, 42, 0.55)");
+      ctx.fillStyle = tintGrad;
+      ctx.fillRect(0, 0, cw, ch);
+    } else {
+      tintGrad.addColorStop(0, "rgba(255, 255, 255, 0.05)");
+      tintGrad.addColorStop(0.8, "rgba(0, 0, 0, 0)");
+      tintGrad.addColorStop(1, "rgba(0, 0, 0, 0.35)");
+      ctx.fillStyle = tintGrad;
+      ctx.fillRect(0, 0, cw, ch);
+    }
   } else {
-    // Khu 4: Đêm trăng huyền ảo quanh lâu đài
-    skyGrad.addColorStop(0, "#0f172a");
-    skyGrad.addColorStop(0.5, "#1e1b4b");
-    skyGrad.addColorStop(0.85, "#312e81");
-    skyGrad.addColorStop(1, "#4338ca");
-  }
-  ctx.fillStyle = skyGrad;
-  ctx.fillRect(0, 0, cw, ch);
+    // 1. Sky Gradient biến chuyển màu theo 4 khu vực (Fallback)
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, ch);
+    if (worldProgress < 0.3) {
+      // Khu 1: Bình minh tươi sáng
+      skyGrad.addColorStop(0, "#38bdf8");
+      skyGrad.addColorStop(0.55, "#7dd3fc");
+      skyGrad.addColorStop(0.85, "#fef08a");
+      skyGrad.addColorStop(1, "#fed7aa");
+    } else if (worldProgress < 0.6) {
+      // Khu 2: Hoàng hôn rực lửa hẻm núi
+      skyGrad.addColorStop(0, "#ea580c");
+      skyGrad.addColorStop(0.5, "#f97316");
+      skyGrad.addColorStop(0.85, "#fdba74");
+      skyGrad.addColorStop(1, "#fef08a");
+    } else if (worldProgress < 0.85) {
+      // Khu 3: Hoàng hôn tím đền thần
+      skyGrad.addColorStop(0, "#4338ca");
+      skyGrad.addColorStop(0.5, "#7c3aed");
+      skyGrad.addColorStop(0.85, "#c084fc");
+      skyGrad.addColorStop(1, "#fbcfe8");
+    } else {
+      // Khu 4: Đêm trăng huyền ảo quanh lâu đài
+      skyGrad.addColorStop(0, "#0f172a");
+      skyGrad.addColorStop(0.5, "#1e1b4b");
+      skyGrad.addColorStop(0.85, "#312e81");
+      skyGrad.addColorStop(1, "#4338ca");
+    }
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, cw, ch);
 
-  // Vầng dương / Mặt trăng trên trời
-  if (worldProgress < 0.85) {
-    const sunGrad = ctx.createRadialGradient(cw * 0.22, 100, 10, cw * 0.22, 100, 75);
-    sunGrad.addColorStop(0, "rgba(255, 255, 255, 0.95)");
-    sunGrad.addColorStop(0.3, "rgba(254, 240, 138, 0.7)");
-    sunGrad.addColorStop(1, "rgba(254, 240, 138, 0)");
-    ctx.fillStyle = sunGrad;
+    // Vầng dương / Mặt trăng trên trời
+    if (worldProgress < 0.85) {
+      const sunGrad = ctx.createRadialGradient(cw * 0.22, 100, 10, cw * 0.22, 100, 75);
+      sunGrad.addColorStop(0, "rgba(255, 255, 255, 0.95)");
+      sunGrad.addColorStop(0.3, "rgba(254, 240, 138, 0.7)");
+      sunGrad.addColorStop(1, "rgba(254, 240, 138, 0)");
+      ctx.fillStyle = sunGrad;
+      ctx.beginPath();
+      ctx.arc(cw * 0.22, 100, 75, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Trăng rằm bạc trên bầu trời lâu đài
+      ctx.fillStyle = "#fef08a";
+      ctx.beginPath();
+      ctx.arc(cw * 0.22, 90, 38, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(254, 240, 138, 0.25)";
+      ctx.beginPath();
+      ctx.arc(cw * 0.22, 90, 52, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Núi Phú Sĩ tuyết trắng hùng vĩ ở hậu cảnh xa
+    const fujiX = cw * 0.68 - (camX * 0.04) % 900;
+    ctx.fillStyle = (worldProgress > 0.85 ? "#312e81" : "#6366f1");
     ctx.beginPath();
-    ctx.arc(cw * 0.22, 100, 75, 0, Math.PI * 2);
+    ctx.moveTo(fujiX - 170, 370);
+    ctx.lineTo(fujiX, 135);
+    ctx.lineTo(fujiX + 170, 370);
+    ctx.closePath();
     ctx.fill();
-  } else {
-    // Trăng rằm bạc trên bầu trời lâu đài
-    ctx.fillStyle = "#fef08a";
+
+    ctx.fillStyle = "#ffffff";
     ctx.beginPath();
-    ctx.arc(cw * 0.22, 90, 38, 0, Math.PI * 2);
+    ctx.moveTo(fujiX - 44, 195);
+    ctx.lineTo(fujiX, 135);
+    ctx.lineTo(fujiX + 44, 195);
+    ctx.lineTo(fujiX + 26, 210);
+    ctx.lineTo(fujiX + 8, 202);
+    ctx.lineTo(fujiX - 10, 212);
+    ctx.lineTo(fujiX - 28, 204);
+    ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = "rgba(254, 240, 138, 0.25)";
+
+    // Cổng Torii đền thần thoại ở xa
+    const toriiX = 380 - (camX * 0.12) % 1100;
+    if (toriiX > -60 && toriiX < cw + 60) {
+      ctx.fillStyle = "#dc2626";
+      ctx.fillRect(toriiX - 24, 250, 48, 5);
+      ctx.fillRect(toriiX - 20, 257, 40, 4);
+      ctx.fillRect(toriiX - 15, 255, 4, 75);
+      ctx.fillRect(toriiX + 11, 255, 4, 75);
+    }
+
+    // Mây trôi bồng bềnh
+    ctx.fillStyle = (worldProgress > 0.85 ? "rgba(226, 232, 240, 0.4)" : "rgba(255, 255, 255, 0.92)");
+    const cloudOffset = (camX * 0.22) % 450;
+    drawCloud(ctx, 110 - cloudOffset, 70, 46);
+    drawCloud(ctx, 360 - cloudOffset, 90, 56);
+    drawCloud(ctx, 620 - cloudOffset, 65, 42);
+    drawCloud(ctx, 880 - cloudOffset, 80, 50);
+
+    // Đồi núi xanh tầng trung
+    ctx.fillStyle = (worldProgress > 0.85 ? "#1e293b" : "#4ade80");
     ctx.beginPath();
-    ctx.arc(cw * 0.22, 90, 52, 0, Math.PI * 2);
+    ctx.moveTo(0, ch);
+    for (let x = 0; x <= cw; x += 60) {
+      const hillY = 325 + Math.sin((x + camX * 0.35) * 0.012) * 32;
+      ctx.lineTo(x, hillY);
+    }
+    ctx.lineTo(cw, ch);
     ctx.fill();
   }
-
-  // Núi Phú Sĩ tuyết trắng hùng vĩ ở hậu cảnh xa
-  const fujiX = cw * 0.68 - (camX * 0.04) % 900;
-  ctx.fillStyle = (worldProgress > 0.85 ? "#312e81" : "#6366f1");
-  ctx.beginPath();
-  ctx.moveTo(fujiX - 170, 370);
-  ctx.lineTo(fujiX, 135);
-  ctx.lineTo(fujiX + 170, 370);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.fillStyle = "#ffffff";
-  ctx.beginPath();
-  ctx.moveTo(fujiX - 44, 195);
-  ctx.lineTo(fujiX, 135);
-  ctx.lineTo(fujiX + 44, 195);
-  ctx.lineTo(fujiX + 26, 210);
-  ctx.lineTo(fujiX + 8, 202);
-  ctx.lineTo(fujiX - 10, 212);
-  ctx.lineTo(fujiX - 28, 204);
-  ctx.closePath();
-  ctx.fill();
-
-  // Cổng Torii đền thần thoại ở xa
-  const toriiX = 380 - (camX * 0.12) % 1100;
-  if (toriiX > -60 && toriiX < cw + 60) {
-    ctx.fillStyle = "#dc2626";
-    ctx.fillRect(toriiX - 24, 250, 48, 5);
-    ctx.fillRect(toriiX - 20, 257, 40, 4);
-    ctx.fillRect(toriiX - 15, 255, 4, 75);
-    ctx.fillRect(toriiX + 11, 255, 4, 75);
-  }
-
-  // Mây trôi bồng bềnh
-  ctx.fillStyle = (worldProgress > 0.85 ? "rgba(226, 232, 240, 0.4)" : "rgba(255, 255, 255, 0.92)");
-  const cloudOffset = (camX * 0.22) % 450;
-  drawCloud(ctx, 110 - cloudOffset, 70, 46);
-  drawCloud(ctx, 360 - cloudOffset, 90, 56);
-  drawCloud(ctx, 620 - cloudOffset, 65, 42);
-  drawCloud(ctx, 880 - cloudOffset, 80, 50);
-
-  // Đồi núi xanh tầng trung
-  ctx.fillStyle = (worldProgress > 0.85 ? "#1e293b" : "#4ade80");
-  ctx.beginPath();
-  ctx.moveTo(0, ch);
-  for (let x = 0; x <= cw; x += 60) {
-    const hillY = 325 + Math.sin((x + camX * 0.35) * 0.012) * 32;
-    ctx.lineTo(x, hillY);
-  }
-  ctx.lineTo(cw, ch);
-  ctx.fill();
 
   // Cánh hoa anh đào Sakura bay lượn
   if (marioState.sakuraPetals) {
@@ -1558,6 +1619,43 @@ function drawCloud(ctx, x, y, r) {
 }
 
 function drawKnight(ctx, p, animTick) {
+  const sprite = p.isAttacking
+    ? (getLoadedAsset("heroSlash") || getLoadedAsset("heroIdle"))
+    : (Math.abs(p.vx) > 0.4 || !p.onGround
+      ? (getLoadedAsset("heroRun") || getLoadedAsset("heroIdle"))
+      : getLoadedAsset("heroIdle"));
+
+  if (sprite) {
+    ctx.save();
+    ctx.translate(p.x + p.w / 2, p.y + p.h / 2);
+    if (p.facing === "left") ctx.scale(-1, 1);
+
+    const bob = p.onGround ? (Math.abs(p.vx) > 0.4 ? Math.sin(animTick * 0.4) * 2 : Math.sin(animTick * 0.1) * 1) : -3;
+    const spriteW = p.w * 1.5;
+    const spriteH = p.h * 1.25;
+
+    // Bóng tiếp đất dưới chân
+    if (p.onGround) {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
+      ctx.beginPath();
+      ctx.ellipse(0, spriteH / 2 - 2, 13, 3.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.drawImage(sprite, -spriteW / 2, -spriteH / 2 + bob, spriteW, spriteH);
+
+    // Bụi đất lướt gió khi chạy nhanh
+    if (p.onGround && Math.abs(p.vx) > 1.2 && animTick % 4 === 0) {
+      ctx.fillStyle = "rgba(226, 232, 240, 0.45)";
+      ctx.beginPath();
+      ctx.arc(-spriteW / 2 + 2, spriteH / 2 - 4, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+    return;
+  }
+
   ctx.save();
   ctx.translate(p.x + p.w / 2, p.y + p.h / 2);
   if (p.facing === "left") ctx.scale(-1, 1);
@@ -1711,6 +1809,16 @@ function drawEnemy(ctx, e, animTick) {
     ctx.beginPath();
     ctx.arc(0, bob, 18, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  // Tài nguyên ảnh Chibi Oni HD
+  const oniSprite = (e.type === "oni" || e.type === "boss") ? getLoadedAsset("oni") : null;
+  if (oniSprite) {
+    const spriteW = e.w * 1.5;
+    const spriteH = e.h * 1.5;
+    ctx.drawImage(oniSprite, -spriteW / 2, -spriteH / 2 + bob, spriteW, spriteH);
     ctx.restore();
     return;
   }
@@ -1878,6 +1986,38 @@ function drawEnemy(ctx, e, animTick) {
 }
 
 function drawChest(ctx, c, animTick) {
+  const chestSprite = getLoadedAsset("chest");
+  if (chestSprite) {
+    ctx.save();
+    ctx.translate(c.x, c.y);
+    const pulse = Math.sin(animTick * 0.15) * 2;
+    const drawW = c.w * 1.35;
+    const drawH = c.h * 1.35;
+    const drawX = (c.w - drawW) / 2;
+    const drawY = (c.h - drawH) / 2 + (c.opened ? -4 : 0);
+
+    if (!c.opened) {
+      ctx.shadowColor = "#fbbf24";
+      ctx.shadowBlur = 10 + pulse * 2;
+    }
+    ctx.drawImage(chestSprite, drawX, drawY, drawW, drawH);
+    ctx.shadowBlur = 0;
+
+    if (c.opened) {
+      ctx.fillStyle = "#fbbf24";
+      ctx.font = "bold 11px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("✨ ĐÃ MỞ", c.w / 2, -6);
+    } else {
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "13px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("✨", c.w / 2, -8 + pulse);
+    }
+    ctx.restore();
+    return;
+  }
+
   ctx.save();
   ctx.translate(c.x, c.y);
 
@@ -2094,9 +2234,78 @@ function drawCastle(ctx, x, y, w, h) {
   ctx.beginPath();
   ctx.arc(x + w / 2, y + h, 46, Math.PI, 0);
   ctx.fill();
+
+  // Cửa sổ Shoji phát sáng màu vàng ấm
+  ctx.fillStyle = "#fef08a";
+  ctx.fillRect(x + w / 2 - 20, y + 90, 16, 18);
+  ctx.fillRect(x + w / 2 + 4, y + 90, 16, 18);
+  ctx.strokeStyle = "#78350f";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(x + w / 2 - 20, y + 90, 16, 18);
+  ctx.strokeRect(x + w / 2 + 4, y + 90, 16, 18);
+
+  // Đèn lồng đỏ hai bên cổng thành
+  [-30, w + 16].forEach(lx => {
+    ctx.fillStyle = "#dc2626";
+    ctx.fillRect(x + lx, y + h - 55, 14, 20);
+    ctx.fillStyle = "#fef08a";
+    ctx.fillRect(x + lx + 3, y + h - 50, 8, 10);
+    ctx.fillStyle = "rgba(254, 240, 138, 0.35)";
+    ctx.beginPath();
+    ctx.arc(x + lx + 7, y + h - 45, 16, 0, Math.PI * 2);
+    ctx.fill();
+  });
 }
 
 function drawPrincess(ctx, x, y, rescued, inCage, animTick) {
+  const princessSprite = getLoadedAsset("princess");
+  const cageSprite = getLoadedAsset("cage");
+
+  if (princessSprite) {
+    ctx.save();
+    const bounce = rescued ? Math.abs(Math.sin(animTick * 0.2)) * 8 : 0;
+    ctx.translate(x, y - bounce);
+
+    const pw = 48;
+    const ph = 68;
+    ctx.drawImage(princessSprite, -pw / 2, -ph / 2, pw, ph);
+
+    if (rescued) {
+      ctx.fillStyle = "#f43f5e";
+      ctx.font = "16px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("💖", -18, -ph / 2 - (animTick % 30));
+      ctx.fillText("✨", 14, -ph / 2 - ((animTick + 15) % 30));
+    }
+
+    if (inCage) {
+      if (cageSprite) {
+        const cw = 76;
+        const ch = 88;
+        const cagePulse = Math.sin(animTick * 0.15) * 3;
+        ctx.shadowColor = "#c084fc";
+        ctx.shadowBlur = 14 + cagePulse * 2;
+        ctx.drawImage(cageSprite, -cw / 2, -ch / 2 + 6, cw, ch);
+        ctx.shadowBlur = 0;
+
+        ctx.fillStyle = "#f472b6";
+        ctx.font = "bold 11px sans-serif";
+        ctx.textAlign = "center";
+        ctx.shadowColor = "#000";
+        ctx.shadowBlur = 4;
+        ctx.fillText("⚡ PHONG ẤN [SEAL]", 0, -ch / 2);
+        ctx.shadowBlur = 0;
+      } else {
+        ctx.strokeStyle = "#a855f7";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(-22, -ph / 2 - 6, 44, ph + 12);
+      }
+    }
+
+    ctx.restore();
+    return;
+  }
+
   ctx.save();
   const bounce = rescued ? Math.abs(Math.sin(animTick * 0.2)) * 8 : 0;
   ctx.translate(x, y - bounce);
