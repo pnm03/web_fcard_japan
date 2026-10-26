@@ -62,6 +62,7 @@ import {
 import { bindKanaInput, romajiToHiragana } from "./kana-ime.js";
 import { setupSpokenNotesUI, renderSpokenNotesList } from "./spoken-notes.js";
 import { setupGrammarUI, renderGrammarView } from "./grammar.js";
+import { setupJlptExamUI, renderJlptExamView } from "./jlpt-exam.js";
 
 
 // Khai báo các biến trạng thái giao diện toàn cục
@@ -358,6 +359,7 @@ export function initUI() {
   setupKanaEvents();
   setupSpokenNotesUI();
   setupGrammarUI();
+  setupJlptExamUI();
   
   // Tải danh sách giọng nói speechSynthesis một cách chủ động (khắc phục lỗi Chrome trả về mảng rỗng lần đầu)
   if ('speechSynthesis' in window) {
@@ -1709,7 +1711,7 @@ export function switchView(viewId) {
     } else if (group === "quiz") {
       isGroupActive = viewId === "quiz-setup-view" || viewId === "quiz-active-view" || viewId === "quiz-report-view" || viewId === "kana-setup-view" || viewId === "kana-practice-view";
     } else if (group === "learn") {
-      isGroupActive = viewId === "grammar-view" || viewId === "spoken-notes-view";
+      isGroupActive = viewId === "grammar-view" || viewId === "spoken-notes-view" || viewId === "jlpt-exam-view";
     }
 
     if (trigger) {
@@ -1764,6 +1766,11 @@ export function switchView(viewId) {
       document.body.classList.remove("view-grammar-active");
     }
     renderSpokenNotesList();
+  } else if (viewId === "jlpt-exam-view") {
+    if (typeof document !== "undefined" && document.body) {
+      document.body.classList.remove("view-grammar-active");
+    }
+    renderJlptExamView();
   } else {
     if (typeof document !== "undefined" && document.body) {
       document.body.classList.remove("view-grammar-active");
