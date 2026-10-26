@@ -11583,6 +11583,308 @@ body.view-grammar-active .container,
   margin-top: 4px;
 }
 
+/* Memory Game Config & Scalable Grid */
+.memory-config-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.grid-size-selector-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.mem-size-pill {
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mem-size-pill:hover {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.mem-size-pill.active {
+  background: #3b82f6;
+  color: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
+}
+
+.memory-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.memory-board-viewport {
+  overflow: auto;
+  max-height: 70vh;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.02);
+  display: flex;
+  justify-content: center;
+}
+
+.memory-cards-grid-scalable {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr));
+  gap: 8px;
+  transition: transform 0.2s ease;
+  transform-origin: top center;
+  width: 100%;
+  max-width: 100%;
+}
+
+.card-size-3x3 { height: 130px; font-size: 1.3rem; }
+.card-size-4x4 { height: 110px; font-size: 1.1rem; }
+.card-size-5x5 { height: 95px; font-size: 0.95rem; }
+.card-size-8x8 { height: 75px; font-size: 0.78rem; }
+.card-size-12x12 { height: 58px; font-size: 0.65rem; }
+.card-size-15x15 { height: 48px; font-size: 0.58rem; }
+.card-size-20x20 { height: 40px; font-size: 0.52rem; }
+.card-size-25x25 { height: 34px; font-size: 0.46rem; }
+
+.card-front-star {
+  background: linear-gradient(135deg, #fef08a 0%, #fde047 100%) !important;
+  border-color: #eab308 !important;
+  color: #713f12 !important;
+  box-shadow: 0 0 12px rgba(234, 179, 8, 0.4);
+}
+
+/* ==========================================================================
+   GAME 2: MARIO 2D RESCUE PRINCESS PLATFORMER
+   ========================================================================== */
+.mario-game-wrapper {
+  position: relative;
+  max-width: 900px;
+  margin: 0 auto;
+  user-select: none;
+  font-family: inherit;
+}
+
+.mario-canvas-container {
+  position: relative;
+  width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25);
+  border: 3px solid #1e293b;
+  background: #0f172a;
+}
+
+#mario-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 840 / 440;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.mario-quick-keys-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  background: rgba(15, 23, 42, 0.04);
+  border-radius: 8px;
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.mario-touch-controls-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 12px 16px;
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  border-radius: 14px;
+  color: #f8fafc;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+}
+
+.touch-ctrl-dpad,
+.touch-ctrl-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.touch-btn {
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: none;
+  font-weight: 800;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 0.08s ease, filter 0.15s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.touch-btn:active {
+  transform: scale(0.92);
+  filter: brightness(0.85);
+}
+
+.touch-btn-dir {
+  background: #334155;
+  color: #ffffff;
+  min-width: 48px;
+  box-shadow: 0 3px 0 #1e293b;
+}
+
+.touch-btn-jump {
+  background: #10b981;
+  color: #ffffff;
+  box-shadow: 0 3px 0 #059669;
+}
+
+.touch-btn-attack {
+  background: #f59e0b;
+  color: #ffffff;
+  box-shadow: 0 3px 0 #d97706;
+}
+
+.touch-btn-spell {
+  background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+  color: #ffffff;
+  box-shadow: 0 3px 0 #7c3aed;
+}
+
+/* Modal Tuyệt chiêu câu hỏi */
+.mario-spell-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(6px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.mario-spell-box {
+  background: var(--card, #ffffff);
+  border-radius: 18px;
+  max-width: 480px;
+  width: 100%;
+  padding: 24px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.35);
+  border: 3px solid #8b5cf6;
+  text-align: center;
+  animation: popInSpell 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popInSpell {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.spell-box-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.spell-tag {
+  background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+  color: #ffffff;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.spell-timer-badge {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.question-prompt-text {
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+  margin-top: 4px;
+}
+
+.spell-prompt-text {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--ink);
+  margin: 12px 0 6px;
+  font-family: var(--font-jp, inherit);
+}
+
+.spell-desc-sub {
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  margin-bottom: 18px;
+}
+
+.mario-spell-options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.mario-spell-ans-btn {
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 2px solid var(--line, #e2e8f0);
+  background: var(--bg, #f8fafc);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--ink, #1e293b);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.mario-spell-ans-btn:hover {
+  border-color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.08);
+  transform: translateY(-2px);
+}
+
+.mario-spell-ans-btn:active {
+  transform: scale(0.96);
+}
+
 
 
 

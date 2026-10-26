@@ -1,6 +1,8 @@
 // src/game-center.js
 // Trung tâm Trò chơi Học tiếng Nhật (Game Center)
-// Học từ vựng và ngữ pháp qua các trò chơi tương tác: Tiêu diệt yêu quái, Giải cứu công chúa, Lật thẻ trí nhớ
+// 1. Tiêu diệt yêu quái (Monster Slayer)
+// 2. Giải cứu công chúa 2D Platformer (Super Princess Rescue - Mario Style 2D)
+// 3. Lật thẻ trí nhớ ma thuật (Memory Match) với tùy chọn kích thước 3x3, 4x4, 5x5, 8x8, 12x12, 15x15, 20x20, 25x25
 
 import { getProjects } from "./storage.js";
 import { GRAMMAR_CHAPTERS } from "./grammar.js";
@@ -8,131 +10,217 @@ import { speakJapanese } from "./ui.js";
 
 export const STORAGE_KEY_GAME_PROFILE = "miw_nihongo_game_profile_v1";
 
-// Danh sách quái vật trong game Tiêu diệt yêu quái
-export const MONSTER_ROSTER = [
-  {
-    id: "m-kappa",
-    name: "Kappa Thủy Quái (河童)",
-    title: "Tiểu yêu bờ sông",
-    avatar: "🥒",
-    hp: 40,
-    maxHp: 40,
-    attackPower: 15,
-    attackName: "Phun tia nước xoáy",
-    color: "#059669",
-    dialogue: "Ngươi muốn qua sông sao? Hãy dịch đúng từ vựng này xem!"
-  },
-  {
-    id: "m-tengu",
-    name: "Tengu Quạ Đỏ (天狗)",
-    title: "Yêu quái quạt gió",
-    avatar: "👺",
-    hp: 60,
-    maxHp: 60,
-    attackPower: 20,
-    attackName: "Cuồng phong trảm",
-    color: "#dc2626",
-    dialogue: "Gió lốc của ta sẽ thổi bay kẻ không thuộc ngữ pháp trợ từ!"
-  },
-  {
-    id: "m-kitsune",
-    name: "Hồ Ly 9 Đuôi (九尾の狐)",
-    title: "Yêu hồ ảo thuật",
-    avatar: "🦊",
-    hp: 80,
-    maxHp: 80,
-    attackPower: 25,
-    attackName: "Hồ ly hỏa diễm",
-    color: "#ea580c",
-    dialogue: "Đừng để ảo ảnh chữ Hán của ta đánh lừa ngươi!"
-  },
-  {
-    id: "m-oni",
-    name: "Quỷ Vương Dạ Xoa (鬼王 - Boss)",
-    title: "Đại Ma Vương Lâu Đài",
-    avatar: "👹",
-    hp: 100,
-    maxHp: 100,
-    attackPower: 30,
-    attackName: "Búa gai sấm sét",
-    color: "#7c3aed",
-    dialogue: "Gaaaa! Ngươi dám đến tận sào huyệt của ta sao? Chết đi!"
-  }
-];
-
-// Danh sách các tầng của Tháp Lâu Đài trong game Giải cứu công chúa
-export const PRINCESS_TOWER_FLOORS = [
-  { floor: 1, name: "Tầng 1: Cổng Thành Rêu Phong", challenge: "Giải mã cách đọc chữ Hán (Kanji)", icon: "🚪" },
-  { floor: 2, name: "Tầng 2: Cầu Thang Hắc Ám", challenge: "Chìa khóa Trợ từ bí ẩn (は · も · か)", icon: "🗝️" },
-  { floor: 3, name: "Tầng 3: Hành Lang Ma Thuật", challenge: "Phá giải bùa chú Phủ định (じゃありません)", icon: "🛡️" },
-  { floor: 4, name: "Tầng 4: Phòng Thí Nghiệm Cổ", challenge: "Sắp xếp mật mã dấu sao ★ (文の組み立て)", icon: "⭐" },
-  { floor: 5, name: "Đỉnh Tháp: Lồng Giam Công Chúa", challenge: "Đánh thức công chúa bằng câu chào hỏi hoàn chỉnh", icon: "👑" }
-];
-
-// Từ vựng nền tảng hỗ trợ nếu dự án cá nhân còn ít từ
-export const BASE_GAME_VOCAB = [
+// ============================================================================
+// HỆ THỐNG DỮ LIỆU TỪ VỰNG PHONG PHÚ CHO TẤT CẢ GAME (KỂ CẢ MAP 25x25)
+// ============================================================================
+export const EXTENDED_VOCAB_BANK = [
+  // Nghề nghiệp & Con người
+  { kanji: "私", hiragana: "わたし", romaji: "watashi", meaning: "tôi" },
+  { kanji: "あなた", hiragana: "あなた", romaji: "anata", meaning: "bạn / anh / chị" },
   { kanji: "学生", hiragana: "がくせい", romaji: "gakusei", meaning: "học sinh, sinh viên" },
   { kanji: "先生", hiragana: "せんせい", romaji: "sensei", meaning: "giáo viên, thầy cô" },
   { kanji: "会社員", hiragana: "かいしゃいん", romaji: "kaishain", meaning: "nhân viên công ty" },
   { kanji: "医者", hiragana: "いしゃ", romaji: "isha", meaning: "bác sĩ" },
   { kanji: "エンジニア", hiragana: "えんじにあ", romaji: "enjinia", meaning: "kỹ sư" },
+  { kanji: "研究者", hiragana: "けんきゅうしゃ", romaji: "kenkyuusha", meaning: "nhà nghiên cứu" },
+  { kanji: "銀行員", hiragana: "ぎんこういん", romaji: "ginkouin", meaning: "nhân viên ngân hàng" },
+  { kanji: "友達", hiragana: "ともだち", romaji: "tomodachi", meaning: "bạn bè" },
+  { kanji: "子供", hiragana: "こども", romaji: "kodomo", meaning: "trẻ em" },
+  { kanji: "家族", hiragana: "かぞく", romaji: "kazoku", meaning: "gia đình" },
+  { kanji: "父", hiragana: "ちち", romaji: "chichi", meaning: "bố (của mình)" },
+  { kanji: "母", hiragana: "はは", romaji: "haha", meaning: "mẹ (của mình)" },
   { kanji: "日本人", hiragana: "にほんじん", romaji: "nihonjin", meaning: "người Nhật Bản" },
   { kanji: "ベトナム人", hiragana: "べとなむじん", romaji: "betonamujin", meaning: "người Việt Nam" },
   { kanji: "アメリカ人", hiragana: "あめりかじん", romaji: "amerikajin", meaning: "người Mỹ" },
-  { kanji: "病院", hiragana: "びょういん", romaji: "byouin", meaning: "bệnh viện" },
+  { kanji: "中国人", hiragana: "ちゅうごくじん", romaji: "chuugokujin", meaning: "người Trung Quốc" },
+  
+  // Địa điểm & Trường học
   { kanji: "大学", hiragana: "だいがく", romaji: "daigaku", meaning: "trường đại học" },
+  { kanji: "学校", hiragana: "がっこう", romaji: "gakkou", meaning: "trường học" },
+  { kanji: "病院", hiragana: "びょういん", romaji: "byouin", meaning: "bệnh viện" },
+  { kanji: "会社", hiragana: "かいしゃ", romaji: "kaisha", meaning: "công ty" },
+  { kanji: "部屋", hiragana: "へや", romaji: "heya", meaning: "căn phòng" },
+  { kanji: "家", hiragana: "いえ", romaji: "ie", meaning: "ngôi nhà" },
+  { kanji: "国", hiragana: "くに", romaji: "kuni", meaning: "đất nước" },
+  { kanji: "日本", hiragana: "にほん", romaji: "nihon", meaning: "Nhật Bản" },
+  { kanji: "教室", hiragana: "きょうしつ", romaji: "kyoushitsu", meaning: "phòng học" },
+  { kanji: "図書館", hiragana: "としょかん", romaji: "toshokan", meaning: "thư viện" },
+  { kanji: "駅", hiragana: "えき", romaji: "eki", meaning: "nhà ga" },
+  { kanji: "公園", hiragana: "こうえん", romaji: "kouen", meaning: "công viên" },
+
+  // Đồ vật & Phương tiện
   { kanji: "本", hiragana: "ほん", romaji: "hon", meaning: "sách" },
-  { kanji: "私", hiragana: "わたし", romaji: "watashi", meaning: "tôi" },
-  { kanji: "友達", hiragana: "ともだち", romaji: "tomodachi", meaning: "bạn bè" },
+  { kanji: "辞書", hiragana: "じしょ", romaji: "jisho", meaning: "từ điển" },
   { kanji: "車", hiragana: "くるま", romaji: "kuruma", meaning: "xe hơi, ô tô" },
-  { kanji: "水", hiragana: "みず", romaji: "mizu", meaning: "nước" }
+  { kanji: "自転車", hiragana: "じてんしゃ", romaji: "jitensha", meaning: "xe đạp" },
+  { kanji: "時計", hiragana: "とけい", romaji: "tokei", meaning: "đồng hồ" },
+  { kanji: "鞄", hiragana: "かばん", romaji: "kaban", meaning: "cặp, túi xách" },
+  { kanji: "机", hiragana: "つくえ", romaji: "tsukue", meaning: "bàn học" },
+  { kanji: "椅子", hiragana: "いす", romaji: "isu", meaning: "ghế ngồi" },
+  { kanji: "電話", hiragana: "でんわ", romaji: "denwa", meaning: "điện thoại" },
+  { kanji: "手紙", hiragana: "てがみ", romaji: "tegami", meaning: "bức thư" },
+  { kanji: "写真", hiragana: "しゃしん", romaji: "shashin", meaning: "bức ảnh" },
+  { kanji: "お金", hiragana: "おかね", romaji: "okane", meaning: "tiền bạc" },
+  { kanji: "鍵", hiragana: "かぎ", romaji: "kagi", meaning: "chìa khóa" },
+
+  // Ăn uống & Thiên nhiên
+  { kanji: "水", hiragana: "みず", romaji: "mizu", meaning: "nước uống" },
+  { kanji: "お茶", hiragana: "おちゃ", romaji: "ocha", meaning: "trà" },
+  { kanji: "ご飯", hiragana: "ごはん", romaji: "gohan", meaning: "cơm, bữa ăn" },
+  { kanji: "肉", hiragana: "にく", romaji: "niku", meaning: "thịt" },
+  { kanji: "魚", hiragana: "さかな", romaji: "sakana", meaning: "con cá" },
+  { kanji: "野菜", hiragana: "やさい", romaji: "yasai", meaning: "rau củ" },
+  { kanji: "果物", hiragana: "くだもの", romaji: "kudamono", meaning: "trái cây" },
+  { kanji: "山", hiragana: "やま", romaji: "yama", meaning: "ngọn núi" },
+  { kanji: "川", hiragana: "かわ", romaji: "kawa", meaning: "dòng sông" },
+  { kanji: "海", hiragana: "うみ", romaji: "umi", meaning: "biển cả" },
+  { kanji: "空", hiragana: "そら", romaji: "sora", meaning: "bầu trời" },
+  { kanji: "雨", hiragana: "あめ", romaji: "ame", meaning: "cơn mưa" },
+  { kanji: "花", hiragana: "はな", romaji: "hana", meaning: "bông hoa" },
+  { kanji: "木", hiragana: "き", romaji: "ki", meaning: "cây cối" },
+
+  // Số đếm 1-10
+  { kanji: "一", hiragana: "いち", romaji: "ichi", meaning: "số một (1)" },
+  { kanji: "二", hiragana: "に", romaji: "ni", meaning: "số hai (2)" },
+  { kanji: "三", hiragana: "さん", romaji: "san", meaning: "số ba (3)" },
+  { kanji: "四", hiragana: "よん", romaji: "yon", meaning: "số bốn (4)" },
+  { kanji: "五", hiragana: "ご", romaji: "go", meaning: "số năm (5)" },
+  { kanji: "六", hiragana: "ろく", romaji: "roku", meaning: "số sáu (6)" },
+  { kanji: "七", hiragana: "なな", romaji: "nana", meaning: "số bảy (7)" },
+  { kanji: "八", hiragana: "はち", romaji: "hachi", meaning: "số tám (8)" },
+  { kanji: "九", hiragana: "きゅう", romaji: "kyuu", meaning: "số chín (9)" },
+  { kanji: "十", hiragana: "じゅう", romaji: "juu", meaning: "số mười (10)" },
+  { kanji: "百", hiragana: "ひゃく", romaji: "hyaku", meaning: "một trăm (100)" },
+  { kanji: "千", hiragana: "せん", romaji: "sen", meaning: "một nghìn (1000)" },
+  { kanji: "万", hiragana: "まん", romaji: "man", meaning: "mười nghìn (10,000)" },
+
+  // Thời gian & Thứ ngày
+  { kanji: "今日", hiragana: "きょう", romaji: "kyou", meaning: "hôm nay" },
+  { kanji: "明日", hiragana: "あした", romaji: "ashita", meaning: "ngày mai" },
+  { kanji: "昨日", hiragana: "きのう", romaji: "kinou", meaning: "hôm qua" },
+  { kanji: "今", hiragana: "いま", romaji: "ima", meaning: "bây giờ" },
+  { kanji: "朝", hiragana: "あさ", romaji: "asa", meaning: "buổi sáng" },
+  { kanji: "昼", hiragana: "ひる", romaji: "hiru", meaning: "buổi trưa" },
+  { kanji: "晩", hiragana: "ばん", romaji: "ban", meaning: "buổi tối" },
+  { kanji: "月曜日", hiragana: "げつようび", romaji: "getsuyoubi", meaning: "thứ hai" },
+  { kanji: "火曜日", hiragana: "かようび", romaji: "kayoubi", meaning: "thứ ba" },
+  { kanji: "水曜日", hiragana: "すいようび", romaji: "suiyoubi", meaning: "thứ tư" },
+  { kanji: "木曜日", hiragana: "もくようび", romaji: "mokuyoubi", meaning: "thứ năm" },
+  { kanji: "金曜日", hiragana: "きんようび", romaji: "kinyoubi", meaning: "thứ sáu" },
+  { kanji: "土曜日", hiragana: "どようび", romaji: "doyoubi", meaning: "thứ bảy" },
+  { kanji: "日曜日", hiragana: "にちようび", romaji: "nichiyoubi", meaning: "chủ nhật" },
+
+  // Tính từ
+  { kanji: "大きい", hiragana: "おおきい", romaji: "ookii", meaning: "to, lớn" },
+  { kanji: "小さい", hiragana: "ちいさい", romaji: "chiisai", meaning: "nhỏ, bé" },
+  { kanji: "新しい", hiragana: "あたらしい", romaji: "atarashii", meaning: "mới" },
+  { kanji: "古い", hiragana: "ふるい", romaji: "furui", meaning: "cũ" },
+  { kanji: "良い", hiragana: "いい", romaji: "ii", meaning: "tốt, đẹp" },
+  { kanji: "高い", hiragana: "たかい", romaji: "takai", meaning: "cao, đắt tiền" },
+  { kanji: "安い", hiragana: "やすい", romaji: "yasui", meaning: "rẻ" },
+  { kanji: "面白い", hiragana: "おもしろい", romaji: "omoshiroi", meaning: "thú vị" },
+  { kanji: "美味しい", hiragana: "おいしい", romaji: "oishii", meaning: "ngon miệng" },
+
+  // Động từ cơ bản
+  { kanji: "食べます", hiragana: "たべます", romaji: "tabemasu", meaning: "ăn" },
+  { kanji: "飲みます", hiragana: "のみます", romaji: "nomimasu", meaning: "uống" },
+  { kanji: "見ます", hiragana: "みます", romaji: "mimasu", meaning: "xem, nhìn" },
+  { kanji: "聞きます", hiragana: "ききます", romaji: "kikimasu", meaning: "nghe" },
+  { kanji: "読みます", hiragana: "よみます", romaji: "yomimasu", meaning: "đọc" },
+  { kanji: "書きます", hiragana: "かきます", romaji: "kakimasu", meaning: "viết" },
+  { kanji: "買います", hiragana: "かいます", romaji: "kaimasu", meaning: "mua" },
+  { kanji: "行きます", hiragana: "いきます", romaji: "ikimasu", meaning: "đi" },
+  { kanji: "来ます", hiragana: "きます", romaji: "kimasu", meaning: "đến" },
+  { kanji: "帰ります", hiragana: "かえります", romaji: "kaerimasu", meaning: "về" },
+  { kanji: "寝ます", hiragana: "ねます", romaji: "nemasu", meaning: "ngủ" },
+  { kanji: "起きます", hiragana: "おきます", romaji: "okimasu", meaning: "thức dậy" }
 ];
 
-// Trạng thái runtime
+export const BASE_GAME_VOCAB = EXTENDED_VOCAB_BANK.slice(0, 15);
+
+// Danh sách quái vật trong game Tiêu diệt yêu quái
+export const MONSTER_ROSTER = [
+  { id: "m-kappa", name: "Kappa Thủy Quái (河童)", title: "Tiểu yêu bờ sông", avatar: "🥒", hp: 40, maxHp: 40, attackPower: 15, attackName: "Phun tia nước xoáy", color: "#059669" },
+  { id: "m-tengu", name: "Tengu Quạ Đỏ (天狗)", title: "Yêu quái quạt gió", avatar: "👺", hp: 60, maxHp: 60, attackPower: 20, attackName: "Cuồng phong trảm", color: "#dc2626" },
+  { id: "m-kitsune", name: "Hồ Ly 9 Đuôi (九尾の狐)", title: "Yêu hồ ảo thuật", avatar: "🦊", hp: 80, maxHp: 80, attackPower: 25, attackName: "Hồ ly hỏa diễm", color: "#ea580c" },
+  { id: "m-oni", name: "Quỷ Vương Dạ Xoa (鬼王 - Boss)", title: "Đại Ma Vương Lâu Đài", avatar: "👹", hp: 100, maxHp: 100, attackPower: 30, attackName: "Búa gai sấm sét", color: "#7c3aed" }
+];
+
+export const PRINCESS_TOWER_FLOORS = [
+  { floor: 1, name: "Tầng 1: Cổng Thành Rêu Phong", challenge: "Giải mã chữ Hán (Kanji)", icon: "🚪" },
+  { floor: 2, name: "Tầng 2: Cầu Thang Hắc Ám", challenge: "Ổ khóa Trợ từ bí ẩn (は · も · か)", icon: "🗝️" },
+  { floor: 3, name: "Tầng 3: Hành Lang Ma Thuật", challenge: "Phá giải bùa chú Phủ định (じゃありません)", icon: "🛡️" },
+  { floor: 4, name: "Tầng 4: Phòng Thí Nghiệm Cổ", challenge: "Sắp xếp mật mã ngôi sao ★ (文の組み立て)", icon: "⭐" },
+  { floor: 5, name: "Đỉnh Tháp: Lồng Giam Công Chúa", challenge: "Đánh thức công chúa bằng câu chào hỏi hoàn chỉnh", icon: "👑" }
+];
+
+// Runtime State
 let currentGameMode = "hub"; // hub | monster | princess | memory
 let selectedProjectId = "all";
 
 // Runtime Monster Game
 let monsterState = null;
 
-// Runtime Princess Game
-let princessState = null;
+// Runtime 2D Mario Princess Game
+let marioState = null;
+let marioAnimFrame = null;
+let marioKeys = { left: false, right: false, up: false, attack: false, spell: false };
 
 // Runtime Memory Game
+let memoryGridSize = "4x4"; // 3x3 | 4x4 | 5x5 | 8x8 | 12x12 | 15x15 | 20x20 | 25x25
+let memoryZoom = 1;
 let memoryState = null;
 
-// 1. Khởi tạo sự kiện giao diện Game Center
+// ============================================================================
+// 1. KHỞI TẠO SỰ KIỆN GIAO DIỆN
+// ============================================================================
 export function setupGameCenterUI() {
+  if (typeof document === "undefined") return;
   const container = document.getElementById("game-center-view");
   if (!container) return;
 
+  // Lắng nghe phím bàn phím cho 2D Mario Game
+  if (typeof window !== "undefined") {
+    window.addEventListener("keydown", (e) => {
+      if (currentGameMode !== "princess" || !marioState || marioState.isSpellPaused) return;
+
+      if (e.code === "ArrowLeft" || e.code === "KeyA") marioKeys.left = true;
+      if (e.code === "ArrowRight" || e.code === "KeyD") marioKeys.right = true;
+      if (e.code === "ArrowUp" || e.code === "KeyW" || e.code === "Space") {
+        marioKeys.up = true;
+        e.preventDefault();
+      }
+      if (e.code === "KeyJ" || e.code === "KeyZ") triggerMarioNormalAttack();
+      if (e.code === "KeyK" || e.code === "KeyX") triggerMarioSpecialSpell();
+    });
+
+    window.addEventListener("keyup", (e) => {
+      if (currentGameMode !== "princess" || !marioState) return;
+      if (e.code === "ArrowLeft" || e.code === "KeyA") marioKeys.left = false;
+      if (e.code === "ArrowRight" || e.code === "KeyD") marioKeys.right = false;
+      if (e.code === "ArrowUp" || e.code === "KeyW" || e.code === "Space") marioKeys.up = false;
+    });
+  }
+
   container.addEventListener("click", (e) => {
-    // A. Chọn Game từ Game Hub
+    // 1. Mở game từ Game Hub
     const launchBtn = e.target.closest("[data-launch-game]");
     if (launchBtn) {
       const mode = launchBtn.getAttribute("data-launch-game");
-      if (mode) {
-        startSpecificGame(mode);
-      }
+      if (mode) startSpecificGame(mode);
       return;
     }
 
-    // B. Quay về Game Hub
+    // 2. Quay lại Game Hub
     const backBtn = e.target.closest(".btn-back-to-game-hub");
     if (backBtn) {
+      cleanupMarioGame();
       currentGameMode = "hub";
       renderGameCenterView();
       return;
     }
 
-    // C. Thay đổi dự án nguồn từ vựng
-    const projSelect = e.target.closest("#game-project-filter");
-    if (projSelect) {
-      selectedProjectId = projSelect.value;
-      return;
-    }
-
-    // D. Xử lý click trong Game Tiêu diệt yêu quái (Monster Slayer)
+    // 3. Game Tiêu diệt yêu quái
     const monsterAnsBtn = e.target.closest(".monster-answer-btn");
     if (monsterAnsBtn && monsterState && !monsterState.isAnswering) {
       const idx = parseInt(monsterAnsBtn.getAttribute("data-idx"), 10);
@@ -152,27 +240,35 @@ export function setupGameCenterUI() {
       return;
     }
 
-    // E. Xử lý click trong Game Giải cứu công chúa (Princess Rescue)
-    const towerAnsBtn = e.target.closest(".tower-answer-btn");
-    if (towerAnsBtn && princessState && !princessState.isAnswering) {
-      const idx = parseInt(towerAnsBtn.getAttribute("data-idx"), 10);
-      handlePrincessAnswer(idx);
+    // 4. Game Lật thẻ: Đổi kích thước bàn cờ (3x3, 4x4, 5x5, 8x8, 12x12, 15x15, 20x20, 25x25)
+    const sizeBtn = e.target.closest("[data-mem-size]");
+    if (sizeBtn) {
+      memoryGridSize = sizeBtn.getAttribute("data-mem-size");
+      startMemoryGame();
       return;
     }
 
-    const nextFloorBtn = e.target.closest("#next-floor-btn");
-    if (nextFloorBtn && princessState) {
-      advancePrincessFloor();
+    // Zoom bàn cờ thẻ nhớ
+    const zoomInBtn = e.target.closest("#mem-zoom-in");
+    if (zoomInBtn) {
+      memoryZoom = Math.min(2, memoryZoom + 0.15);
+      applyMemoryZoom();
+      return;
+    }
+    const zoomOutBtn = e.target.closest("#mem-zoom-out");
+    if (zoomOutBtn) {
+      memoryZoom = Math.max(0.4, memoryZoom - 0.15);
+      applyMemoryZoom();
+      return;
+    }
+    const zoomResetBtn = e.target.closest("#mem-zoom-reset");
+    if (zoomResetBtn) {
+      memoryZoom = 1;
+      applyMemoryZoom();
       return;
     }
 
-    const retryPrincessBtn = e.target.closest("#retry-princess-btn");
-    if (retryPrincessBtn) {
-      startPrincessGame();
-      return;
-    }
-
-    // F. Xử lý click trong Game Lật thẻ trí nhớ (Memory Match)
+    // Lật thẻ
     const memCard = e.target.closest(".memory-card");
     if (memCard && memoryState && !memoryState.isLocked) {
       const cardIdx = parseInt(memCard.getAttribute("data-card-idx"), 10);
@@ -186,7 +282,35 @@ export function setupGameCenterUI() {
       return;
     }
 
-    // G. Phát âm âm thanh tiếng Nhật
+    // 5. Game Mario 2D: Nút điều khiển ảo On-screen controls
+    const ctrlBtn = e.target.closest("[data-mario-ctrl]");
+    if (ctrlBtn && marioState) {
+      const action = ctrlBtn.getAttribute("data-mario-ctrl");
+      if (action === "jump") {
+        if (marioState.player.onGround) marioState.player.vy = -12;
+      } else if (action === "attack") {
+        triggerMarioNormalAttack();
+      } else if (action === "spell") {
+        triggerMarioSpecialSpell();
+      }
+      return;
+    }
+
+    // Câu trả lời câu hỏi Bùa chú Tuyệt Chiêu trong Mario 2D
+    const spellAnsBtn = e.target.closest(".mario-spell-ans-btn");
+    if (spellAnsBtn && marioState && marioState.isSpellPaused) {
+      const idx = parseInt(spellAnsBtn.getAttribute("data-spell-opt-idx"), 10);
+      handleMarioSpellAnswer(idx);
+      return;
+    }
+
+    const retryMarioBtn = e.target.closest("#retry-mario-game-btn");
+    if (retryMarioBtn) {
+      startPrincessGame();
+      return;
+    }
+
+    // 6. Phát âm TTS
     const audioBtn = e.target.closest(".game-tts-btn");
     if (audioBtn) {
       const text = audioBtn.getAttribute("data-tts");
@@ -195,7 +319,13 @@ export function setupGameCenterUI() {
     }
   });
 
-  // Sự kiện thay đổi select dự án
+  // Nút giữ phím cảm ứng trái/phải trên màn hình
+  container.addEventListener("mousedown", handleOnScreenCtrlDown);
+  container.addEventListener("mouseup", handleOnScreenCtrlUp);
+  container.addEventListener("touchstart", handleOnScreenCtrlDown, { passive: true });
+  container.addEventListener("touchend", handleOnScreenCtrlUp, { passive: true });
+
+  // Chọn dự án nguồn từ vựng
   container.addEventListener("change", (e) => {
     if (e.target && e.target.id === "game-project-filter") {
       selectedProjectId = e.target.value;
@@ -206,8 +336,25 @@ export function setupGameCenterUI() {
   });
 }
 
+function handleOnScreenCtrlDown(e) {
+  const btn = e.target.closest("[data-mario-dir]");
+  if (!btn || !marioState) return;
+  const dir = btn.getAttribute("data-mario-dir");
+  if (dir === "left") marioKeys.left = true;
+  if (dir === "right") marioKeys.right = true;
+}
+
+function handleOnScreenCtrlUp(e) {
+  const btn = e.target.closest("[data-mario-dir]");
+  if (!btn || !marioState) return;
+  const dir = btn.getAttribute("data-mario-dir");
+  if (dir === "left") marioKeys.left = false;
+  if (dir === "right") marioKeys.right = false;
+}
+
 // 2. Render View chính
 export function renderGameCenterView() {
+  if (typeof document === "undefined") return;
   const container = document.getElementById("game-center-view");
   if (!container) return;
 
@@ -215,15 +362,17 @@ export function renderGameCenterView() {
     container.innerHTML = renderMonsterGameHtml();
   } else if (currentGameMode === "princess") {
     container.innerHTML = renderPrincessGameHtml();
+    initMarioCanvasGame();
   } else if (currentGameMode === "memory") {
     container.innerHTML = renderMemoryGameHtml();
+    applyMemoryZoom();
   } else {
     container.innerHTML = renderGameHubHtml();
   }
 }
 
 // ============================================================================
-// MÀN HÌNH CHÍNH: GAME HUB (TRUNG TÂM TRÒ CHƠI)
+// GAME HUB (TRUNG TÂM TRÒ CHƠI)
 // ============================================================================
 function renderGameHubHtml() {
   const profile = getGameProfile();
@@ -232,147 +381,117 @@ function renderGameHubHtml() {
 
   return `
     <div class="game-hub-container">
-      <!-- 1. Hero Header -->
       <div class="game-hub-hero glass-panel">
         <div class="game-hero-content">
           <div class="game-title-row">
-            <span class="game-badge-arcade">ARCADE LEARNING</span>
+            <span class="game-badge-arcade">ARCADE 2D LEARNING</span>
             <span class="game-level-tag">🏆 Cấp độ: Hiệp Sĩ Cấp ${profile.level || 1}</span>
           </div>
           <h2 class="game-hero-h2">Đấu Trường Trò Chơi Tiếng Nhật (ゲーム)</h2>
           <p class="game-hero-sub">
-            Vừa chơi vui nhộn vừa ghi nhớ từ vựng và khắc sâu ngữ pháp N5! 
-            Hãy chọn trò chơi yêu thích, vượt qua các thử thách để nhận điểm thưởng EXP và mở khóa danh hiệu vinh danh.
+            Vừa chơi vừa học! Vượt ải Platformer 2D phong cách Mario, quyết chiến yêu quái và thách thức trí nhớ siêu đẳng với bàn cờ lên tới 25x25.
           </p>
 
-          <!-- Thống kê thành tích hiệp sĩ -->
           <div class="knight-stats-bar">
-            <div class="knight-stat-pill">
-              <span class="k-icon">⭐</span>
-              <span>Tổng EXP: <strong>${profile.exp || 0}</strong></span>
+            <div class="knight-stat-pill"><span class="k-icon">⭐</span><span>Tổng EXP: <strong>${profile.exp || 0}</strong></span></div>
+            <div class="knight-stat-pill"><span class="k-icon">⚔️</span><span>Yêu quái đã diệt: <strong>${profile.monstersDefeated || 0}</strong></span></div>
+            <div class="knight-stat-pill"><span class="k-icon">👑</span><span>Công chúa đã cứu: <strong>${profile.princessRescued || 0}</strong></span></div>
+            <div class="knight-stat-pill"><span class="k-icon">🎴</span><span>Lật thẻ hoàn hảo: <strong>${profile.memoryWins || 0}</strong></span></div>
+          </div>
+        </div>
+
+        <div class="game-vocab-source-panel">
+          <label for="game-project-filter" class="source-label"><span>🎯 Nguồn từ vựng thi đấu:</span></label>
+          <select id="game-project-filter" class="form-control game-select">
+            <option value="all" ${selectedProjectId === 'all' ? 'selected' : ''}>Tất cả dự án (${pool.length} từ vựng sẵn sàng)</option>
+            ${projects.map(p => `<option value="${p.id}" ${selectedProjectId === p.id ? 'selected' : ''}>📁 ${p.name} (${(p.vocab || []).length} từ)</option>`).join("")}
+          </select>
+          <small class="source-hint">Tự động tích hợp kho từ vựng cá nhân và ngữ pháp N5 vào các màn chơi!</small>
+        </div>
+      </div>
+
+      <div class="game-cards-catalog">
+        <!-- Game 2: Mario 2D Giải Cứu Công Chúa -->
+        <div class="game-card-banner card-princess-theme glass-panel">
+          <div class="card-art-col">
+            <div class="art-badge">🎮 MARIO 2D ACTION</div>
+            <div class="mario-preview-icons">
+              <span class="m-avatar">🤺</span>
+              <span class="m-arrow">➔</span>
+              <span class="m-mob">👾</span>
+              <span class="m-coin">🪙</span>
+              <span class="m-castle">🏰</span>
+              <span class="m-princess">👸</span>
             </div>
-            <div class="knight-stat-pill">
-              <span class="k-icon">⚔️</span>
-              <span>Yêu quái đã diệt: <strong>${profile.monstersDefeated || 0}</strong></span>
+          </div>
+          <div class="card-details-col">
+            <h3 class="card-game-title">Giải Cứu Công Chúa (Mario 2D Adventure - スーパー・プリンセス)</h3>
+            <p class="card-game-desc">
+              Game 2D hành động đỉnh cao y hệt Mario! Di chuyển hiệp sĩ chạy nhảy trên các khối gạch, dậm đầu quái vật rơi vàng 🪙, chém kiếm thường và 
+              dùng <strong>Tuyệt chiêu Hỏa Long Trảm</strong> bằng cách giải mã bùa chú tiếng Nhật để giải cứu công chúa ở Lâu Đài cuối map!
+            </p>
+            <div class="card-tags-row">
+              <span class="gtag">Bản đồ 2D cuộn ngang</span>
+              <span class="gtag">Đánh thường & Tuyệt chiêu tiếng Nhật</span>
+              <span class="gtag">Dậm quái rơi tiền vàng 🪙</span>
+              <span class="gtag">Khối dấu hỏi \`?\` bí ẩn</span>
             </div>
-            <div class="knight-stat-pill">
-              <span class="k-icon">👑</span>
-              <span>Công chúa đã cứu: <strong>${profile.princessRescued || 0}</strong></span>
-            </div>
-            <div class="knight-stat-pill">
-              <span class="k-icon">🎴</span>
-              <span>Lật thẻ hoàn hảo: <strong>${profile.memoryWins || 0}</strong></span>
+            <div class="card-action-row">
+              <button type="button" class="btn btn-primary btn-game-play btn-princess" data-launch-game="princess">
+                👑 Khởi Hành Phiêu Lưu Mario 2D
+              </button>
             </div>
           </div>
         </div>
 
-        <!-- Bộ lọc nguồn từ vựng dự án -->
-        <div class="game-vocab-source-panel">
-          <label for="game-project-filter" class="source-label">
-            <span>🎯 Nguồn từ vựng thi đấu:</span>
-          </label>
-          <select id="game-project-filter" class="form-control game-select">
-            <option value="all" ${selectedProjectId === 'all' ? 'selected' : ''}>
-              Tất cả dự án (${pool.length} từ vựng sẵn sàng)
-            </option>
-            ${projects.map(p => `
-              <option value="${p.id}" ${selectedProjectId === p.id ? 'selected' : ''}>
-                📁 ${p.name} (${(p.vocab || []).length} từ)
-              </option>
-            `).join("")}
-          </select>
-          <small class="source-hint">Hệ thống tự động đồng bộ từ vựng và ngữ pháp N5 Bài 1 vào game!</small>
+        <!-- Game 3: Lật Thẻ Trí Nhớ Ma Thuật (Tùy chọn 3x3 đến 25x25) -->
+        <div class="game-card-banner card-memory-theme glass-panel">
+          <div class="card-art-col">
+            <div class="art-badge">🎴 SIÊU TRÍ NHỚ VŨ TRỤ</div>
+            <div class="memory-grid-size-badges">
+              <span>3x3</span><span>5x5</span><span>8x8</span><span>12x12</span><span>15x15</span><span>20x20</span><span class="boss-size">25x25</span>
+            </div>
+          </div>
+          <div class="card-details-col">
+            <h3 class="card-game-title">Lật Thẻ Trí Nhớ Ma Thuật (Memory Match - 魔法のカード)</h3>
+            <p class="card-game-desc">
+              Chơi cực chất với đa dạng kích thước bàn cờ: <strong>3x3, 5x5, 8x8, 12x12, 15x15, 20x20 đến 25x25 (625 thẻ!)</strong>. 
+              Hiệu ứng xoay lật 3D, ô Sao May Mắn ⭐ và giọng đọc phát âm chuẩn từng từ.
+            </p>
+            <div class="card-tags-row">
+              <span class="gtag">Tùy chọn 8 kích thước từ 3x3 đến 25x25</span>
+              <span class="gtag">Ô Sao May Mắn ⭐</span>
+              <span class="gtag">Công cụ Phóng to / Thu nhỏ Zoom bàn cờ</span>
+            </div>
+            <div class="card-action-row">
+              <button type="button" class="btn btn-primary btn-game-play btn-memory" data-launch-game="memory">
+                🎴 Thách Thức Bàn Cờ Lật Thẻ
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <!-- 2. Danh Sách Các Trò Chơi -->
-      <div class="game-cards-catalog">
         <!-- Game 1: Tiêu Diệt Yêu Quái -->
         <div class="game-card-banner card-monster-theme glass-panel">
           <div class="card-art-col">
             <div class="art-badge">⚔️ HÀNH ĐỘNG CHIẾN ĐẤU</div>
             <div class="art-avatars-row">
-              <span class="avatar-icon">🥒</span>
-              <span class="avatar-icon">👺</span>
-              <span class="avatar-icon">🦊</span>
-              <span class="avatar-icon boss-glow">👹</span>
+              <span>🥒</span><span>👺</span><span>🦊</span><span class="boss-glow">👹</span>
             </div>
           </div>
           <div class="card-details-col">
             <h3 class="card-game-title">Tiêu Diệt Yêu Quái (妖怪討伐 - Youkai Slayer)</h3>
             <p class="card-game-desc">
-              Ngôi làng đang bị quái vật quấy phá! Sử dụng kiến thức từ vựng và ngữ pháp để thi triển kiếm thuật 
-              và phép thuật sấm sét, hạ gục 4 con quái vật hung hãn trước khi bị chúng phản công cạn máu.
+              Đấu trường theo lượt kịch tính! Vận dụng kiến thức từ vựng và ngữ pháp N5 để chém kiếm, kích hoạt sấm sét hạ gục 4 đại yêu quái.
             </p>
             <div class="card-tags-row">
-              <span class="gtag">Từ vựng Kanji & Hiragana</span>
-              <span class="gtag">Trợ từ は · も · か</span>
+              <span class="gtag">Đấu Boss theo lượt</span>
               <span class="gtag">Thanh máu HP & Combo</span>
+              <span class="gtag">Âm thanh tiếng Nhật</span>
             </div>
             <div class="card-action-row">
               <button type="button" class="btn btn-primary btn-game-play" data-launch-game="monster">
                 ⚔️ Xuất Kích Tiêu Diệt Quái Vật
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Game 2: Giải Cứu Công Chúa -->
-        <div class="game-card-banner card-princess-theme glass-panel">
-          <div class="card-art-col">
-            <div class="art-badge">🏰 PHIÊU LƯU VƯỢT THÁP</div>
-            <div class="tower-stairs-visual">
-              <span class="st-icon">👑</span>
-              <span class="st-icon">⭐</span>
-              <span class="st-icon">🛡️</span>
-              <span class="st-icon">🗝️</span>
-              <span class="st-icon">🚪</span>
-            </div>
-          </div>
-          <div class="card-details-col">
-            <h3 class="card-game-title">Giải Cứu Công Chúa (姫救出 - Castle Tower Rescue)</h3>
-            <p class="card-game-desc">
-              Công chúa bị nhốt trên tầng 5 của Tháp Lâu Đài Phép Thuật. Vượt qua 5 cánh cổng thử thách: 
-              từ mật mã chữ Hán, ổ khóa trợ từ đến sắp xếp câu tìm ngôi sao bí ẩn ★ để giải cứu nàng!
-            </p>
-            <div class="card-tags-row">
-              <span class="gtag">Tháp 5 Tầng Phép Thuật</span>
-              <span class="gtag">Mật mã ngôi sao ★</span>
-              <span class="gtag">Khắc sâu mẫu câu khẳng định & phủ định</span>
-            </div>
-            <div class="card-action-row">
-              <button type="button" class="btn btn-primary btn-game-play btn-princess" data-launch-game="princess">
-                👑 Đột Kích Tháp Lâu Đài
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Game 3: Lật Thẻ Trí Nhớ Ma Thuật -->
-        <div class="game-card-banner card-memory-theme glass-panel">
-          <div class="card-art-col">
-            <div class="art-badge">🎴 LUYỆN TRÍ NHỚ & PHẢN XẠ</div>
-            <div class="memory-cards-mini-grid">
-              <div class="mini-card-preview">私</div>
-              <div class="mini-card-preview flip">Tôi</div>
-              <div class="mini-card-preview flip">先生</div>
-              <div class="mini-card-preview">Thầy</div>
-            </div>
-          </div>
-          <div class="card-details-col">
-            <h3 class="card-game-title">Lật Thẻ Trí Nhớ Ma Thuật (魔法のカード - Memory Match)</h3>
-            <p class="card-game-desc">
-              Thử thách trí nhớ siêu phàm! Lật các thẻ bài ma thuật để ghép đôi chính xác giữa chữ Nhật (Kanji/Kana) 
-              với nghĩa tiếng Việt tương ứng. Tích hợp giọng đọc bản xứ chuẩn từng thẻ bài.
-            </p>
-            <div class="card-tags-row">
-              <span class="gtag">12 - 16 Thẻ Bài Ma Thuật</span>
-              <span class="gtag">Hiệu ứng lật 3D</span>
-              <span class="gtag">Phát âm chuẩn từng từ</span>
-            </div>
-            <div class="card-action-row">
-              <button type="button" class="btn btn-primary btn-game-play btn-memory" data-launch-game="memory">
-                🎴 Thách Thức Trí Nhớ Ngay
               </button>
             </div>
           </div>
@@ -383,7 +502,1011 @@ function renderGameHubHtml() {
 }
 
 // ============================================================================
-// GAME 1: TIÊU DIỆT YÊU QUÁI (YOUKAI SLAYER)
+// GAME 2: MARIO 2D PLATFORMER - GIẢI CỨU CÔNG CHÚA
+// ============================================================================
+function startPrincessGame() {
+  cleanupMarioGame();
+  currentGameMode = "princess";
+
+  marioState = {
+    canvasWidth: 820,
+    canvasHeight: 460,
+    worldWidth: 2600,
+    cameraX: 0,
+    player: {
+      x: 80,
+      y: 320,
+      width: 34,
+      height: 48,
+      vx: 0,
+      vy: 0,
+      speed: 4.8,
+      jumpForce: -12.5,
+      onGround: false,
+      facing: "right",
+      hp: 3,
+      maxHp: 3,
+      coins: 0,
+      score: 0,
+      attackCooldown: 0,
+      isInvincible: false,
+      invincibleTimer: 0,
+      slashArc: null
+    },
+    blocks: [
+      { x: 0, y: 390, w: 750, h: 70, type: "ground" },
+      { x: 860, y: 390, w: 700, h: 70, type: "ground" },
+      { x: 1680, y: 390, w: 920, h: 70, type: "ground" },
+      { x: 220, y: 280, w: 40, h: 40, type: "brick" },
+      { x: 260, y: 280, w: 40, h: 40, type: "question", hit: false, content: "coin" },
+      { x: 300, y: 280, w: 40, h: 40, type: "brick" },
+      { x: 480, y: 220, w: 80, h: 30, type: "brick" },
+      { x: 600, y: 280, w: 40, h: 40, type: "question", hit: false, content: "spell" },
+      { x: 940, y: 270, w: 40, h: 40, type: "question", hit: false, content: "coin" },
+      { x: 980, y: 270, w: 80, h: 30, type: "brick" },
+      { x: 1060, y: 270, w: 40, h: 40, type: "question", hit: false, content: "spell" },
+      { x: 1250, y: 210, w: 100, h: 30, type: "brick" },
+      { x: 1420, y: 260, w: 40, h: 40, type: "brick" },
+      { x: 1780, y: 280, w: 40, h: 40, type: "question", hit: false, content: "heart" },
+      { x: 1820, y: 280, w: 80, h: 30, type: "brick" }
+    ],
+    enemies: [
+      { id: "e1", x: 420, y: 350, w: 34, h: 34, vx: -1.4, alive: true, type: "slime", minX: 300, maxX: 650 },
+      { id: "e2", x: 620, y: 350, w: 34, h: 34, vx: 1.6, alive: true, type: "oni", minX: 520, maxX: 720 },
+      { id: "e3", x: 1100, y: 350, w: 34, h: 34, vx: -1.8, alive: true, type: "slime", minX: 900, maxX: 1300 },
+      { id: "e4", x: 1350, y: 350, w: 34, h: 34, vx: 1.5, alive: true, type: "oni", minX: 1200, maxX: 1520 },
+      { id: "e5", x: 1850, y: 350, w: 34, h: 34, vx: -2.0, alive: true, type: "oni", minX: 1720, maxX: 2050 },
+      { id: "e6", x: 2150, y: 350, w: 38, h: 38, vx: -1.2, alive: true, type: "oni", minX: 2000, maxX: 2280 }
+    ],
+    coins: [],
+    particles: [],
+    castle: { x: 2320, y: 150, w: 220, h: 240 },
+    princess: { x: 2400, y: 200, w: 36, h: 54, rescued: false },
+    specialDragon: null,
+    isSpellPaused: false,
+    currentSpellQuestion: null,
+    gameOver: false,
+    victory: false
+  };
+
+  renderGameCenterView();
+}
+
+function cleanupMarioGame() {
+  if (typeof cancelAnimationFrame !== "undefined" && marioAnimFrame) {
+    cancelAnimationFrame(marioAnimFrame);
+    marioAnimFrame = null;
+  }
+}
+
+function initMarioCanvasGame() {
+  if (typeof document === "undefined") return;
+  const canvas = document.getElementById("mario-canvas");
+  if (!canvas || !marioState) return;
+  const ctx = canvas.getContext("2d");
+
+  function loop() {
+    if (!marioState) return;
+    updateMarioPhysics();
+    renderMarioCanvas(ctx);
+    if (!marioState.gameOver && !marioState.victory) {
+      marioAnimFrame = requestAnimationFrame(loop);
+    }
+  }
+
+  cleanupMarioGame();
+  marioAnimFrame = requestAnimationFrame(loop);
+}
+
+function updateMarioPhysics() {
+  if (!marioState || marioState.isSpellPaused || marioState.gameOver || marioState.victory) return;
+
+  const p = marioState.player;
+
+  if (marioKeys.left) {
+    p.vx = -p.speed;
+    p.facing = "left";
+  } else if (marioKeys.right) {
+    p.vx = p.speed;
+    p.facing = "right";
+  } else {
+    p.vx *= 0.75;
+    if (Math.abs(p.vx) < 0.1) p.vx = 0;
+  }
+
+  if (marioKeys.up && p.onGround) {
+    p.vy = p.jumpForce;
+    p.onGround = false;
+  }
+
+  p.vy += 0.58;
+  if (p.vy > 14) p.vy = 14;
+
+  p.x += p.vx;
+  if (p.x < 10) p.x = 10;
+  checkPlayerHorizontalCollisions();
+
+  p.y += p.vy;
+  p.onGround = false;
+  checkPlayerVerticalCollisions();
+
+  if (p.y > marioState.canvasHeight + 60) {
+    p.hp -= 1;
+    if (p.hp <= 0) {
+      marioState.gameOver = true;
+      renderGameCenterView();
+      return;
+    } else {
+      p.x = Math.max(80, p.x - 200);
+      p.y = 250;
+      p.vy = 0;
+      p.isInvincible = true;
+      p.invincibleTimer = 90;
+    }
+  }
+
+  const targetCamX = p.x - marioState.canvasWidth * 0.4;
+  marioState.cameraX += (targetCamX - marioState.cameraX) * 0.1;
+  if (marioState.cameraX < 0) marioState.cameraX = 0;
+  const maxCamX = marioState.worldWidth - marioState.canvasWidth;
+  if (marioState.cameraX > maxCamX) marioState.cameraX = maxCamX;
+
+  if (p.isInvincible) {
+    p.invincibleTimer -= 1;
+    if (p.invincibleTimer <= 0) p.isInvincible = false;
+  }
+  if (p.slashArc) {
+    p.slashArc.timer -= 1;
+    if (p.slashArc.timer <= 0) {
+      p.slashArc = null;
+      p.isAttacking = false;
+      p.attackTimer = 0;
+    }
+  }
+
+  if (marioState.specialDragon) {
+    const dragon = marioState.specialDragon;
+    dragon.x += 16;
+    marioState.enemies.forEach(e => {
+      if (e.alive && Math.abs(e.x - dragon.x) < 80) {
+        killEnemy(e, true);
+      }
+    });
+    if (dragon.x > marioState.cameraX + marioState.canvasWidth + 200) {
+      marioState.specialDragon = null;
+    }
+  }
+
+  marioState.enemies.forEach(e => {
+    if (!e.alive) return;
+    e.x += e.vx;
+    if (e.x < e.minX || e.x > e.maxX) e.vx *= -1;
+
+    if (checkAABB(p.x, p.y, p.w, p.h, e.x, e.y, e.w, e.h)) {
+      if (p.vy > 0 && p.y + p.h - p.vy <= e.y + 14) {
+        killEnemy(e, false);
+        p.vy = -10;
+        p.score += 150;
+      } else if (!p.isInvincible) {
+        p.hp -= 1;
+        p.isInvincible = true;
+        p.invincibleTimer = 90;
+        p.vx = (p.x < e.x ? -6 : 6);
+        p.vy = -5;
+        if (p.hp <= 0) {
+          marioState.gameOver = true;
+          renderGameCenterView();
+        }
+      }
+    }
+  });
+
+  marioState.coins.forEach(c => {
+    c.x += c.vx;
+    c.y += c.vy;
+    c.vy += 0.45;
+    if (c.y > 380) { c.y = 380; c.vy *= -0.4; }
+
+    if (!c.collected && Math.hypot(p.x + p.w / 2 - c.x, p.y + p.h / 2 - c.y) < 32) {
+      c.collected = true;
+      p.coins += 1;
+      p.score += 50;
+      spawnFloatingText("🪙 +50", c.x, c.y - 10, "#fbbf24");
+    }
+  });
+  marioState.coins = marioState.coins.filter(c => !c.collected);
+
+  marioState.particles.forEach(pt => {
+    pt.x += pt.vx;
+    pt.y += pt.vy;
+    pt.alpha -= 0.025;
+  });
+  marioState.particles = marioState.particles.filter(pt => pt.alpha > 0);
+
+  if (p.x >= marioState.castle.x + 40 && !marioState.princess.rescued) {
+    marioState.princess.rescued = true;
+    marioState.victory = true;
+    addGameExp(300);
+    recordPrincessRescued();
+    renderGameCenterView();
+  }
+}
+
+function checkPlayerHorizontalCollisions() {
+  const p = marioState.player;
+  marioState.blocks.forEach(b => {
+    if (checkAABB(p.x, p.y, p.w, p.h, b.x, b.y, b.w, b.h)) {
+      if (p.vx > 0) p.x = b.x - p.w;
+      else if (p.vx < 0) p.x = b.x + b.w;
+    }
+  });
+}
+
+function checkPlayerVerticalCollisions() {
+  const p = marioState.player;
+  marioState.blocks.forEach(b => {
+    if (checkAABB(p.x, p.y, p.w, p.h, b.x, b.y, b.w, b.h)) {
+      if (p.vy > 0) {
+        p.y = b.y - p.h;
+        p.vy = 0;
+        p.onGround = true;
+      } else if (p.vy < 0) {
+        p.y = b.y + b.h;
+        p.vy = 1;
+        if (b.type === "question" && !b.hit) {
+          b.hit = true;
+          handleQuestionBlockHit(b);
+        }
+      }
+    }
+  });
+}
+
+function handleQuestionBlockHit(b) {
+  if (b.content === "coin") {
+    marioState.player.coins += 1;
+    marioState.player.score += 100;
+    spawnCoinBurst(b.x + b.w / 2, b.y - 10, 1);
+    spawnFloatingText("🪙 CHÍNH XÁC!", b.x, b.y - 20, "#fbbf24");
+  } else if (b.content === "heart") {
+    marioState.player.hp = Math.min(marioState.player.maxHp, marioState.player.hp + 1);
+    spawnFloatingText("❤️ HỒI MÁU!", b.x, b.y - 20, "#ef4444");
+  } else if (b.content === "spell") {
+    triggerMarioSpecialSpell(true);
+  }
+}
+
+function triggerMarioNormalAttack() {
+  if (!marioState || marioState.isSpellPaused) return;
+  const p = marioState.player;
+  p.isAttacking = true;
+  p.attackTimer = 12;
+  const attackX = p.facing === "right" ? p.x + p.w : p.x - 45;
+  p.slashArc = { x: attackX, y: p.y + 10, radius: 45, timer: 12 };
+
+  marioState.enemies.forEach(e => {
+    if (e.alive && Math.hypot(attackX - e.x, p.y + 20 - e.y) < 60) {
+      killEnemy(e, false);
+      p.score += 120;
+    }
+  });
+}
+
+function triggerMarioSpecialSpell(isLuckyBlock = false) {
+  if (!marioState || marioState.isSpellPaused) return;
+
+  const vocabList = extractVocabForGame(selectedProjectId);
+  const q = generateBattleQuestion(vocabList, 1);
+  marioState.isSpellPaused = true;
+  marioState.currentSpellQuestion = {
+    ...q,
+    isLuckyBlock,
+    title: isLuckyBlock ? "✨ BÙA CHÚ MAY MẮN TỪ KHỐI `?`" : "⚡ KÍCH HOẠT HỎA LONG TRẢM (火竜斬り)"
+  };
+
+  renderGameCenterView();
+}
+
+function handleMarioSpellAnswer(selectedIdx) {
+  if (!marioState || !marioState.currentSpellQuestion) return;
+  const q = marioState.currentSpellQuestion;
+  const isCorrect = selectedIdx === q.correct;
+
+  marioState.isSpellPaused = false;
+  marioState.currentSpellQuestion = null;
+
+  if (isCorrect) {
+    marioState.specialDragon = {
+      x: marioState.player.x,
+      y: marioState.player.y - 20
+    };
+    marioState.player.score += 300;
+    marioState.player.coins += 5;
+    spawnFloatingText("🔥 HỎA LONG TRẢM QUÉT SẠCH QUÁI!", marioState.player.x, marioState.player.y - 40, "#f97316");
+    addGameExp(50);
+  } else {
+    marioState.player.hp -= 1;
+    spawnFloatingText("❌ BÙA CHÚ PHẢN PHỆ -1 HP!", marioState.player.x, marioState.player.y - 30, "#ef4444");
+    if (marioState.player.hp <= 0) {
+      marioState.gameOver = true;
+    }
+  }
+
+  renderGameCenterView();
+  initMarioCanvasGame();
+}
+
+function killEnemy(enemy, isInstantVaporize = false) {
+  enemy.alive = false;
+  spawnCoinBurst(enemy.x + enemy.w / 2, enemy.y, 3);
+  spawnFloatingText("🎯 ĐÃ DIỆT!", enemy.x, enemy.y - 15, "#10b981");
+  recordMonsterDefeated();
+}
+
+function spawnCoinBurst(x, y, count = 3) {
+  if (!marioState) return;
+  for (let i = 0; i < count; i++) {
+    marioState.coins.push({
+      x,
+      y,
+      vx: (Math.random() - 0.5) * 5,
+      vy: -5 - Math.random() * 4,
+      collected: false
+    });
+  }
+}
+
+function spawnFloatingText(text, x, y, color = "#fff") {
+  if (!marioState) return;
+  marioState.particles.push({
+    text,
+    x,
+    y,
+    vx: 0,
+    vy: -1.2,
+    color,
+    alpha: 1
+  });
+}
+
+function checkAABB(x1, y1, w1, h1, x2, y2, w2, h2) {
+  return x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2;
+}
+
+function renderMarioCanvas(ctx) {
+  if (!marioState) return;
+  const cw = marioState.canvasWidth;
+  const ch = marioState.canvasHeight;
+  const camX = marioState.cameraX;
+  const p = marioState.player;
+
+  ctx.clearRect(0, 0, cw, ch);
+
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, ch);
+  skyGrad.addColorStop(0, "#38bdf8");
+  skyGrad.addColorStop(0.7, "#bae6fd");
+  skyGrad.addColorStop(1, "#fef08a");
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, cw, ch);
+
+  ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+  const cloudOffset = (camX * 0.2) % 400;
+  drawCloud(ctx, 120 - cloudOffset, 60, 45);
+  drawCloud(ctx, 380 - cloudOffset, 80, 55);
+  drawCloud(ctx, 640 - cloudOffset, 50, 40);
+  drawCloud(ctx, 900 - cloudOffset, 70, 50);
+
+  ctx.fillStyle = "#86efac";
+  ctx.beginPath();
+  ctx.moveTo(0, ch);
+  for (let x = 0; x <= cw; x += 80) {
+    const hillY = 320 + Math.sin((x + camX * 0.4) * 0.015) * 35;
+    ctx.lineTo(x, hillY);
+  }
+  ctx.lineTo(cw, ch);
+  ctx.fill();
+
+  ctx.save();
+  ctx.translate(-camX, 0);
+
+  drawCastle(ctx, marioState.castle.x, marioState.castle.y, marioState.castle.w, marioState.castle.h);
+  drawPrincess(ctx, marioState.princess.x, marioState.princess.y, marioState.princess.rescued);
+
+  marioState.blocks.forEach(b => {
+    if (b.type === "ground") {
+      ctx.fillStyle = "#16a34a";
+      ctx.fillRect(b.x, b.y, b.w, 14);
+      ctx.fillStyle = "#78350f";
+      ctx.fillRect(b.x, b.y + 14, b.w, b.h - 14);
+      ctx.fillStyle = "#92400e";
+      for (let gx = b.x; gx < b.x + b.w; gx += 30) {
+        ctx.fillRect(gx + 6, b.y + 24, 12, 10);
+      }
+    } else if (b.type === "brick") {
+      ctx.fillStyle = "#b45309";
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.strokeStyle = "#78350f";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+    } else if (b.type === "question") {
+      ctx.fillStyle = b.hit ? "#9ca3af" : "#fbbf24";
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.strokeStyle = b.hit ? "#6b7280" : "#d97706";
+      ctx.lineWidth = 2.5;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+
+      ctx.fillStyle = b.hit ? "#4b5563" : "#78350f";
+      ctx.font = "bold 22px monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(b.hit ? "•" : "?", b.x + b.w / 2, b.y + b.h / 2);
+    }
+  });
+
+  marioState.coins.forEach(c => {
+    ctx.fillStyle = "#fbbf24";
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#d97706";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  });
+
+  marioState.enemies.forEach(e => {
+    if (!e.alive) return;
+    drawEnemy(ctx, e.x, e.y, e.w, e.h, e.type);
+  });
+
+  if (!p.isInvincible || Math.floor(p.invincibleTimer / 4) % 2 === 0) {
+    drawKnight(ctx, p.x, p.y, p.w, p.h, p.facing, p.onGround);
+  }
+
+  if (p.slashArc) {
+    ctx.strokeStyle = "#fef08a";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(p.slashArc.x, p.slashArc.y, p.slashArc.radius, -0.6, 0.6, p.facing === "left");
+    ctx.stroke();
+  }
+
+  if (marioState.specialDragon) {
+    drawFireDragon(ctx, marioState.specialDragon.x, marioState.specialDragon.y);
+  }
+
+  marioState.particles.forEach(pt => {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, pt.alpha);
+    ctx.fillStyle = pt.color;
+    ctx.font = "bold 15px var(--font-display, sans-serif)";
+    ctx.textAlign = "center";
+    ctx.fillText(pt.text, pt.x, pt.y);
+    ctx.restore();
+  });
+
+  ctx.restore();
+
+  drawMarioHUD(ctx, p);
+}
+
+function drawCloud(ctx, x, y, r) {
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.6, 0, Math.PI * 2);
+  ctx.arc(x + r * 0.4, y - r * 0.2, r * 0.7, 0, Math.PI * 2);
+  ctx.arc(x + r * 0.9, y, r * 0.5, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawKnight(ctx, x, y, w, h, facing, onGround) {
+  ctx.save();
+  ctx.translate(x + w / 2, y + h / 2);
+  if (facing === "left") ctx.scale(-1, 1);
+
+  ctx.fillStyle = "#dc2626";
+  ctx.beginPath();
+  ctx.moveTo(-10, -12);
+  ctx.lineTo(-24, 16);
+  ctx.lineTo(-8, 14);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = "#94a3b8";
+  ctx.fillRect(-10, -12, 20, 26);
+  ctx.fillStyle = "#3b82f6";
+  ctx.fillRect(-4, -6, 8, 10);
+
+  ctx.fillStyle = "#475569";
+  ctx.fillRect(-9, 14, 7, 10);
+  ctx.fillRect(2, 14, 7, 10);
+
+  ctx.fillStyle = "#cbd5e1";
+  ctx.beginPath();
+  ctx.arc(0, -16, 12, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#fbbf24";
+  ctx.fillRect(2, -18, 9, 4);
+
+  ctx.fillStyle = "#e2e8f0";
+  ctx.fillRect(8, -6, 18, 4);
+  ctx.fillStyle = "#d97706";
+  ctx.fillRect(6, -8, 3, 8);
+
+  ctx.restore();
+}
+
+function drawEnemy(ctx, x, y, w, h, type) {
+  ctx.save();
+  ctx.translate(x + w / 2, y + h / 2);
+
+  if (type === "slime") {
+    ctx.fillStyle = "#a855f7";
+    ctx.beginPath();
+    ctx.arc(0, 0, 16, Math.PI, 0, false);
+    ctx.lineTo(16, 14);
+    ctx.lineTo(-16, 14);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(-8, -4, 5, 6);
+    ctx.fillRect(3, -4, 5, 6);
+    ctx.fillStyle = "#000";
+    ctx.fillRect(-6, -2, 2, 3);
+    ctx.fillRect(5, -2, 2, 3);
+  } else {
+    ctx.fillStyle = "#ef4444";
+    ctx.beginPath();
+    ctx.arc(0, 0, 16, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#fbbf24";
+    ctx.beginPath();
+    ctx.moveTo(-10, -14);
+    ctx.lineTo(-14, -24);
+    ctx.lineTo(-6, -16);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(10, -14);
+    ctx.lineTo(14, -24);
+    ctx.lineTo(6, -16);
+    ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(-8, -4, 5, 5);
+    ctx.fillRect(3, -4, 5, 5);
+    ctx.fillStyle = "#000";
+    ctx.fillRect(-6, -3, 2, 2);
+    ctx.fillRect(5, -3, 2, 2);
+  }
+
+  ctx.restore();
+}
+
+function drawCastle(ctx, x, y, w, h) {
+  ctx.fillStyle = "#64748b";
+  ctx.fillRect(x, y + 60, w, h - 60);
+  ctx.fillStyle = "#475569";
+  ctx.fillRect(x - 20, y, 50, h);
+  ctx.fillRect(x + w - 30, y, 50, h);
+  ctx.fillStyle = "#ec4899";
+  ctx.beginPath();
+  ctx.moveTo(x + 5, y - 20);
+  ctx.lineTo(x + 35, y - 10);
+  ctx.lineTo(x + 5, y);
+  ctx.fill();
+  ctx.fillStyle = "#1e293b";
+  ctx.beginPath();
+  ctx.arc(x + w / 2, y + h, 36, Math.PI, 0);
+  ctx.fill();
+}
+
+function drawPrincess(ctx, x, y, rescued) {
+  ctx.save();
+  ctx.translate(x, y);
+
+  ctx.fillStyle = "#f472b6";
+  ctx.beginPath();
+  ctx.moveTo(0, 10);
+  ctx.lineTo(18, 45);
+  ctx.lineTo(-18, 45);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = "#fde047";
+  ctx.beginPath();
+  ctx.arc(0, -6, 14, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#fde68a";
+  ctx.beginPath();
+  ctx.arc(0, -4, 10, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#fbbf24";
+  ctx.beginPath();
+  ctx.moveTo(-8, -14);
+  ctx.lineTo(-8, -22);
+  ctx.lineTo(-3, -16);
+  ctx.lineTo(0, -24);
+  ctx.lineTo(3, -16);
+  ctx.lineTo(8, -22);
+  ctx.lineTo(8, -14);
+  ctx.fill();
+
+  ctx.fillStyle = "#fde68a";
+  if (rescued) {
+    ctx.fillRect(-16, 2, 6, 12);
+    ctx.fillRect(10, 2, 6, 12);
+  } else {
+    ctx.fillRect(-16, -10, 6, 14);
+    ctx.fillRect(10, -10, 6, 14);
+  }
+
+  ctx.restore();
+}
+
+function drawFireDragon(ctx, x, y) {
+  ctx.save();
+  ctx.translate(x, y);
+
+  ctx.fillStyle = "#ea580c";
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(60, -20);
+  ctx.lineTo(80, 0);
+  ctx.lineTo(60, 20);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = "#facc15";
+  ctx.beginPath();
+  ctx.arc(35, 0, 18, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(45, -8, 8, 6);
+  ctx.fillStyle = "#dc2626";
+  ctx.fillRect(48, -7, 4, 4);
+
+  ctx.strokeStyle = "#fed7aa";
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawMarioHUD(ctx, p) {
+  for (let i = 0; i < p.maxHp; i++) {
+    ctx.font = "24px sans-serif";
+    ctx.fillText(i < p.hp ? "❤️" : "🖤", 20 + i * 30, 36);
+  }
+
+  ctx.fillStyle = "#fbbf24";
+  ctx.font = "bold 20px monospace";
+  ctx.fillText(`🪙 x${p.coins}`, 140, 34);
+
+  ctx.fillStyle = "#fff";
+  ctx.shadowColor = "#000";
+  ctx.shadowBlur = 4;
+  ctx.font = "bold 18px var(--font-display, sans-serif)";
+  ctx.fillText(`ĐIỂM: ${p.score}`, 240, 34);
+  ctx.shadowBlur = 0;
+}
+
+function renderPrincessGameHtml() {
+  if (!marioState) return "";
+
+  return `
+    <div class="mario-game-wrapper">
+      <div class="battle-top-nav glass-panel">
+        <button type="button" class="btn btn-secondary btn-sm btn-back-to-game-hub">⬅ Quay lại Game Hub</button>
+        <div class="battle-round-badge princess-round">
+          <span>👑 Giải Cứu Công Chúa: Mario 2D Adventure</span>
+        </div>
+        <div class="mario-quick-keys-hint">
+          <span>Phím: <strong>A/D</strong> (Chạy) · <strong>Space</strong> (Nhảy) · <strong>J</strong> (Chém) · <strong>K</strong> (Tuyệt chiêu)</span>
+        </div>
+      </div>
+
+      <div class="mario-canvas-container">
+        <canvas id="mario-canvas" width="820" height="460"></canvas>
+
+        <div class="mario-touch-controls-bar">
+          <div class="touch-ctrl-dpad">
+            <button type="button" class="touch-btn touch-btn-dir" data-mario-dir="left">◀</button>
+            <button type="button" class="touch-btn touch-btn-dir" data-mario-dir="right">▶</button>
+          </div>
+          <div class="touch-ctrl-actions">
+            <button type="button" class="touch-btn touch-btn-jump" data-mario-ctrl="jump">▲ Nhảy</button>
+            <button type="button" class="touch-btn touch-btn-attack" data-mario-ctrl="attack">⚔️ Chém</button>
+            <button type="button" class="touch-btn touch-btn-spell" data-mario-ctrl="spell">⚡ Tuyệt chiêu</button>
+          </div>
+        </div>
+
+        ${marioState.isSpellPaused && marioState.currentSpellQuestion ? `
+          <div class="mario-spell-modal-overlay">
+            <div class="mario-spell-box glass-panel">
+              <div class="spell-box-header">
+                <h3>${marioState.currentSpellQuestion.title}</h3>
+                <span class="spell-timer-badge">⏱️ Giải mã nhanh!</span>
+              </div>
+              <p class="spell-desc-sub">Trả lời chính xác để phóng Hỏa Long Trảm quét sạch toàn bộ quái vật trên đường đi!</p>
+              
+              <div class="spell-prompt-text">${marioState.currentSpellQuestion.prompt}</div>
+
+              <div class="mario-spell-options-grid">
+                ${marioState.currentSpellQuestion.options.map((opt, idx) => `
+                  <button type="button" class="mario-spell-ans-btn" data-spell-opt-idx="${idx}">
+                    <span>（${idx + 1}）</span> <strong>${opt}</strong>
+                  </button>
+                `).join("")}
+              </div>
+            </div>
+          </div>
+        ` : ''}
+
+        ${marioState.gameOver ? `
+          <div class="mario-spell-modal-overlay">
+            <div class="battle-end-modal glass-panel game-over-box">
+              <div class="end-icon">💀</div>
+              <h3>HIỆP SĨ ĐÃ HẾT MÁU!</h3>
+              <p>Công chúa vẫn đang ngóng chờ bạn ở Lâu Đài. Hãy củng cố từ vựng và thử lại nhé!</p>
+              <div class="end-actions">
+                <button type="button" class="btn btn-primary btn-lg" id="retry-mario-game-btn">🔄 Chơi Lại Từ Đầu</button>
+                <button type="button" class="btn btn-secondary btn-back-to-game-hub">Quay lại Game Hub</button>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+
+        ${marioState.victory ? `
+          <div class="mario-spell-modal-overlay">
+            <div class="battle-end-modal glass-panel victory-box">
+              <div class="end-icon">👸👑🎉</div>
+              <h3>CHÚC MỪNG! GIẢI CỨU CÔNG CHÚA THÀNH CÔNG!</h3>
+              <p>
+                Bạn đã vượt qua mọi cạm bẫy quái vật và tiến thẳng vào Lâu Đài Lộng Lẫy! 
+                Công chúa trao tặng bạn Vương Miện Hiệp Sĩ Cứu Thế.
+              </p>
+              <div class="victory-stat-summary">
+                <span>🪙 Vàng nhặt được: <strong>${marioState.player.coins}</strong></span>
+                <span>⭐ Tổng điểm: <strong>${marioState.player.score}</strong></span>
+                <span>🏆 Thưởng EXP: <strong>+300 EXP</strong></span>
+              </div>
+              <div class="end-actions">
+                <button type="button" class="btn btn-primary btn-lg" id="retry-mario-game-btn">🎮 Chơi Lại Màn Mới</button>
+                <button type="button" class="btn btn-secondary btn-back-to-game-hub">Quay lại Game Hub</button>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================================
+// GAME 3: LẬT THẺ TRÍ NHỚ MA THUẬT (3x3 ĐẾN 25x25)
+// ============================================================================
+function startMemoryGame() {
+  currentGameMode = "memory";
+
+  const [cols, rows] = memoryGridSize.split("x").map(n => parseInt(n, 10));
+  const totalSlots = cols * rows;
+  const isOddGrid = totalSlots % 2 !== 0;
+  const pairCount = isOddGrid ? Math.floor(totalSlots / 2) : totalSlots / 2;
+
+  const rawPool = extractVocabForGame(selectedProjectId);
+  const combinedPool = [...rawPool];
+  EXTENDED_VOCAB_BANK.forEach(bv => {
+    if (!combinedPool.some(r => r.kanji === bv.kanji || r.hiragana === bv.hiragana)) {
+      combinedPool.push(bv);
+    }
+  });
+
+  let neededVocab = [];
+  while (neededVocab.length < pairCount) {
+    const remaining = pairCount - neededVocab.length;
+    const batch = [...combinedPool].sort(() => 0.5 - Math.random());
+    neededVocab.push(...batch.slice(0, remaining));
+  }
+
+  const cards = [];
+  neededVocab.forEach((v, idx) => {
+    cards.push({
+      id: `c-jp-${idx}`,
+      pairId: `pair-${idx}`,
+      type: "jp",
+      display: v.kanji || v.hiragana,
+      subDisplay: v.hiragana !== v.kanji ? v.hiragana : (v.romaji || ""),
+      tts: v.hiragana || v.kanji,
+      isFlipped: false,
+      isMatched: false
+    });
+    cards.push({
+      id: `c-vi-${idx}`,
+      pairId: `pair-${idx}`,
+      type: "vi",
+      display: v.meaning,
+      subDisplay: "Nghĩa tiếng Việt",
+      tts: v.hiragana || v.kanji,
+      isFlipped: false,
+      isMatched: false
+    });
+  });
+
+  if (isOddGrid) {
+    cards.push({
+      id: "card-lucky-star",
+      pairId: "pair-lucky-star",
+      type: "star",
+      display: "⭐ SAO MAY MẮN",
+      subDisplay: "Lucky Star +100 EXP",
+      tts: "ラッキースター",
+      isFlipped: false,
+      isMatched: false
+    });
+  }
+
+  cards.sort(() => 0.5 - Math.random());
+
+  memoryState = {
+    gridSize: memoryGridSize,
+    cols,
+    rows,
+    cards,
+    flippedIndices: [],
+    matchedCount: 0,
+    totalPairs: pairCount + (isOddGrid ? 1 : 0),
+    flips: 0,
+    isLocked: false,
+    completed: false
+  };
+
+  renderGameCenterView();
+}
+
+function renderMemoryGameHtml() {
+  if (!memoryState) return "";
+
+  const gridSizesList = ["3x3", "4x4", "5x5", "8x8", "12x12", "15x15", "20x20", "25x25"];
+
+  return `
+    <div class="memory-game-container">
+      <div class="battle-top-nav glass-panel">
+        <button type="button" class="btn btn-secondary btn-sm btn-back-to-game-hub">⬅ Quay lại Game Hub</button>
+        <div class="battle-round-badge memory-badge">
+          <span>🎴 Bàn cờ <strong>${memoryState.gridSize}</strong> (${memoryState.cards.length} thẻ) · Ghép: <strong>${memoryState.matchedCount}/${memoryState.totalPairs}</strong></span>
+        </div>
+        <div class="battle-score-pill">
+          <span>Lượt lật: <strong>${memoryState.flips}</strong></span>
+          <button type="button" class="btn btn-outline btn-sm" id="restart-memory-game-btn" style="margin-left: 6px;">🔄 Chia lại</button>
+        </div>
+      </div>
+
+      <div class="memory-config-bar glass-panel">
+        <div class="grid-size-selector-pills">
+          <span class="sel-title">Kích thước:</span>
+          ${gridSizesList.map(sz => `
+            <button type="button" class="mem-size-pill ${memoryState.gridSize === sz ? 'active' : ''}" data-mem-size="${sz}">
+              ${sz}
+            </button>
+          `).join("")}
+        </div>
+        <div class="memory-zoom-controls">
+          <button type="button" class="btn btn-outline btn-sm" id="mem-zoom-out" title="Thu nhỏ bàn cờ">🔍 -</button>
+          <button type="button" class="btn btn-outline btn-sm" id="mem-zoom-reset" title="Đặt lại tỷ lệ">100%</button>
+          <button type="button" class="btn btn-outline btn-sm" id="mem-zoom-in" title="Phóng to bàn cờ">🔍 +</button>
+        </div>
+      </div>
+
+      ${memoryState.completed ? `
+        <div class="battle-end-modal glass-panel victory-box" style="margin-top: 14px;">
+          <div class="end-icon">🎴✨🎉</div>
+          <h3>TUYỆT VỜI! HOÀN THÀNH BÀN CỜ ${memoryState.gridSize}!</h3>
+          <p>Trí nhớ của bạn thật phi thường! Bạn đã chinh phục toàn bộ <strong>${memoryState.cards.length} thẻ</strong> chỉ trong <strong>${memoryState.flips} lượt lật</strong>.</p>
+          <div class="end-actions">
+            <button type="button" class="btn btn-primary btn-lg" id="restart-memory-game-btn">🔄 Chơi Ván Mới</button>
+            <button type="button" class="btn btn-secondary btn-back-to-game-hub">Quay lại Game Hub</button>
+          </div>
+        </div>
+      ` : `
+        <div class="memory-board-viewport" id="memory-viewport">
+          <div class="memory-cards-grid-scalable" 
+               id="memory-grid-scalable"
+               style="--cols: ${memoryState.cols}; transform: scale(${memoryZoom});">
+            ${memoryState.cards.map((card, idx) => {
+              const isRevealed = card.isFlipped || card.isMatched;
+              return `
+                <div class="memory-card card-size-${memoryState.gridSize} ${isRevealed ? 'is-flipped' : ''} ${card.isMatched ? 'is-matched' : ''}" 
+                     data-card-idx="${idx}">
+                  <div class="memory-card-inner">
+                    <div class="memory-card-back">
+                      <span class="card-back-pattern">🎴</span>
+                      <span class="card-back-text">MIW</span>
+                    </div>
+                    <div class="memory-card-front card-front-${card.type}">
+                      <div class="front-display-main">${card.display}</div>
+                      <div class="front-display-sub">${card.subDisplay}</div>
+                      ${card.isMatched ? '<span class="match-check">✓ Đã ghép</span>' : ''}
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+function handleMemoryCardFlip(cardIdx) {
+  if (!memoryState || memoryState.isLocked) return;
+  const card = memoryState.cards[cardIdx];
+  if (!card || card.isFlipped || card.isMatched) return;
+
+  card.isFlipped = true;
+
+  if (card.type === "star") {
+    card.isMatched = true;
+    memoryState.matchedCount += 1;
+    addGameExp(100);
+    if (card.tts) speakJapanese(card.tts);
+    if (memoryState.matchedCount >= memoryState.totalPairs) {
+      memoryState.completed = true;
+      recordMemoryWin();
+    }
+    renderGameCenterView();
+    return;
+  }
+
+  memoryState.flippedIndices.push(cardIdx);
+  if (card.tts) speakJapanese(card.tts);
+  renderGameCenterView();
+
+  if (memoryState.flippedIndices.length === 2) {
+    memoryState.flips += 1;
+    memoryState.isLocked = true;
+
+    const idx1 = memoryState.flippedIndices[0];
+    const idx2 = memoryState.flippedIndices[1];
+    const card1 = memoryState.cards[idx1];
+    const card2 = memoryState.cards[idx2];
+
+    if (card1.pairId === card2.pairId && card1.id !== card2.id) {
+      setTimeout(() => {
+        card1.isMatched = true;
+        card2.isMatched = true;
+        memoryState.flippedIndices = [];
+        memoryState.matchedCount += 1;
+        memoryState.isLocked = false;
+
+        if (memoryState.matchedCount >= memoryState.totalPairs) {
+          memoryState.completed = true;
+          addGameExp(150);
+          recordMemoryWin();
+        }
+        renderGameCenterView();
+      }, 400);
+    } else {
+      setTimeout(() => {
+        card1.isFlipped = false;
+        card2.isFlipped = false;
+        memoryState.flippedIndices = [];
+        memoryState.isLocked = false;
+        renderGameCenterView();
+      }, 900);
+    }
+  }
+}
+
+function applyMemoryZoom() {
+  if (typeof document === "undefined") return;
+  const el = document.getElementById("memory-grid-scalable");
+  if (el) el.style.transform = `scale(${memoryZoom})`;
+}
+
+// ============================================================================
+// GAME 1: MONSTER SLAYER
 // ============================================================================
 function startMonsterGame() {
   currentGameMode = "monster";
@@ -401,7 +1524,7 @@ function startMonsterGame() {
     currentQuestion: generateBattleQuestion(vocabList, 0),
     gameOver: false,
     victory: false,
-    attackEffect: null // 'player' | 'monster'
+    attackEffect: null
   };
 
   renderGameCenterView();
@@ -409,7 +1532,6 @@ function startMonsterGame() {
 
 function renderMonsterGameHtml() {
   if (!monsterState) return "";
-
   const monster = MONSTER_ROSTER[monsterState.currentMonsterIndex];
   const q = monsterState.currentQuestion;
   const playerHpPct = Math.max(0, Math.round((monsterState.playerHp / monsterState.playerMaxHp) * 100));
@@ -417,11 +1539,8 @@ function renderMonsterGameHtml() {
 
   return `
     <div class="monster-battle-arena-container">
-      <!-- Thanh Top Bar -->
       <div class="battle-top-nav glass-panel">
-        <button type="button" class="btn btn-secondary btn-sm btn-back-to-game-hub">
-          ⬅ Quay lại Game Hub
-        </button>
+        <button type="button" class="btn btn-secondary btn-sm btn-back-to-game-hub">⬅ Quay lại Game Hub</button>
         <div class="battle-round-badge">
           <span>⚔️ Vòng ${monsterState.currentMonsterIndex + 1} / ${MONSTER_ROSTER.length}: ${monster.title}</span>
         </div>
@@ -431,18 +1550,11 @@ function renderMonsterGameHtml() {
         </div>
       </div>
 
-      <!-- Sàn Đấu Trận Chiến (Battle Stage) -->
       <div class="battle-stage-card glass-panel ${monsterState.attackEffect === 'monster' ? 'screen-shake' : ''}">
-        <!-- Nhân vật Hiệp Sĩ (Bên Trái) -->
         <div class="battle-combatant player-side ${monsterState.attackEffect === 'player' ? 'player-attack-anim' : ''}">
           <div class="combatant-hp-bar-box">
-            <div class="combatant-name-label">
-              <span>🛡️ Hiệp Sĩ (Bạn)</span>
-              <strong>${monsterState.playerHp}/${monsterState.playerMaxHp} HP</strong>
-            </div>
-            <div class="hp-bar-track">
-              <div class="hp-bar-fill player-hp-fill" style="width: ${playerHpPct}%;"></div>
-            </div>
+            <div class="combatant-name-label"><span>🛡️ Hiệp Sĩ</span><strong>${monsterState.playerHp}/${monsterState.playerMaxHp} HP</strong></div>
+            <div class="hp-bar-track"><div class="hp-bar-fill player-hp-fill" style="width: ${playerHpPct}%;"></div></div>
           </div>
           <div class="combatant-sprite player-sprite">
             <span class="sprite-avatar">🤺</span>
@@ -450,22 +1562,15 @@ function renderMonsterGameHtml() {
           </div>
         </div>
 
-        <!-- Khu vực Hiệu ứng giữa sân -->
         <div class="battle-versus-zone">
           <span class="vs-text">VS</span>
           <div class="battle-log-toast">${monsterState.battleLog}</div>
         </div>
 
-        <!-- Quái Vật (Bên Phải) -->
         <div class="battle-combatant monster-side ${monsterState.attackEffect === 'monster' ? 'monster-attack-anim' : ''}">
           <div class="combatant-hp-bar-box">
-            <div class="combatant-name-label">
-              <span style="color: ${monster.color};">${monster.name}</span>
-              <strong>${monsterState.monsterHp}/${monster.maxHp} HP</strong>
-            </div>
-            <div class="hp-bar-track">
-              <div class="hp-bar-fill monster-hp-fill" style="width: ${monsterHpPct}%; background: ${monster.color};"></div>
-            </div>
+            <div class="combatant-name-label"><span style="color: ${monster.color};">${monster.name}</span><strong>${monsterState.monsterHp}/${monster.maxHp} HP</strong></div>
+            <div class="hp-bar-track"><div class="hp-bar-fill monster-hp-fill" style="width: ${monsterHpPct}%; background: ${monster.color};"></div></div>
           </div>
           <div class="combatant-sprite monster-sprite">
             <span class="sprite-avatar monster-avatar-emoji">${monster.avatar}</span>
@@ -474,12 +1579,11 @@ function renderMonsterGameHtml() {
         </div>
       </div>
 
-      <!-- Khung Câu Đố Chiến Đấu (Question Arena) -->
       ${monsterState.gameOver ? `
         <div class="battle-end-modal glass-panel game-over-box">
           <div class="end-icon">💀</div>
           <h3>HIỆP SĨ ĐÃ BỊ ĐÁNH BẠI!</h3>
-          <p>Yêu quái đã cướp hết máu của bạn. Đừng nản lòng, hãy củng cố từ vựng và thử lại nhé!</p>
+          <p>Yêu quái quá hung bạo! Hãy củng cố từ vựng và thử lại nhé.</p>
           <div class="end-actions">
             <button type="button" class="btn btn-primary btn-lg" id="retry-monster-btn">🔄 Thử Thách Lại</button>
             <button type="button" class="btn btn-secondary btn-back-to-game-hub">Quay lại Game Hub</button>
@@ -489,7 +1593,7 @@ function renderMonsterGameHtml() {
         <div class="battle-end-modal glass-panel victory-box">
           <div class="end-icon">🎉</div>
           <h3>XUẤT SẮC! TIÊU DIỆT HOÀN TOÀN QUÁI VẬT!</h3>
-          <p>Bạn đã quét sạch 4 đại yêu quái và bảo vệ yên bình cho ngôi làng! Điểm số: <strong>${monsterState.score} EXP</strong>.</p>
+          <p>Bạn đã quét sạch 4 đại yêu quái bảo vệ ngôi làng! Điểm số: <strong>${monsterState.score} EXP</strong>.</p>
           <div class="end-actions">
             <button type="button" class="btn btn-primary btn-lg" id="retry-monster-btn">⚔️ Chơi Lại Vòng Mới</button>
             <button type="button" class="btn btn-secondary btn-back-to-game-hub">Quay lại Game Hub</button>
@@ -499,25 +1603,17 @@ function renderMonsterGameHtml() {
         <div class="battle-end-modal glass-panel next-round-box">
           <div class="end-icon">💥</div>
           <h3>YÊU QUÁI ${monster.name} ĐÃ BỊ HẠ GỤC!</h3>
-          <p>Chiêu thức của bạn quá mạnh mẽ! Bạn nhận được +100 điểm thưởng.</p>
           <div class="end-actions">
-            <button type="button" class="btn btn-primary btn-lg" id="next-monster-btn">
-              ➡️ Khiêu Chiến Quái Vật Tiếp Theo!
-            </button>
+            <button type="button" class="btn btn-primary btn-lg" id="next-monster-btn">➡️ Khiêu Chiến Quái Vật Tiếp Theo!</button>
           </div>
         </div>
       ` : `
         <div class="battle-question-deck glass-panel">
           <div class="question-deck-header">
             <span class="spell-tag">🔮 CÂU THẦN CHÚ CHIẾN ĐẤU</span>
-            ${q.tts ? `
-              <button type="button" class="btn-tts game-tts-btn" data-tts="${q.tts}">🔊 Nghe phát âm</button>
-            ` : ''}
+            ${q.tts ? `<button type="button" class="btn-tts game-tts-btn" data-tts="${q.tts}">🔊 Nghe phát âm</button>` : ''}
           </div>
-
           <div class="question-prompt-text">${q.prompt}</div>
-
-          <!-- 4 Lựa chọn đòn đánh -->
           <div class="monster-answers-grid">
             ${q.options.map((opt, idx) => `
               <button type="button" class="monster-answer-btn" data-idx="${idx}">
@@ -541,7 +1637,6 @@ function handleMonsterAnswer(selectedIdx) {
   const isCorrect = selectedIdx === q.correct;
 
   if (isCorrect) {
-    // Người chơi chém trúng quái vật
     const damage = 20 + monsterState.streak * 5;
     monsterState.monsterHp = Math.max(0, monsterState.monsterHp - damage);
     monsterState.streak += 1;
@@ -549,32 +1644,27 @@ function handleMonsterAnswer(selectedIdx) {
     monsterState.attackEffect = "player";
     monsterState.battleLog = `🎯 CHÍNH XÁC! Hiệp sĩ thi triển kiếm quang chém trúng ${monster.name} gây -${damage} HP!`;
 
-    // Nếu quái vật chết
     if (monsterState.monsterHp <= 0) {
       addGameExp(150);
       recordMonsterDefeated();
       if (monsterState.currentMonsterIndex >= MONSTER_ROSTER.length - 1) {
         monsterState.victory = true;
-        monsterState.battleLog = "🎉 BẠN ĐÃ ĐÁNH BẠI ĐẠI QUỶ VƯƠNG! CHIẾN THẮNG!";
       }
     }
   } else {
-    // Người chơi sai, quái vật phản công
     const damage = monster.attackPower;
     monsterState.playerHp = Math.max(0, monsterState.playerHp - damage);
     monsterState.streak = 0;
     monsterState.attackEffect = "monster";
-    monsterState.battleLog = `⚠️ SAI RỒI! ${monster.name} dùng chiêu '${monster.attackName}' đánh trúng bạn gây -${damage} HP! (Đáp án đúng: ${q.options[q.correct]})`;
+    monsterState.battleLog = `⚠️ SAI RỒI! ${monster.name} dùng chiêu '${monster.attackName}' đánh trúng bạn gây -${damage} HP!`;
 
     if (monsterState.playerHp <= 0) {
       monsterState.gameOver = true;
-      monsterState.battleLog = "💀 Bạn đã cạn kiệt sinh lực!";
     }
   }
 
   renderGameCenterView();
 
-  // Reset hiệu ứng và tạo câu hỏi mới sau 1 giây
   setTimeout(() => {
     if (monsterState) {
       monsterState.attackEffect = null;
@@ -593,353 +1683,15 @@ function advanceNextMonster() {
   monsterState.currentMonsterIndex += 1;
   const nextMonster = MONSTER_ROSTER[monsterState.currentMonsterIndex];
   monsterState.monsterHp = nextMonster.hp;
-  // Hồi phục 30 HP cho người chơi khi qua màn
   monsterState.playerHp = Math.min(monsterState.playerMaxHp, monsterState.playerHp + 30);
-  monsterState.battleLog = `Yêu quái mới ${nextMonster.name} xuất kích! Hãy cẩn thận!`;
+  monsterState.battleLog = `Yêu quái mới ${nextMonster.name} xuất kích!`;
   const vocabList = extractVocabForGame(selectedProjectId);
   monsterState.currentQuestion = generateBattleQuestion(vocabList, monsterState.currentMonsterIndex);
   renderGameCenterView();
 }
 
 // ============================================================================
-// GAME 2: GIẢI CỨU CÔNG CHÚA (PRINCESS RESCUE)
-// ============================================================================
-function startPrincessGame() {
-  currentGameMode = "princess";
-  const vocabList = extractVocabForGame(selectedProjectId);
-
-  princessState = {
-    currentFloor: 1,
-    maxFloors: 5,
-    score: 0,
-    keysCollected: 0,
-    currentQuestion: generatePrincessQuestion(vocabList, 1),
-    isAnswering: false,
-    doorOpen: false,
-    completed: false,
-    feedbackText: "Cánh cổng Tầng 1 đang khóa chặt bằng bùa chú chữ Hán. Hãy giải mã chìa khóa để leo tháp!"
-  };
-
-  renderGameCenterView();
-}
-
-function renderPrincessGameHtml() {
-  if (!princessState) return "";
-
-  const floorData = PRINCESS_TOWER_FLOORS[princessState.currentFloor - 1];
-  const q = princessState.currentQuestion;
-
-  return `
-    <div class="princess-rescue-container">
-      <!-- Top Bar -->
-      <div class="battle-top-nav glass-panel">
-        <button type="button" class="btn btn-secondary btn-sm btn-back-to-game-hub">
-          ⬅ Quay lại Game Hub
-        </button>
-        <div class="battle-round-badge princess-round">
-          <span>🏰 Tầng ${princessState.currentFloor} / 5: ${floorData.name}</span>
-        </div>
-        <div class="battle-score-pill">
-          <span>Chìa khóa vàng: <strong>${princessState.keysCollected} / 5 🗝️</strong></span>
-        </div>
-      </div>
-
-      <!-- Bản Đồ Tháp Lâu Đài (Castle Tower Map) -->
-      <div class="castle-tower-stage glass-panel">
-        <div class="tower-roof">
-          <div class="princess-box ${princessState.completed ? 'princess-free-anim' : ''}">
-            <span class="princess-avatar">👸</span>
-            <span class="princess-label">${princessState.completed ? 'ĐÃ ĐƯỢC CỨU! ❤️' : 'Công Chúa Đang Chờ Cứu!'}</span>
-          </div>
-        </div>
-
-        <div class="tower-floors-vertical-stack">
-          ${PRINCESS_TOWER_FLOORS.slice().reverse().map(fl => {
-            const isCurrent = fl.floor === princessState.currentFloor;
-            const isCleared = fl.floor < princessState.currentFloor || princessState.completed;
-            let floorStateCls = "floor-locked";
-            if (isCleared) floorStateCls = "floor-cleared";
-            else if (isCurrent) floorStateCls = "floor-active";
-
-            return `
-              <div class="tower-floor-row ${floorStateCls}">
-                <div class="floor-level-tag">Tầng ${fl.floor}</div>
-                <div class="floor-gate-icon">${isCleared ? '🔓' : (isCurrent ? '🗝️' : '🔒')}</div>
-                <div class="floor-info-box">
-                  <strong>${fl.name}</strong>
-                  <small>${fl.challenge}</small>
-                </div>
-                ${isCurrent ? '<div class="knight-pointer">🤺 Bạn đang ở đây</div>' : ''}
-              </div>
-            `;
-          }).join("")}
-        </div>
-      </div>
-
-      <!-- Khu vực Câu Đố Phá Cổng Tầng Tháp -->
-      ${princessState.completed ? `
-        <div class="battle-end-modal glass-panel victory-box">
-          <div class="end-icon">👸🎉</div>
-          <h3>CÔNG CHÚA ĐÃ ĐƯỢC GIẢI CỨU THÀNH CÔNG!</h3>
-          <p>
-            Bạn đã vượt qua toàn bộ 5 tầng tháp ma thuật bằng kiến thức tiếng Nhật tuyệt vời! 
-            Công chúa trao tặng bạn Vương miện Hiệp Sĩ và +300 EXP.
-          </p>
-          <div class="end-actions">
-            <button type="button" class="btn btn-primary btn-lg" id="retry-princess-btn">🏰 Khiêu Chiến Lại Lâu Đài</button>
-            <button type="button" class="btn btn-secondary btn-back-to-game-hub">Quay lại Game Hub</button>
-          </div>
-        </div>
-      ` : (princessState.doorOpen ? `
-        <div class="battle-end-modal glass-panel next-round-box">
-          <div class="end-icon">🗝️✨</div>
-          <h3>CỔNG TẦNG ${princessState.currentFloor} ĐÃ ĐƯỢC MỞ KHÓA!</h3>
-          <p>${princessState.feedbackText}</p>
-          <div class="end-actions">
-            <button type="button" class="btn btn-primary btn-lg" id="next-floor-btn">
-              ⬆️ Leo Lên Tầng ${princessState.currentFloor + 1}
-            </button>
-          </div>
-        </div>
-      ` : `
-        <div class="battle-question-deck glass-panel">
-          <div class="question-deck-header">
-            <span class="spell-tag">🗝️ Ổ KHÓA MA THUẬT TẦNG ${princessState.currentFloor}</span>
-            <div class="gate-hint-badge">${floorData.challenge}</div>
-          </div>
-
-          <div class="princess-feedback-banner">${princessState.feedbackText}</div>
-          <div class="question-prompt-text">${q.prompt}</div>
-
-          <!-- 4 Lựa chọn chìa khóa giải mã -->
-          <div class="monster-answers-grid">
-            ${q.options.map((opt, idx) => `
-              <button type="button" class="monster-answer-btn tower-answer-btn" data-idx="${idx}">
-                <span class="attack-num">（${idx + 1}）</span>
-                <span class="attack-label">${opt}</span>
-              </button>
-            `).join("")}
-          </div>
-        </div>
-      `)}
-    </div>
-  `;
-}
-
-function handlePrincessAnswer(selectedIdx) {
-  if (!princessState || princessState.isAnswering) return;
-  princessState.isAnswering = true;
-
-  const q = princessState.currentQuestion;
-  const isCorrect = selectedIdx === q.correct;
-
-  if (isCorrect) {
-    princessState.keysCollected += 1;
-    princessState.score += 50;
-    princessState.doorOpen = true;
-    princessState.feedbackText = `✨ CHÍNH XÁC! Chìa khóa ma thuật phát sáng và mở tung cổng Tầng ${princessState.currentFloor}!`;
-
-    if (princessState.currentFloor >= princessState.maxFloors) {
-      princessState.completed = true;
-      addGameExp(250);
-      recordPrincessRescued();
-    }
-  } else {
-    princessState.feedbackText = `❌ Sai rồi! Ổ khóa chưa chịu mở. Hãy suy nghĩ kỹ và thử lại đáp án khác! (Gợi ý: ${q.hint || 'Hãy xem lại trợ từ hoặc nghĩa từ vựng'})`;
-  }
-
-  renderGameCenterView();
-
-  setTimeout(() => {
-    if (princessState) {
-      princessState.isAnswering = false;
-      renderGameCenterView();
-    }
-  }, 600);
-}
-
-function advancePrincessFloor() {
-  if (!princessState) return;
-  princessState.currentFloor += 1;
-  princessState.doorOpen = false;
-  princessState.feedbackText = `Bạn đã bước lên Tầng ${princessState.currentFloor}! Bùa chú tại đây mạnh hơn, hãy cẩn thận.`;
-  const vocabList = extractVocabForGame(selectedProjectId);
-  princessState.currentQuestion = generatePrincessQuestion(vocabList, princessState.currentFloor);
-  renderGameCenterView();
-}
-
-// ============================================================================
-// GAME 3: LẬT THẺ TRÍ NHỚ MA THUẬT (MEMORY MATCH)
-// ============================================================================
-function startMemoryGame() {
-  currentGameMode = "memory";
-  const vocabList = extractVocabForGame(selectedProjectId);
-
-  // Chọn ngẫu nhiên 6 từ vựng để tạo thành 12 thẻ (6 cặp)
-  const shuffledVocab = [...vocabList].sort(() => 0.5 - Math.random()).slice(0, 6);
-
-  const cards = [];
-  shuffledVocab.forEach((v, idx) => {
-    // Thẻ mặt chữ Nhật (Kanji hoặc Hiragana)
-    cards.push({
-      id: `c-jp-${idx}`,
-      pairId: `pair-${idx}`,
-      type: "jp",
-      display: v.kanji || v.hiragana,
-      subDisplay: v.hiragana !== v.kanji ? v.hiragana : v.romaji,
-      tts: v.hiragana || v.kanji,
-      isFlipped: false,
-      isMatched: false
-    });
-    // Thẻ mặt nghĩa tiếng Việt
-    cards.push({
-      id: `c-vi-${idx}`,
-      pairId: `pair-${idx}`,
-      type: "vi",
-      display: v.meaning,
-      subDisplay: "Nghĩa tiếng Việt",
-      tts: v.hiragana || v.kanji,
-      isFlipped: false,
-      isMatched: false
-    });
-  });
-
-  // Trộn bài ngẫu nhiên
-  cards.sort(() => 0.5 - Math.random());
-
-  memoryState = {
-    cards,
-    flippedIndices: [],
-    matchedCount: 0,
-    totalPairs: shuffledVocab.length,
-    flips: 0,
-    isLocked: false,
-    startTime: Date.now(),
-    elapsedSeconds: 0,
-    completed: false
-  };
-
-  renderGameCenterView();
-}
-
-function renderMemoryGameHtml() {
-  if (!memoryState) return "";
-
-  return `
-    <div class="memory-game-container">
-      <!-- Top Bar -->
-      <div class="battle-top-nav glass-panel">
-        <button type="button" class="btn btn-secondary btn-sm btn-back-to-game-hub">
-          ⬅ Quay lại Game Hub
-        </button>
-        <div class="battle-round-badge memory-badge">
-          <span>🎴 Cặp đã ghép: <strong>${memoryState.matchedCount} / ${memoryState.totalPairs}</strong></span>
-        </div>
-        <div class="battle-score-pill">
-          <span>Số lần lật: <strong>${memoryState.flips}</strong></span>
-          <button type="button" class="btn btn-outline btn-sm" id="restart-memory-game-btn" style="margin-left: 8px;">
-            🔄 Chia bài mới
-          </button>
-        </div>
-      </div>
-
-      ${memoryState.completed ? `
-        <div class="battle-end-modal glass-panel victory-box" style="margin-top: 20px;">
-          <div class="end-icon">🎴✨</div>
-          <h3>TUYỆT VỜI! BẠN ĐÃ LẬT HẾT TẤT CẢ CÁC CẶP BÀI!</h3>
-          <p>
-            Trí nhớ của bạn rất xuất sắc! Bạn đã hoàn thành trò chơi chỉ với <strong>${memoryState.flips} lượt lật</strong>. 
-            Bạn nhận được +120 EXP.
-          </p>
-          <div class="end-actions">
-            <button type="button" class="btn btn-primary btn-lg" id="restart-memory-game-btn">🔄 Chơi Ván Mới</button>
-            <button type="button" class="btn btn-secondary btn-back-to-game-hub">Quay lại Game Hub</button>
-          </div>
-        </div>
-      ` : `
-        <!-- Lưới Thẻ Bài 3D -->
-        <div class="memory-cards-grid">
-          ${memoryState.cards.map((card, idx) => {
-            const isRevealed = card.isFlipped || card.isMatched;
-            return `
-              <div class="memory-card ${isRevealed ? 'is-flipped' : ''} ${card.isMatched ? 'is-matched' : ''}" 
-                   data-card-idx="${idx}">
-                <div class="memory-card-inner">
-                  <!-- Mặt Úp (Lưng bài) -->
-                  <div class="memory-card-back">
-                    <span class="card-back-pattern">🎴</span>
-                    <span class="card-back-text">MIW</span>
-                  </div>
-                  <!-- Mặt Ngửa (Nội dung từ vựng / Nghĩa) -->
-                  <div class="memory-card-front card-front-${card.type}">
-                    <div class="front-display-main">${card.display}</div>
-                    <div class="front-display-sub">${card.subDisplay}</div>
-                    ${card.isMatched ? '<span class="match-check">✓ Đã ghép</span>' : ''}
-                  </div>
-                </div>
-              </div>
-            `;
-          }).join("")}
-        </div>
-      `}
-    </div>
-  `;
-}
-
-function handleMemoryCardFlip(cardIdx) {
-  if (!memoryState || memoryState.isLocked) return;
-  const card = memoryState.cards[cardIdx];
-  if (!card || card.isFlipped || card.isMatched) return;
-
-  // Lật thẻ
-  card.isFlipped = true;
-  memoryState.flippedIndices.push(cardIdx);
-
-  // Phát âm từ nếu là thẻ tiếng Nhật
-  if (card.tts) speakJapanese(card.tts);
-
-  renderGameCenterView();
-
-  if (memoryState.flippedIndices.length === 2) {
-    memoryState.flips += 1;
-    memoryState.isLocked = true;
-
-    const idx1 = memoryState.flippedIndices[0];
-    const idx2 = memoryState.flippedIndices[1];
-    const card1 = memoryState.cards[idx1];
-    const card2 = memoryState.cards[idx2];
-
-    if (card1.pairId === card2.pairId && card1.id !== card2.id) {
-      // Đúng cặp!
-      setTimeout(() => {
-        card1.isMatched = true;
-        card2.isMatched = true;
-        memoryState.flippedIndices = [];
-        memoryState.matchedCount += 1;
-        memoryState.isLocked = false;
-
-        if (memoryState.matchedCount >= memoryState.totalPairs) {
-          memoryState.completed = true;
-          addGameExp(120);
-          recordMemoryWin();
-        }
-        renderGameCenterView();
-      }, 500);
-    } else {
-      // Sai cặp, lật úp lại sau 1 giây
-      setTimeout(() => {
-        card1.isFlipped = false;
-        card2.isFlipped = false;
-        memoryState.flippedIndices = [];
-        memoryState.isLocked = false;
-        renderGameCenterView();
-      }, 1000);
-    }
-  }
-}
-
-// ============================================================================
-// HÀM SINH CÂU HỎI THÔNG MINH CHO CÁC TRÒ CHƠI
+// CÁC HÀM TRÍCH XUẤT TỪ VỰNG & SINH CÂU HỎI
 // ============================================================================
 export function extractVocabForGame(projectId = "all") {
   const projects = getProjects() || [];
@@ -970,7 +1722,6 @@ export function extractVocabForGame(projectId = "all") {
     }
   });
 
-  // Hợp nhất từ vựng cơ sở để đảm bảo game luôn có đủ từ phong phú
   BASE_GAME_VOCAB.forEach(bv => {
     if (!result.some(r => r.kanji === bv.kanji || r.hiragana === bv.hiragana)) {
       result.push(bv);
@@ -985,35 +1736,14 @@ function generateBattleQuestion(vocabList, roundIndex) {
 
   if (mode === "grammar") {
     const grammarQuestions = [
-      {
-        prompt: "Chọn trợ từ đúng để tấn công: わたし（　　）学生です。",
-        options: ["は", "も", "か", "の"],
-        correct: 0,
-        tts: "わたしはがくせいです"
-      },
-      {
-        prompt: "Chọn trợ từ đồng nhất: タインさんはベトナム人です。マイさん（　　）ベトナム人です。",
-        options: ["は", "も", "が", "か"],
-        correct: 1,
-        tts: "マイさんもベトナムじんです"
-      },
-      {
-        prompt: "Chọn thể phủ định đúng: ミラーさんは医者（　　）。会社員です。",
-        options: ["です", "じゃありません", "ですか", "もです"],
-        correct: 1,
-        tts: "ミラーさんはいしゃじゃありません"
-      },
-      {
-        prompt: "Chọn câu hỏi xác nhận: あなたはエンジニア（　　）。",
-        options: ["ですか", "じゃありません", "ですね", "でした"],
-        correct: 0,
-        tts: "あなたはエンジニアですか"
-      }
+      { prompt: "Chọn trợ từ đúng: わたし（　　）学生です。", options: ["は", "も", "か", "の"], correct: 0, tts: "わたしはがくせいです" },
+      { prompt: "Chọn trợ từ đồng nhất: タインさんはベトナム人です。マイさん（　　）ベトナム人です。", options: ["は", "も", "が", "か"], correct: 1, tts: "マイさんもベトナムじんです" },
+      { prompt: "Chọn thể phủ định đúng: ミラーさんは医者（　　）。会社員です。", options: ["です", "じゃありません", "ですか", "もです"], correct: 1, tts: "ミラーさんはいしゃじゃありません" },
+      { prompt: "Chọn câu hỏi xác nhận: あなたはエンジニア（　　）。", options: ["ですか", "じゃありません", "ですね", "でした"], correct: 0, tts: "あなたはエンジニアですか" }
     ];
     return grammarQuestions[Math.floor(Math.random() * grammarQuestions.length)];
   }
 
-  // Dạng Từ vựng
   const target = vocabList[Math.floor(Math.random() * vocabList.length)];
   const distractors = vocabList.filter(v => v !== target).sort(() => 0.5 - Math.random()).slice(0, 3);
   const options = [target.meaning, ...distractors.map(d => d.meaning)].sort(() => 0.5 - Math.random());
@@ -1027,77 +1757,15 @@ function generateBattleQuestion(vocabList, roundIndex) {
   };
 }
 
-function generatePrincessQuestion(vocabList, floor) {
-  if (floor === 1) {
-    // Tầng 1: Đọc chữ Hán
-    const kanjiWords = vocabList.filter(v => v.kanji && v.kanji !== v.hiragana);
-    const target = kanjiWords.length > 0 ? kanjiWords[Math.floor(Math.random() * kanjiWords.length)] : vocabList[0];
-    const otherReadings = ["せんせい", "がくせい", "いしゃ", "かいしゃいん"].filter(r => r !== target.hiragana);
-    const options = [target.hiragana, ...otherReadings.slice(0, 3)].sort(() => 0.5 - Math.random());
-    return {
-      prompt: `Chữ Hán <strong>【${target.kanji}】</strong> có cách đọc Hiragana là gì?`,
-      options,
-      correct: options.indexOf(target.hiragana),
-      hint: `Nghĩa của từ này là '${target.meaning}'`
-    };
-  }
-
-  if (floor === 2) {
-    // Tầng 2: Trợ từ
-    return {
-      prompt: "Chọn chìa khóa trợ từ mở cổng: マイさん（　　）さくら大学の学生です。",
-      options: ["は", "も", "か", "の"],
-      correct: 0,
-      hint: "Trợ từ đứng sau chủ ngữ trong câu khẳng định"
-    };
-  }
-
-  if (floor === 3) {
-    // Tầng 3: Phủ định
-    return {
-      prompt: "Phá giải bùa chú phủ định: あの人は先生（　　）。医者です。",
-      options: ["です", "じゃありません", "ですか", "もです"],
-      correct: 1,
-      hint: "Thể phủ định danh từ: [Danh từ] + じゃありません"
-    };
-  }
-
-  if (floor === 4) {
-    // Tầng 4: Sắp xếp ngôi sao ★
-    return {
-      prompt: `Mật mã sắp xếp câu: わたしは　＿＿　＿＿　<strong>★</strong>　＿＿。<br>
-               <small>(1. です / 2. の / 3. 学生 / 4. ハノイ大学)</small><br>
-               Từ nào nằm ở vị trí ngôi sao (★)?`,
-      options: ["1. です", "2. の", "3. 学生", "4. ハノイ大学"],
-      correct: 2, // 4 -> 2 -> 3 (★) -> 1
-      hint: "Thứ tự đúng: 4 (ハノイ大学) -> 2 (の) -> ★ 3 (学生) -> 1 (です)"
-    };
-  }
-
-  // Tầng 5: Đỉnh tháp
-  return {
-    prompt: "Câu chào mở lồng giam: 「初めまして。どうぞ（　　）お願いします。」",
-    options: ["どうも", "よろしく", "はい", "いいえ"],
-    correct: 1,
-    hint: "Thành ngữ: どうぞよろしくおねがいします"
-  };
-}
-
 // ============================================================================
-// PROFILE & TIẾN ĐỘ CHƠI GAME (STORAGE)
+// PROFILE & TIẾN ĐỘ CHƠI GAME
 // ============================================================================
 export function getGameProfile() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_GAME_PROFILE);
     if (raw) return JSON.parse(raw);
   } catch (e) {}
-  return {
-    level: 1,
-    exp: 0,
-    monstersDefeated: 0,
-    princessRescued: 0,
-    memoryWins: 0
-  };
+  return { level: 1, exp: 0, monstersDefeated: 0, princessRescued: 0, memoryWins: 0 };
 }
 
 export function saveGameProfile(profile) {
@@ -1109,7 +1777,6 @@ export function saveGameProfile(profile) {
 export function addGameExp(amount) {
   const profile = getGameProfile();
   profile.exp = (profile.exp || 0) + amount;
-  // Cứ mỗi 300 EXP thăng 1 cấp
   profile.level = Math.floor(profile.exp / 300) + 1;
   saveGameProfile(profile);
 }
@@ -1137,3 +1804,31 @@ function startSpecificGame(gameKey) {
   else if (gameKey === "princess") startPrincessGame();
   else if (gameKey === "memory") startMemoryGame();
 }
+
+// Export test helpers & sub-modules for automated testing
+export function startMemoryGameForTest(gridSize = "4x4") {
+  memoryGridSize = gridSize;
+  startMemoryGame();
+  return memoryState;
+}
+
+export function startPrincessGameForTest() {
+  startPrincessGame();
+  return marioState;
+}
+
+export function getMarioState() {
+  return marioState;
+}
+
+export function getMemoryState() {
+  return memoryState;
+}
+
+export {
+  triggerMarioNormalAttack,
+  triggerMarioSpecialSpell,
+  handleMarioSpellAnswer,
+  killEnemy
+};
+

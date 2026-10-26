@@ -102,7 +102,86 @@ test("game-center.js: Quản lý hồ sơ game và điểm thưởng (Game Profi
   assert.equal(gameModule.getGameProfile().memoryWins, initialMem + 1);
 });
 
-test("style.css: Chứa đầy đủ CSS sàn đấu quái vật, lâu đài công chúa và lật thẻ 3D", () => {
+test("game-center.js: Kho từ vựng mở rộng EXTENDED_VOCAB_BANK dồi dào phục vụ bàn cờ lớn tới 25x25", async () => {
+  const gameModule = await import("../src/game-center.js");
+
+  assert.ok(Array.isArray(gameModule.EXTENDED_VOCAB_BANK), "EXTENDED_VOCAB_BANK phải là mảng");
+  assert.ok(gameModule.EXTENDED_VOCAB_BANK.length >= 80, "Kho từ vựng mở rộng phải có ít nhất 80 từ vựng phong phú");
+  
+  const sample = gameModule.EXTENDED_VOCAB_BANK[0];
+  assert.ok(sample.hiragana || sample.kanji, "Từ vựng mở rộng phải có kana/kanji");
+  assert.ok(sample.meaning, "Từ vựng mở rộng phải có nghĩa tiếng Việt");
+});
+
+test("game-center.js: Hỗ trợ linh hoạt kích thước bàn cờ Lật thẻ (3x3, 5x5, 8x8, 12x12, 15x15, 20x20, 25x25)", async () => {
+  const gameModule = await import("../src/game-center.js");
+
+  // 1. Kiểm tra bàn cờ lẻ 3x3 (9 ô = 4 cặp + 1 Sao May Mắn)
+  const state3x3 = gameModule.startMemoryGameForTest("3x3");
+  assert.equal(state3x3.cards.length, 9, "Bàn cờ 3x3 phải có đúng 9 thẻ");
+  assert.equal(state3x3.cols, 3);
+  assert.equal(state3x3.rows, 3);
+  const luckyStar3 = state3x3.cards.find(c => c.type === "star");
+  assert.ok(luckyStar3, "Bàn cờ lẻ 3x3 phải có thẻ Sao May Mắn ⭐");
+
+  // 2. Kiểm tra bàn cờ lẻ 5x5 (25 ô = 12 cặp + 1 Sao May Mắn)
+  const state5x5 = gameModule.startMemoryGameForTest("5x5");
+  assert.equal(state5x5.cards.length, 25, "Bàn cờ 5x5 phải có đúng 25 thẻ");
+  assert.ok(state5x5.cards.some(c => c.type === "star"), "Bàn cờ 5x5 phải có thẻ Sao May Mắn ⭐");
+
+  // 3. Kiểm tra bàn cờ chẵn 8x8 (64 ô = 32 thẻ JP + 32 thẻ VI)
+  const state8x8 = gameModule.startMemoryGameForTest("8x8");
+  assert.equal(state8x8.cards.length, 64, "Bàn cờ 8x8 phải có đúng 64 thẻ");
+  assert.equal(state8x8.cards.filter(c => c.type === "jp").length, 32);
+  assert.equal(state8x8.cards.filter(c => c.type === "vi").length, 32);
+  assert.equal(state8x8.cards.filter(c => c.type === "star").length, 0, "Bàn cờ chẵn không có thẻ lẻ");
+
+  // 4. Kiểm tra bàn cờ cực đại 25x25 (625 ô)
+  const state25x25 = gameModule.startMemoryGameForTest("25x25");
+  assert.equal(state25x25.cards.length, 625, "Bàn cờ 25x25 phải có 625 thẻ");
+  assert.equal(state25x25.cols, 25);
+  assert.equal(state25x25.rows, 25);
+  assert.ok(state25x25.cards.some(c => c.type === "star"), "Bàn cờ 25x25 có 1 thẻ Sao May Mắn");
+});
+
+test("game-center.js: Game Mario 2D Giải Cứu Công Chúa - Vật lý, chém thường, chiêu bùa chú & rơi vàng", async () => {
+  const gameModule = await import("../src/game-center.js");
+
+  // Khởi tạo game Mario 2D
+  const mario = gameModule.startPrincessGameForTest();
+  assert.ok(mario, "Mario state phải được khởi tạo");
+  assert.equal(mario.player.hp, 3, "Hiệp sĩ có 3 tim/máu");
+  assert.ok(mario.enemies.length >= 6, "Phải có nhiều quái vật tuần tra trên đường");
+  assert.ok(mario.blocks.length >= 5, "Phải có khối gạch và ô chứa bùa bí ẩn");
+  assert.ok(mario.castle && mario.castle.x > 2000, "Phải có lâu đài công chúa ở cuối map");
+
+  // Đòn đánh thường chém kiếm
+  gameModule.triggerMarioNormalAttack();
+  assert.equal(mario.player.isAttacking, true, "Phải kích hoạt trạng thái chém kiếm");
+  assert.ok(mario.player.attackTimer > 0, "Timer chém kiếm phải lớn hơn 0");
+
+  // Tuyệt chiêu đặc biệt: Phải trả lời câu hỏi tiếng Nhật
+  gameModule.triggerMarioSpecialSpell();
+  assert.equal(mario.isSpellPaused, true, "Trận đấu phải dừng để người chơi giải mã bùa chú");
+  assert.ok(mario.currentSpellQuestion, "Phải tạo câu hỏi tiếng Nhật");
+  assert.equal(mario.currentSpellQuestion.options.length, 4, "Câu hỏi phải có 4 đáp án lựa chọn");
+
+  // Trả lời đúng bùa chú
+  const correctIdx = mario.currentSpellQuestion.correct;
+  gameModule.handleMarioSpellAnswer(correctIdx);
+  assert.equal(mario.isSpellPaused, false, "Trận đấu tiếp tục sau khi trả lời");
+  assert.ok(mario.specialDragon, "Trả lời đúng phải triệu hồi Hỏa Long Trảm");
+  assert.ok(mario.player.coins >= 5, "Phải được thưởng vàng khi kích hoạt Hỏa Long Trảm");
+
+  // Tiêu diệt quái vật làm rơi vàng
+  const initialCoins = mario.coins.length;
+  const targetEnemy = mario.enemies[0];
+  gameModule.killEnemy(targetEnemy);
+  assert.equal(targetEnemy.alive, false, "Quái vật phải bị tiêu diệt");
+  assert.ok(mario.coins.length >= initialCoins + 3, "Tiêu diệt quái vật phải nổ rơi ra ít nhất 3 đồng xu vàng");
+});
+
+test("style.css: Chứa đầy đủ CSS sàn đấu quái vật, lâu đài công chúa, Mario 2D và lật thẻ đa kích thước", () => {
   const cssPath = path.resolve(__dirname, "../src/style.css");
   const css = fs.readFileSync(cssPath, "utf-8");
 
@@ -111,8 +190,20 @@ test("style.css: Chứa đầy đủ CSS sàn đấu quái vật, lâu đài cô
   assert.ok(css.includes(".battle-stage-card"), "CSS phải có sàn đấu .battle-stage-card");
   assert.ok(css.includes(".combatant-hp-bar-box"), "CSS phải có thanh máu .combatant-hp-bar-box");
   assert.ok(css.includes(".monster-answer-btn"), "CSS phải có nút đòn đánh .monster-answer-btn");
-  assert.ok(css.includes(".castle-tower-stage"), "CSS phải có tháp lâu đài .castle-tower-stage");
-  assert.ok(css.includes(".tower-floor-row"), "CSS phải có các tầng tháp .tower-floor-row");
   assert.ok(css.includes(".memory-card"), "CSS phải có thẻ trí nhớ .memory-card");
   assert.ok(css.includes(".memory-card-inner"), "CSS phải có hiệu ứng xoay lật 3D .memory-card-inner");
+
+  // Mario 2D Game CSS
+  assert.ok(css.includes(".mario-game-wrapper"), "CSS phải có .mario-game-wrapper");
+  assert.ok(css.includes(".mario-canvas-container"), "CSS phải có .mario-canvas-container");
+  assert.ok(css.includes("#mario-canvas"), "CSS phải có #mario-canvas");
+  assert.ok(css.includes(".mario-touch-controls-bar"), "CSS phải có .mario-touch-controls-bar");
+  assert.ok(css.includes(".touch-btn-spell"), "CSS phải có nút bùa chú .touch-btn-spell");
+  assert.ok(css.includes(".mario-spell-modal-overlay"), "CSS phải có modal tuyệt chiêu .mario-spell-modal-overlay");
+
+  // Memory Game Grid Sizing CSS
+  assert.ok(css.includes(".mem-size-pill"), "CSS phải có pill chọn kích thước .mem-size-pill");
+  assert.ok(css.includes(".memory-cards-grid-scalable"), "CSS phải có grid lật thẻ co giãn .memory-cards-grid-scalable");
+  assert.ok(css.includes(".card-size-25x25"), "CSS phải có style cho bàn cờ .card-size-25x25");
+  assert.ok(css.includes(".card-front-star"), "CSS phải có style ô sao may mắn .card-front-star");
 });
