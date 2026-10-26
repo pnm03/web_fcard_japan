@@ -63,6 +63,7 @@ import { bindKanaInput, romajiToHiragana } from "./kana-ime.js";
 import { setupSpokenNotesUI, renderSpokenNotesList } from "./spoken-notes.js";
 import { setupGrammarUI, renderGrammarView } from "./grammar.js";
 import { setupJlptExamUI, renderJlptExamView } from "./jlpt-exam.js";
+import { setupGameCenterUI, renderGameCenterView } from "./game-center.js";
 
 
 // Khai báo các biến trạng thái giao diện toàn cục
@@ -360,6 +361,7 @@ export function initUI() {
   setupSpokenNotesUI();
   setupGrammarUI();
   setupJlptExamUI();
+  setupGameCenterUI();
   
   // Tải danh sách giọng nói speechSynthesis một cách chủ động (khắc phục lỗi Chrome trả về mảng rỗng lần đầu)
   if ('speechSynthesis' in window) {
@@ -1771,6 +1773,11 @@ export function switchView(viewId) {
       document.body.classList.remove("view-grammar-active");
     }
     renderJlptExamView();
+  } else if (viewId === "game-center-view") {
+    if (typeof document !== "undefined" && document.body) {
+      document.body.classList.remove("view-grammar-active");
+    }
+    renderGameCenterView();
   } else {
     if (typeof document !== "undefined" && document.body) {
       document.body.classList.remove("view-grammar-active");
