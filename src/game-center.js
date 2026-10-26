@@ -509,21 +509,37 @@ function startPrincessGame() {
   currentGameMode = "princess";
 
   marioState = {
-    canvasWidth: 820,
+    canvasWidth: 840,
     canvasHeight: 460,
     worldWidth: 2600,
     cameraX: 0,
+    animTick: 0,
+    sakuraPetals: Array.from({ length: 28 }, () => ({
+      x: Math.random() * 2600,
+      y: Math.random() * 460,
+      speedX: 0.8 + Math.random() * 1.0,
+      speedY: 0.5 + Math.random() * 0.8,
+      size: 4 + Math.random() * 4,
+      angle: Math.random() * Math.PI * 2,
+      rotationSpeed: (Math.random() - 0.5) * 0.05
+    })),
     player: {
       x: 80,
       y: 320,
-      width: 34,
-      height: 48,
+      w: 36,
+      h: 50,
+      width: 36,
+      height: 50,
       vx: 0,
       vy: 0,
-      speed: 4.8,
-      jumpForce: -12.5,
+      speed: 5.2,
+      jumpForce: -13,
       onGround: false,
       facing: "right",
+      animTimer: 0,
+      runFrame: 0,
+      isAttacking: false,
+      attackTimer: 0,
       hp: 3,
       maxHp: 3,
       coins: 0,
@@ -538,30 +554,30 @@ function startPrincessGame() {
       { x: 860, y: 390, w: 700, h: 70, type: "ground" },
       { x: 1680, y: 390, w: 920, h: 70, type: "ground" },
       { x: 220, y: 280, w: 40, h: 40, type: "brick" },
-      { x: 260, y: 280, w: 40, h: 40, type: "question", hit: false, content: "coin" },
+      { x: 260, y: 280, w: 40, h: 40, type: "question", hit: false, content: "coin", bounceY: 0 },
       { x: 300, y: 280, w: 40, h: 40, type: "brick" },
       { x: 480, y: 220, w: 80, h: 30, type: "brick" },
-      { x: 600, y: 280, w: 40, h: 40, type: "question", hit: false, content: "spell" },
-      { x: 940, y: 270, w: 40, h: 40, type: "question", hit: false, content: "coin" },
+      { x: 600, y: 280, w: 40, h: 40, type: "question", hit: false, content: "spell", bounceY: 0 },
+      { x: 940, y: 270, w: 40, h: 40, type: "question", hit: false, content: "coin", bounceY: 0 },
       { x: 980, y: 270, w: 80, h: 30, type: "brick" },
-      { x: 1060, y: 270, w: 40, h: 40, type: "question", hit: false, content: "spell" },
+      { x: 1060, y: 270, w: 40, h: 40, type: "question", hit: false, content: "spell", bounceY: 0 },
       { x: 1250, y: 210, w: 100, h: 30, type: "brick" },
       { x: 1420, y: 260, w: 40, h: 40, type: "brick" },
-      { x: 1780, y: 280, w: 40, h: 40, type: "question", hit: false, content: "heart" },
+      { x: 1780, y: 280, w: 40, h: 40, type: "question", hit: false, content: "heart", bounceY: 0 },
       { x: 1820, y: 280, w: 80, h: 30, type: "brick" }
     ],
     enemies: [
       { id: "e1", x: 420, y: 350, w: 34, h: 34, vx: -1.4, alive: true, type: "slime", minX: 300, maxX: 650 },
-      { id: "e2", x: 620, y: 350, w: 34, h: 34, vx: 1.6, alive: true, type: "oni", minX: 520, maxX: 720 },
+      { id: "e2", x: 620, y: 350, w: 36, h: 38, vx: 1.6, alive: true, type: "oni", minX: 520, maxX: 720 },
       { id: "e3", x: 1100, y: 350, w: 34, h: 34, vx: -1.8, alive: true, type: "slime", minX: 900, maxX: 1300 },
-      { id: "e4", x: 1350, y: 350, w: 34, h: 34, vx: 1.5, alive: true, type: "oni", minX: 1200, maxX: 1520 },
-      { id: "e5", x: 1850, y: 350, w: 34, h: 34, vx: -2.0, alive: true, type: "oni", minX: 1720, maxX: 2050 },
-      { id: "e6", x: 2150, y: 350, w: 38, h: 38, vx: -1.2, alive: true, type: "oni", minX: 2000, maxX: 2280 }
+      { id: "e4", x: 1350, y: 350, w: 36, h: 38, vx: 1.5, alive: true, type: "oni", minX: 1200, maxX: 1520 },
+      { id: "e5", x: 1850, y: 350, w: 36, h: 38, vx: -2.0, alive: true, type: "oni", minX: 1720, maxX: 2050 },
+      { id: "e6", x: 2150, y: 345, w: 40, h: 42, vx: -1.2, alive: true, type: "tengu", minX: 2000, maxX: 2280 }
     ],
     coins: [],
     particles: [],
     castle: { x: 2320, y: 150, w: 220, h: 240 },
-    princess: { x: 2400, y: 200, w: 36, h: 54, rescued: false },
+    princess: { x: 2400, y: 210, w: 36, h: 54, rescued: false },
     specialDragon: null,
     isSpellPaused: false,
     currentSpellQuestion: null,
@@ -601,24 +617,53 @@ function initMarioCanvasGame() {
 function updateMarioPhysics() {
   if (!marioState || marioState.isSpellPaused || marioState.gameOver || marioState.victory) return;
 
+  marioState.animTick = (marioState.animTick || 0) + 1;
   const p = marioState.player;
+  p.animTimer = (p.animTimer || 0) + 1;
 
+  // Sakura petals drift
+  if (marioState.sakuraPetals) {
+    marioState.sakuraPetals.forEach(sp => {
+      sp.x += sp.speedX;
+      sp.y += sp.speedY;
+      sp.angle += sp.rotationSpeed;
+      if (sp.y > marioState.canvasHeight + 10) {
+        sp.y = -10;
+        sp.x = marioState.cameraX + Math.random() * marioState.canvasWidth;
+      }
+    });
+  }
+
+  // Question blocks bounce return
+  marioState.blocks.forEach(b => {
+    if (b.bounceY && b.bounceY < 0) {
+      b.bounceY += 1;
+      if (b.bounceY > 0) b.bounceY = 0;
+    }
+  });
+
+  // Di chuyển ngang
   if (marioKeys.left) {
     p.vx = -p.speed;
     p.facing = "left";
+    p.runFrame += 0.25;
   } else if (marioKeys.right) {
     p.vx = p.speed;
     p.facing = "right";
+    p.runFrame += 0.25;
   } else {
     p.vx *= 0.75;
     if (Math.abs(p.vx) < 0.1) p.vx = 0;
+    p.runFrame = 0;
   }
 
+  // Nhảy
   if (marioKeys.up && p.onGround) {
     p.vy = p.jumpForce;
     p.onGround = false;
   }
 
+  // Trọng lực
   p.vy += 0.58;
   if (p.vy > 14) p.vy = 14;
 
@@ -630,31 +675,40 @@ function updateMarioPhysics() {
   p.onGround = false;
   checkPlayerVerticalCollisions();
 
-  if (p.y > marioState.canvasHeight + 60) {
+  // Rơi vực thẳm
+  if (p.y > marioState.canvasHeight + 40) {
     p.hp -= 1;
     if (p.hp <= 0) {
       marioState.gameOver = true;
       renderGameCenterView();
       return;
     } else {
-      p.x = Math.max(80, p.x - 200);
-      p.y = 250;
+      // Hồi sinh an toàn tại khối đất gần nhất bên trái
+      const safeBlock = marioState.blocks.find(b => b.type === "ground" && b.x <= p.x && b.x + b.w >= p.x)
+        || marioState.blocks[0];
+      p.x = Math.max(safeBlock.x + 20, p.x - 120);
+      p.y = safeBlock.y - p.h;
       p.vy = 0;
       p.isInvincible = true;
       p.invincibleTimer = 90;
+      spawnFloatingText("⚠️ RƠI VỰC! -1 ❤️", p.x, p.y - 30, "#ef4444");
     }
   }
 
-  const targetCamX = p.x - marioState.canvasWidth * 0.4;
-  marioState.cameraX += (targetCamX - marioState.cameraX) * 0.1;
+  // Camera cuộn mượt mà theo nhân vật
+  const targetCamX = p.x - marioState.canvasWidth * 0.38;
+  marioState.cameraX += (targetCamX - marioState.cameraX) * 0.12;
   if (marioState.cameraX < 0) marioState.cameraX = 0;
   const maxCamX = marioState.worldWidth - marioState.canvasWidth;
   if (marioState.cameraX > maxCamX) marioState.cameraX = maxCamX;
 
+  // Thời gian bất tử sau khi dính đòn
   if (p.isInvincible) {
     p.invincibleTimer -= 1;
     if (p.invincibleTimer <= 0) p.isInvincible = false;
   }
+
+  // Thời gian chém kiếm thường
   if (p.slashArc) {
     p.slashArc.timer -= 1;
     if (p.slashArc.timer <= 0) {
@@ -664,35 +718,41 @@ function updateMarioPhysics() {
     }
   }
 
+  // Tuyệt chiêu Hỏa Long Trảm quét màn hình
   if (marioState.specialDragon) {
     const dragon = marioState.specialDragon;
-    dragon.x += 16;
+    dragon.x += 18;
     marioState.enemies.forEach(e => {
-      if (e.alive && Math.abs(e.x - dragon.x) < 80) {
+      if (e.alive && Math.abs(e.x - dragon.x) < 85) {
         killEnemy(e, true);
       }
     });
-    if (dragon.x > marioState.cameraX + marioState.canvasWidth + 200) {
+    if (dragon.x > marioState.cameraX + marioState.canvasWidth + 250) {
       marioState.specialDragon = null;
     }
   }
 
+  // Quái vật tuần tra & va chạm
   marioState.enemies.forEach(e => {
     if (!e.alive) return;
     e.x += e.vx;
     if (e.x < e.minX || e.x > e.maxX) e.vx *= -1;
 
     if (checkAABB(p.x, p.y, p.w, p.h, e.x, e.y, e.w, e.h)) {
-      if (p.vy > 0 && p.y + p.h - p.vy <= e.y + 14) {
+      // Đạp lên đầu quái vật (Stomp)
+      if (p.vy > 0 && p.y + p.h - p.vy <= e.y + 18) {
         killEnemy(e, false);
-        p.vy = -10;
+        p.vy = -11; // Bật nảy lên cao
         p.score += 150;
+        spawnFloatingText("💥 ĐẠP QUÁI! +150", e.x, e.y - 20, "#fbbf24");
       } else if (!p.isInvincible) {
+        // Bị quái vật cắn trúng
         p.hp -= 1;
         p.isInvincible = true;
         p.invincibleTimer = 90;
         p.vx = (p.x < e.x ? -6 : 6);
-        p.vy = -5;
+        p.vy = -6;
+        spawnFloatingText("💔 -1 TIM", p.x, p.y - 25, "#ef4444");
         if (p.hp <= 0) {
           marioState.gameOver = true;
           renderGameCenterView();
@@ -701,11 +761,17 @@ function updateMarioPhysics() {
     }
   });
 
+  // Đồng xu vàng rơi
   marioState.coins.forEach(c => {
     c.x += c.vx;
     c.y += c.vy;
     c.vy += 0.45;
-    if (c.y > 380) { c.y = 380; c.vy *= -0.4; }
+    c.rotation = (c.rotation || 0) + 0.15;
+    if (c.y > 380) {
+      c.y = 380;
+      c.vy *= -0.4;
+      c.vx *= 0.8;
+    }
 
     if (!c.collected && Math.hypot(p.x + p.w / 2 - c.x, p.y + p.h / 2 - c.y) < 32) {
       c.collected = true;
@@ -716,6 +782,7 @@ function updateMarioPhysics() {
   });
   marioState.coins = marioState.coins.filter(c => !c.collected);
 
+  // Hiệu ứng hạt chữ bay
   marioState.particles.forEach(pt => {
     pt.x += pt.vx;
     pt.y += pt.vy;
@@ -723,6 +790,7 @@ function updateMarioPhysics() {
   });
   marioState.particles = marioState.particles.filter(pt => pt.alpha > 0);
 
+  // Đến Lâu Đài và giải cứu Công Chúa
   if (p.x >= marioState.castle.x + 40 && !marioState.princess.rescued) {
     marioState.princess.rescued = true;
     marioState.victory = true;
@@ -735,7 +803,8 @@ function updateMarioPhysics() {
 function checkPlayerHorizontalCollisions() {
   const p = marioState.player;
   marioState.blocks.forEach(b => {
-    if (checkAABB(p.x, p.y, p.w, p.h, b.x, b.y, b.w, b.h)) {
+    const blockY = b.y + (b.bounceY || 0);
+    if (checkAABB(p.x, p.y, p.w, p.h, b.x, blockY, b.w, b.h)) {
       if (p.vx > 0) p.x = b.x - p.w;
       else if (p.vx < 0) p.x = b.x + b.w;
     }
@@ -745,16 +814,18 @@ function checkPlayerHorizontalCollisions() {
 function checkPlayerVerticalCollisions() {
   const p = marioState.player;
   marioState.blocks.forEach(b => {
-    if (checkAABB(p.x, p.y, p.w, p.h, b.x, b.y, b.w, b.h)) {
+    const blockY = b.y + (b.bounceY || 0);
+    if (checkAABB(p.x, p.y, p.w, p.h, b.x, blockY, b.w, b.h)) {
       if (p.vy > 0) {
-        p.y = b.y - p.h;
+        p.y = blockY - p.h;
         p.vy = 0;
         p.onGround = true;
       } else if (p.vy < 0) {
-        p.y = b.y + b.h;
+        p.y = blockY + b.h;
         p.vy = 1;
         if (b.type === "question" && !b.hit) {
           b.hit = true;
+          b.bounceY = -10;
           handleQuestionBlockHit(b);
         }
       }
@@ -766,7 +837,7 @@ function handleQuestionBlockHit(b) {
   if (b.content === "coin") {
     marioState.player.coins += 1;
     marioState.player.score += 100;
-    spawnCoinBurst(b.x + b.w / 2, b.y - 10, 1);
+    spawnCoinBurst(b.x + b.w / 2, b.y - 10, 2);
     spawnFloatingText("🪙 CHÍNH XÁC!", b.x, b.y - 20, "#fbbf24");
   } else if (b.content === "heart") {
     marioState.player.hp = Math.min(marioState.player.maxHp, marioState.player.hp + 1);
@@ -777,17 +848,18 @@ function handleQuestionBlockHit(b) {
 }
 
 function triggerMarioNormalAttack() {
-  if (!marioState || marioState.isSpellPaused) return;
+  if (!marioState || marioState.isSpellPaused || marioState.gameOver || marioState.victory) return;
   const p = marioState.player;
   p.isAttacking = true;
-  p.attackTimer = 12;
+  p.attackTimer = 14;
   const attackX = p.facing === "right" ? p.x + p.w : p.x - 45;
-  p.slashArc = { x: attackX, y: p.y + 10, radius: 45, timer: 12 };
+  p.slashArc = { x: attackX, y: p.y + p.h / 2, radius: 48, timer: 14 };
 
   marioState.enemies.forEach(e => {
-    if (e.alive && Math.hypot(attackX - e.x, p.y + 20 - e.y) < 60) {
+    if (e.alive && Math.hypot(attackX - (e.x + e.w / 2), (p.y + p.h / 2) - (e.y + e.h / 2)) < 65) {
       killEnemy(e, false);
       p.score += 120;
+      spawnFloatingText("⚔️ TRẢM KIẾM! +120", e.x, e.y - 20, "#38bdf8");
     }
   });
 }
@@ -839,7 +911,7 @@ function handleMarioSpellAnswer(selectedIdx) {
 function killEnemy(enemy, isInstantVaporize = false) {
   enemy.alive = false;
   spawnCoinBurst(enemy.x + enemy.w / 2, enemy.y, 3);
-  spawnFloatingText("🎯 ĐÃ DIỆT!", enemy.x, enemy.y - 15, "#10b981");
+  spawnFloatingText(isInstantVaporize ? "⚡ THIÊU RỤI! +100" : "🎯 ĐÃ DIỆT! +100", enemy.x, enemy.y - 15, "#10b981");
   recordMonsterDefeated();
 }
 
@@ -849,9 +921,10 @@ function spawnCoinBurst(x, y, count = 3) {
     marioState.coins.push({
       x,
       y,
-      vx: (Math.random() - 0.5) * 5,
-      vy: -5 - Math.random() * 4,
-      collected: false
+      vx: (Math.random() - 0.5) * 6,
+      vy: -6 - Math.random() * 4,
+      collected: false,
+      rotation: Math.random() * Math.PI * 2
     });
   }
 }
@@ -879,114 +952,224 @@ function renderMarioCanvas(ctx) {
   const ch = marioState.canvasHeight;
   const camX = marioState.cameraX;
   const p = marioState.player;
+  const tick = marioState.animTick || 0;
 
   ctx.clearRect(0, 0, cw, ch);
 
+  // 1. Sky Gradient (Bầu trời bình minh Nhật Bản tươi sáng)
   const skyGrad = ctx.createLinearGradient(0, 0, 0, ch);
   skyGrad.addColorStop(0, "#38bdf8");
-  skyGrad.addColorStop(0.7, "#bae6fd");
-  skyGrad.addColorStop(1, "#fef08a");
+  skyGrad.addColorStop(0.55, "#7dd3fc");
+  skyGrad.addColorStop(0.85, "#fef08a");
+  skyGrad.addColorStop(1, "#fed7aa");
   ctx.fillStyle = skyGrad;
   ctx.fillRect(0, 0, cw, ch);
 
-  ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
-  const cloudOffset = (camX * 0.2) % 400;
-  drawCloud(ctx, 120 - cloudOffset, 60, 45);
-  drawCloud(ctx, 380 - cloudOffset, 80, 55);
-  drawCloud(ctx, 640 - cloudOffset, 50, 40);
-  drawCloud(ctx, 900 - cloudOffset, 70, 50);
+  // Vầng dương mặt trời tỏa sáng nhẹ
+  const sunGrad = ctx.createRadialGradient(cw * 0.22, 100, 10, cw * 0.22, 100, 75);
+  sunGrad.addColorStop(0, "rgba(255, 255, 255, 0.95)");
+  sunGrad.addColorStop(0.3, "rgba(254, 240, 138, 0.7)");
+  sunGrad.addColorStop(1, "rgba(254, 240, 138, 0)");
+  ctx.fillStyle = sunGrad;
+  ctx.beginPath();
+  ctx.arc(cw * 0.22, 100, 75, 0, Math.PI * 2);
+  ctx.fill();
 
-  ctx.fillStyle = "#86efac";
+  // Núi Phú Sĩ tuyết trắng ở hậu cảnh xa (Mount Fuji)
+  const fujiX = cw * 0.68 - camX * 0.05;
+  ctx.fillStyle = "#6366f1";
+  ctx.beginPath();
+  ctx.moveTo(fujiX - 160, 370);
+  ctx.lineTo(fujiX, 140);
+  ctx.lineTo(fujiX + 160, 370);
+  ctx.closePath();
+  ctx.fill();
+
+  // Mũ tuyết trắng Phú Sĩ
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.moveTo(fujiX - 42, 195);
+  ctx.lineTo(fujiX, 140);
+  ctx.lineTo(fujiX + 42, 195);
+  ctx.lineTo(fujiX + 24, 210);
+  ctx.lineTo(fujiX + 8, 202);
+  ctx.lineTo(fujiX - 10, 212);
+  ctx.lineTo(fujiX - 26, 204);
+  ctx.closePath();
+  ctx.fill();
+
+  // Cổng Torii đền thần thoại ở xa
+  const toriiX = 360 - camX * 0.15;
+  if (toriiX > -60 && toriiX < cw + 60) {
+    ctx.fillStyle = "#dc2626";
+    ctx.fillRect(toriiX - 24, 250, 48, 5);
+    ctx.fillRect(toriiX - 20, 257, 40, 4);
+    ctx.fillRect(toriiX - 15, 255, 4, 75);
+    ctx.fillRect(toriiX + 11, 255, 4, 75);
+  }
+
+  // Mây trôi bồng bềnh (Clouds)
+  ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
+  const cloudOffset = (camX * 0.25) % 450;
+  drawCloud(ctx, 110 - cloudOffset, 70, 46);
+  drawCloud(ctx, 360 - cloudOffset, 90, 56);
+  drawCloud(ctx, 620 - cloudOffset, 65, 42);
+  drawCloud(ctx, 880 - cloudOffset, 80, 50);
+
+  // Đồi núi xanh tầng trung (Mid-ground green hills)
+  ctx.fillStyle = "#4ade80";
   ctx.beginPath();
   ctx.moveTo(0, ch);
-  for (let x = 0; x <= cw; x += 80) {
-    const hillY = 320 + Math.sin((x + camX * 0.4) * 0.015) * 35;
+  for (let x = 0; x <= cw; x += 60) {
+    const hillY = 325 + Math.sin((x + camX * 0.35) * 0.012) * 32;
     ctx.lineTo(x, hillY);
   }
   ctx.lineTo(cw, ch);
   ctx.fill();
 
+  // Cánh hoa anh đào Sakura bay lượn trong gió
+  if (marioState.sakuraPetals) {
+    marioState.sakuraPetals.forEach(sp => {
+      const renderX = sp.x - camX * 0.65;
+      if (renderX < -20 || renderX > cw + 20) return;
+      ctx.save();
+      ctx.translate(renderX, sp.y);
+      ctx.rotate(sp.angle);
+      ctx.fillStyle = "rgba(244, 114, 182, 0.78)";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, sp.size, sp.size * 0.55, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+
+  // Bắt đầu vẽ đối tượng trong thế giới theo tọa độ camera
   ctx.save();
   ctx.translate(-camX, 0);
 
+  // Lâu đài và Công chúa
   drawCastle(ctx, marioState.castle.x, marioState.castle.y, marioState.castle.w, marioState.castle.h);
-  drawPrincess(ctx, marioState.princess.x, marioState.princess.y, marioState.princess.rescued);
+  drawPrincess(ctx, marioState.princess.x, marioState.princess.y, marioState.princess.rescued, tick);
 
+  // Địa hình & Khối gạch
   marioState.blocks.forEach(b => {
     if (b.type === "ground") {
+      // Mặt đất cỏ xanh sống động
       ctx.fillStyle = "#16a34a";
       ctx.fillRect(b.x, b.y, b.w, 14);
+
+      // Chi tiết sợi cỏ xanh
+      ctx.fillStyle = "#22c55e";
+      for (let gx = b.x; gx < b.x + b.w; gx += 16) {
+        ctx.beginPath();
+        ctx.moveTo(gx, b.y);
+        ctx.lineTo(gx + 3, b.y - 4);
+        ctx.lineTo(gx + 6, b.y);
+        ctx.fill();
+      }
+
+      // Đất trầm tích nhiều lớp
       ctx.fillStyle = "#78350f";
       ctx.fillRect(b.x, b.y + 14, b.w, b.h - 14);
+
+      // Đá sỏi dưới lòng đất
       ctx.fillStyle = "#92400e";
-      for (let gx = b.x; gx < b.x + b.w; gx += 30) {
-        ctx.fillRect(gx + 6, b.y + 24, 12, 10);
+      for (let gx = b.x; gx < b.x + b.w; gx += 32) {
+        ctx.fillRect(gx + 8, b.y + 24, 14, 8);
+        ctx.fillRect(gx + 18, b.y + 42, 10, 6);
       }
     } else if (b.type === "brick") {
+      // Khối gạch đá cổ đền đài 3D
       ctx.fillStyle = "#b45309";
       ctx.fillRect(b.x, b.y, b.w, b.h);
+
+      ctx.fillStyle = "#d97706";
+      ctx.fillRect(b.x + 2, b.y + 2, b.w - 4, b.h - 4);
+
       ctx.strokeStyle = "#78350f";
       ctx.lineWidth = 2;
       ctx.strokeRect(b.x, b.y, b.w, b.h);
-    } else if (b.type === "question") {
-      ctx.fillStyle = b.hit ? "#9ca3af" : "#fbbf24";
-      ctx.fillRect(b.x, b.y, b.w, b.h);
-      ctx.strokeStyle = b.hit ? "#6b7280" : "#d97706";
-      ctx.lineWidth = 2.5;
-      ctx.strokeRect(b.x, b.y, b.w, b.h);
 
-      ctx.fillStyle = b.hit ? "#4b5563" : "#78350f";
-      ctx.font = "bold 22px monospace";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(b.hit ? "•" : "?", b.x + b.w / 2, b.y + b.h / 2);
+      // Đường viền chia gạch
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y + b.h / 2);
+      ctx.lineTo(b.x + b.w, b.y + b.h / 2);
+      ctx.stroke();
+    } else if (b.type === "question") {
+      drawQuestionBlock(ctx, b, tick);
     }
   });
 
+  // Đồng xu vàng 3D lơ lửng & nổ rơi
   marioState.coins.forEach(c => {
+    ctx.save();
+    ctx.translate(c.x, c.y);
+    const scaleX = Math.abs(Math.cos(c.rotation || 0)) * 0.7 + 0.3;
+    ctx.scale(scaleX, 1);
+
     ctx.fillStyle = "#fbbf24";
     ctx.beginPath();
-    ctx.arc(c.x, c.y, 8, 0, Math.PI * 2);
+    ctx.arc(0, 0, 9, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = "#d97706";
+
+    ctx.fillStyle = "#d97706";
+    ctx.fillRect(-2, -2, 4, 4);
+
+    ctx.strokeStyle = "#fef08a";
     ctx.lineWidth = 2;
     ctx.stroke();
+    ctx.restore();
   });
 
+  // Quái vật
   marioState.enemies.forEach(e => {
     if (!e.alive) return;
-    drawEnemy(ctx, e.x, e.y, e.w, e.h, e.type);
+    drawEnemy(ctx, e, tick);
   });
 
+  // Hiệp Sĩ (Hero Knight)
   if (!p.isInvincible || Math.floor(p.invincibleTimer / 4) % 2 === 0) {
-    drawKnight(ctx, p.x, p.y, p.w, p.h, p.facing, p.onGround);
+    drawKnight(ctx, p, tick);
   }
 
+  // Đường chém kiếm ánh sáng (Slash Arc)
   if (p.slashArc) {
-    ctx.strokeStyle = "#fef08a";
-    ctx.lineWidth = 4;
+    ctx.strokeStyle = "#38bdf8";
+    ctx.lineWidth = 6;
+    ctx.shadowColor = "#38bdf8";
+    ctx.shadowBlur = 10;
     ctx.beginPath();
-    ctx.arc(p.slashArc.x, p.slashArc.y, p.slashArc.radius, -0.6, 0.6, p.facing === "left");
+    ctx.arc(p.slashArc.x, p.slashArc.y, p.slashArc.radius, -0.7, 0.7, p.facing === "left");
     ctx.stroke();
+
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
   }
 
+  // Hỏa Long Trảm
   if (marioState.specialDragon) {
-    drawFireDragon(ctx, marioState.specialDragon.x, marioState.specialDragon.y);
+    drawFireDragon(ctx, marioState.specialDragon.x, marioState.specialDragon.y, tick);
   }
 
+  // Chữ nổi thông báo (Floating Texts)
   marioState.particles.forEach(pt => {
     ctx.save();
     ctx.globalAlpha = Math.max(0, pt.alpha);
     ctx.fillStyle = pt.color;
     ctx.font = "bold 15px var(--font-display, sans-serif)";
     ctx.textAlign = "center";
+    ctx.shadowColor = "#000";
+    ctx.shadowBlur = 4;
     ctx.fillText(pt.text, pt.x, pt.y);
     ctx.restore();
   });
 
   ctx.restore();
 
-  drawMarioHUD(ctx, p);
+  // 3. In-Game HUD Bar (Kính mờ hiện đại & trực quan)
+  drawMarioHUD(ctx, p, marioState);
 }
 
 function drawCloud(ctx, x, y, r) {
@@ -997,198 +1180,684 @@ function drawCloud(ctx, x, y, r) {
   ctx.fill();
 }
 
-function drawKnight(ctx, x, y, w, h, facing, onGround) {
+function drawKnight(ctx, p, animTick) {
   ctx.save();
-  ctx.translate(x + w / 2, y + h / 2);
-  if (facing === "left") ctx.scale(-1, 1);
+  ctx.translate(p.x + p.w / 2, p.y + p.h / 2);
+  if (p.facing === "left") ctx.scale(-1, 1);
 
-  ctx.fillStyle = "#dc2626";
+  // 1. Áo choàng đỏ anh hùng bay lượn theo gió
+  const capeWave = Math.sin(animTick * 0.25) * (p.onGround ? 6 : 14);
+  const capeSpeedOffset = (Math.abs(p.vx) > 0.5 ? -14 : -6);
+  ctx.fillStyle = "#b91c1c";
   ctx.beginPath();
-  ctx.moveTo(-10, -12);
-  ctx.lineTo(-24, 16);
-  ctx.lineTo(-8, 14);
+  ctx.moveTo(-6, -10);
+  ctx.quadraticCurveTo(-18 + capeSpeedOffset, 8 + capeWave, -22 + capeSpeedOffset, 20 + capeWave);
+  ctx.lineTo(-12 + capeSpeedOffset, 24 + capeWave);
+  ctx.quadraticCurveTo(-10, 8, -2, -6);
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = "#94a3b8";
-  ctx.fillRect(-10, -12, 20, 26);
-  ctx.fillStyle = "#3b82f6";
-  ctx.fillRect(-4, -6, 8, 10);
+  ctx.fillStyle = "#dc2626";
+  ctx.beginPath();
+  ctx.moveTo(-4, -8);
+  ctx.quadraticCurveTo(-14 + capeSpeedOffset, 6 + capeWave, -18 + capeSpeedOffset, 18 + capeWave);
+  ctx.lineTo(-10 + capeSpeedOffset, 20 + capeWave);
+  ctx.quadraticCurveTo(-8, 6, 0, -4);
+  ctx.closePath();
+  ctx.fill();
+
+  // 2. Chân & Giày giáp (Chu kỳ chạy chuyển động mượt mà)
+  const legCycle = p.onGround ? Math.sin(p.runFrame || 0) * 8 : 4;
+  ctx.fillStyle = "#334155";
+  ctx.fillRect(-10, 14, 7, 10 + (p.onGround ? -legCycle : 0));
+  ctx.fillStyle = "#1e293b";
+  ctx.fillRect(-12, 22 + (p.onGround ? -legCycle : 0), 10, 4);
 
   ctx.fillStyle = "#475569";
-  ctx.fillRect(-9, 14, 7, 10);
-  ctx.fillRect(2, 14, 7, 10);
+  ctx.fillRect(3, 14, 7, 10 + (p.onGround ? legCycle : 0));
+  ctx.fillStyle = "#1e293b";
+  ctx.fillRect(1, 22 + (p.onGround ? legCycle : 0), 10, 4);
 
+  // 3. Thân & Áo giáp hiệp sĩ
+  ctx.fillStyle = "#1e3a8a"; // Áo chẽn xanh hoàng gia
+  ctx.fillRect(-11, -10, 22, 25);
+
+  ctx.fillStyle = "#94a3b8"; // Tấm giáp ngực bạc
+  ctx.fillRect(-9, -8, 18, 20);
   ctx.fillStyle = "#cbd5e1";
+  ctx.fillRect(-7, -6, 6, 16);
+
+  // Huy hiệu hoàng kim giữa ngực
+  ctx.fillStyle = "#fbbf24";
   ctx.beginPath();
-  ctx.arc(0, -16, 12, 0, Math.PI * 2);
+  ctx.moveTo(0, -4);
+  ctx.lineTo(4, 2);
+  ctx.lineTo(0, 8);
+  ctx.lineTo(-4, 2);
+  ctx.closePath();
+  ctx.fill();
+
+  // Thắt lưng da & khóa vàng
+  ctx.fillStyle = "#d97706";
+  ctx.fillRect(-9, 10, 18, 4);
+  ctx.fillStyle = "#fef08a";
+  ctx.fillRect(-3, 9, 6, 6);
+
+  // 4. Mũ sắt & Mặt nạ hiệp sĩ
+  ctx.fillStyle = "#64748b";
+  ctx.beginPath();
+  ctx.arc(0, -15, 12, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#94a3b8";
+  ctx.beginPath();
+  ctx.arc(-2, -16, 10, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Khe mắt phát sáng xanh lam
+  ctx.fillStyle = "#0284c7";
+  ctx.fillRect(1, -17, 10, 4);
+  ctx.fillStyle = "#38bdf8";
+  ctx.fillRect(3, -16, 7, 2);
+
+  // Lông vũ hoàng kim trên đỉnh nón giáp
+  ctx.fillStyle = "#f59e0b";
+  ctx.beginPath();
+  ctx.moveTo(-4, -26);
+  ctx.quadraticCurveTo(-14, -30, -18, -20);
+  ctx.quadraticCurveTo(-8, -22, -2, -24);
+  ctx.closePath();
   ctx.fill();
 
   ctx.fillStyle = "#fbbf24";
-  ctx.fillRect(2, -18, 9, 4);
+  ctx.beginPath();
+  ctx.moveTo(-2, -25);
+  ctx.quadraticCurveTo(-10, -28, -14, -20);
+  ctx.quadraticCurveTo(-6, -21, 0, -23);
+  ctx.closePath();
+  ctx.fill();
 
-  ctx.fillStyle = "#e2e8f0";
-  ctx.fillRect(8, -6, 18, 4);
-  ctx.fillStyle = "#d97706";
-  ctx.fillRect(6, -8, 3, 8);
-
-  ctx.restore();
-}
-
-function drawEnemy(ctx, x, y, w, h, type) {
-  ctx.save();
-  ctx.translate(x + w / 2, y + h / 2);
-
-  if (type === "slime") {
-    ctx.fillStyle = "#a855f7";
-    ctx.beginPath();
-    ctx.arc(0, 0, 16, Math.PI, 0, false);
-    ctx.lineTo(16, 14);
-    ctx.lineTo(-16, 14);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(-8, -4, 5, 6);
-    ctx.fillRect(3, -4, 5, 6);
-    ctx.fillStyle = "#000";
-    ctx.fillRect(-6, -2, 2, 3);
-    ctx.fillRect(5, -2, 2, 3);
+  // 5. Thanh kiếm Katana trong tay
+  if (p.isAttacking) {
+    ctx.save();
+    ctx.rotate(0.5);
+    ctx.fillStyle = "#f59e0b";
+    ctx.fillRect(12, 2, 4, 10);
+    ctx.fillStyle = "#f8fafc";
+    ctx.fillRect(14, 5, 26, 4);
+    ctx.fillStyle = "#38bdf8";
+    ctx.fillRect(16, 6, 22, 2);
+    ctx.restore();
   } else {
-    ctx.fillStyle = "#ef4444";
-    ctx.beginPath();
-    ctx.arc(0, 0, 16, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#fbbf24";
-    ctx.beginPath();
-    ctx.moveTo(-10, -14);
-    ctx.lineTo(-14, -24);
-    ctx.lineTo(-6, -16);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(10, -14);
-    ctx.lineTo(14, -24);
-    ctx.lineTo(6, -16);
-    ctx.fill();
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(-8, -4, 5, 5);
-    ctx.fillRect(3, -4, 5, 5);
-    ctx.fillStyle = "#000";
-    ctx.fillRect(-6, -3, 2, 2);
-    ctx.fillRect(5, -3, 2, 2);
+    ctx.fillStyle = "#f59e0b";
+    ctx.fillRect(8, -2, 4, 8);
+    ctx.fillStyle = "#cbd5e1";
+    ctx.fillRect(10, 0, 18, 4);
+    ctx.fillStyle = "#f8fafc";
+    ctx.fillRect(11, 1, 16, 2);
   }
 
   ctx.restore();
 }
 
+function drawEnemy(ctx, e, animTick) {
+  ctx.save();
+  ctx.translate(e.x + e.w / 2, e.y + e.h / 2);
+  const facingLeft = e.vx < 0;
+  if (!facingLeft) ctx.scale(-1, 1);
+
+  const bob = Math.sin(animTick * 0.2 + (e.id.charCodeAt(1) || 0)) * 2;
+
+  if (e.type === "slime") {
+    // Kappa (🥒) - Yêu quái sông nước đáng yêu
+    ctx.fillStyle = "#15803d";
+    ctx.beginPath();
+    ctx.ellipse(0, 3 + bob, 16, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#22c55e";
+    ctx.beginPath();
+    ctx.ellipse(-2, 1 + bob, 14, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Mai rùa trên lưng
+    ctx.fillStyle = "#92400e";
+    ctx.beginPath();
+    ctx.ellipse(-12, 3 + bob, 6, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Đĩa nước trên đỉnh đầu
+    ctx.fillStyle = "#cbd5e1";
+    ctx.beginPath();
+    ctx.ellipse(0, -10 + bob, 10, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#0284c7";
+    ctx.beginPath();
+    ctx.ellipse(0, -10 + bob, 8, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Đôi mắt to tròn
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(3, -2 + bob, 5, 0, Math.PI * 2);
+    ctx.arc(11, -2 + bob, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#0f172a";
+    ctx.beginPath();
+    ctx.arc(5, -2 + bob, 2.5, 0, Math.PI * 2);
+    ctx.arc(12, -2 + bob, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Mỏ vịt vàng
+    ctx.fillStyle = "#facc15";
+    ctx.beginPath();
+    ctx.moveTo(6, 4 + bob);
+    ctx.lineTo(14, 4 + bob);
+    ctx.lineTo(8, 8 + bob);
+    ctx.closePath();
+    ctx.fill();
+  } else if (e.type === "oni") {
+    // Aka-Oni (👹) - Đại Quỷ Đỏ hung tợn
+    ctx.fillStyle = "#b91c1c";
+    ctx.beginPath();
+    ctx.roundRect(-16, -14 + bob, 32, 32, 8);
+    ctx.fill();
+
+    ctx.fillStyle = "#dc2626";
+    ctx.beginPath();
+    ctx.roundRect(-14, -12 + bob, 28, 28, 6);
+    ctx.fill();
+
+    // Đôi sừng nhọn ngà voi
+    ctx.fillStyle = "#fef08a";
+    ctx.beginPath();
+    ctx.moveTo(-10, -12 + bob);
+    ctx.lineTo(-14, -26 + bob);
+    ctx.lineTo(-5, -14 + bob);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(5, -14 + bob);
+    ctx.lineTo(14, -26 + bob);
+    ctx.lineTo(10, -12 + bob);
+    ctx.closePath();
+    ctx.fill();
+
+    // Đôi mắt vàng phát sáng
+    ctx.fillStyle = "#facc15";
+    ctx.beginPath();
+    ctx.arc(-5, -3 + bob, 4, 0, Math.PI * 2);
+    ctx.arc(7, -3 + bob, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#7f1d1d";
+    ctx.beginPath();
+    ctx.arc(-4, -3 + bob, 2, 0, Math.PI * 2);
+    ctx.arc(8, -3 + bob, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hàm răng nanh sắc nhọn
+    ctx.fillStyle = "#450a0a";
+    ctx.fillRect(-7, 6 + bob, 16, 5);
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.moveTo(-5, 11 + bob);
+    ctx.lineTo(-3, 6 + bob);
+    ctx.lineTo(-1, 11 + bob);
+    ctx.moveTo(3, 11 + bob);
+    ctx.lineTo(5, 6 + bob);
+    ctx.lineTo(7, 11 + bob);
+    ctx.fill();
+
+    // Khố da hổ
+    ctx.fillStyle = "#d97706";
+    ctx.fillRect(-14, 15 + bob, 28, 6);
+    ctx.fillStyle = "#1e293b";
+    ctx.fillRect(-10, 16 + bob, 4, 5);
+    ctx.fillRect(4, 16 + bob, 4, 5);
+
+    // Chuỳ sắt Kanabō có gai
+    ctx.fillStyle = "#334155";
+    ctx.fillRect(15, -16 + bob, 6, 26);
+    ctx.fillStyle = "#94a3b8";
+    ctx.fillRect(14, -14 + bob, 8, 3);
+    ctx.fillRect(14, -8 + bob, 8, 3);
+  } else {
+    // Karasu-Tengu (👺) - Thiên Cẩu sải cánh
+    const wingAngle = Math.sin(animTick * 0.3) * 0.35;
+    ctx.fillStyle = "#1e293b";
+    ctx.save();
+    ctx.rotate(wingAngle);
+    ctx.beginPath();
+    ctx.ellipse(-14, -2 + bob, 14, 6, -0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.rotate(-wingAngle);
+    ctx.beginPath();
+    ctx.ellipse(14, -2 + bob, 14, 6, 0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Thân áo đen
+    ctx.fillStyle = "#0f172a";
+    ctx.beginPath();
+    ctx.roundRect(-12, -8 + bob, 24, 26, 6);
+    ctx.fill();
+
+    // Mặt nạ Tengu đỏ
+    ctx.fillStyle = "#ef4444";
+    ctx.beginPath();
+    ctx.arc(0, -12 + bob, 11, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Chiếc mũi dài trứ danh
+    ctx.fillStyle = "#dc2626";
+    ctx.beginPath();
+    ctx.moveTo(4, -13 + bob);
+    ctx.lineTo(18, -13 + bob);
+    ctx.lineTo(4, -9 + bob);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = "#fbbf24";
+    ctx.fillRect(0, -15 + bob, 4, 3);
+  }
+
+  ctx.restore();
+}
+
+function drawQuestionBlock(ctx, b, animTick) {
+  const by = b.y + (b.bounceY || 0);
+
+  if (b.hit) {
+    // Khối gạch đồng sau khi đã húc
+    ctx.fillStyle = "#78716c";
+    ctx.fillRect(b.x, by, b.w, b.h);
+    ctx.fillStyle = "#57534e";
+    ctx.fillRect(b.x + 2, by + 2, b.w - 4, b.h - 4);
+    ctx.strokeStyle = "#44403c";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(b.x, by, b.w, b.h);
+
+    ctx.fillStyle = "#292524";
+    ctx.fillRect(b.x + b.w / 2 - 3, by + b.h / 2 - 3, 6, 6);
+  } else {
+    // Khối vàng kim loại sáng bóng 3D
+    const pulse = Math.sin(animTick * 0.12) * 1.5;
+
+    const blockGrad = ctx.createLinearGradient(b.x, by, b.x, by + b.h);
+    blockGrad.addColorStop(0, "#fde047");
+    blockGrad.addColorStop(0.3, "#f59e0b");
+    blockGrad.addColorStop(1, "#b45309");
+    ctx.fillStyle = blockGrad;
+    ctx.fillRect(b.x, by, b.w, b.h);
+
+    ctx.strokeStyle = "#fef08a";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(b.x, by + b.h);
+    ctx.lineTo(b.x, by);
+    ctx.lineTo(b.x + b.w, by);
+    ctx.stroke();
+
+    ctx.strokeStyle = "#78350f";
+    ctx.beginPath();
+    ctx.moveTo(b.x + b.w, by);
+    ctx.lineTo(b.x + b.w, by + b.h);
+    ctx.lineTo(b.x, by + b.h);
+    ctx.stroke();
+
+    // 4 Đinh tán kim loại góc
+    ctx.fillStyle = "#78350f";
+    ctx.fillRect(b.x + 4, by + 4, 3, 3);
+    ctx.fillRect(b.x + b.w - 7, by + 4, 3, 3);
+    ctx.fillRect(b.x + 4, by + b.h - 7, 3, 3);
+    ctx.fillRect(b.x + b.w - 7, by + b.h - 7, 3, 3);
+
+    // Dấu hỏi tỏa hào quang
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `bold ${22 + pulse}px var(--font-display, monospace)`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.shadowColor = "#fde047";
+    ctx.shadowBlur = 6;
+    ctx.fillText("?", b.x + b.w / 2, by + b.h / 2);
+    ctx.shadowBlur = 0;
+  }
+}
+
 function drawCastle(ctx, x, y, w, h) {
-  ctx.fillStyle = "#64748b";
-  ctx.fillRect(x, y + 60, w, h - 60);
+  // Tường đá pháo đài chính
   ctx.fillStyle = "#475569";
-  ctx.fillRect(x - 20, y, 50, h);
-  ctx.fillRect(x + w - 30, y, 50, h);
+  ctx.fillRect(x, y + 70, w, h - 70);
+
+  ctx.strokeStyle = "#334155";
+  ctx.lineWidth = 1.5;
+  for (let sy = y + 75; sy < y + h; sy += 22) {
+    ctx.beginPath();
+    ctx.moveTo(x, sy);
+    ctx.lineTo(x + w, sy);
+    ctx.stroke();
+  }
+
+  // Tháp canh hai bên
+  ctx.fillStyle = "#334155";
+  ctx.fillRect(x - 24, y + 20, 56, h - 20);
+  ctx.fillRect(x + w - 32, y + 20, 56, h - 20);
+
+  // Mái ngói cong ngọc bích đậm chất Nhật Bản
+  ctx.fillStyle = "#047857";
+  ctx.beginPath();
+  ctx.moveTo(x - 34, y + 20);
+  ctx.lineTo(x + 4, y - 16);
+  ctx.lineTo(x + 42, y + 20);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(x + w - 42, y + 20);
+  ctx.lineTo(x + w - 4, y - 16);
+  ctx.lineTo(x + w + 34, y + 20);
+  ctx.closePath();
+  ctx.fill();
+
+  // Mái tầng trung tâm
+  ctx.fillStyle = "#065f46";
+  ctx.beginPath();
+  ctx.moveTo(x + 10, y + 70);
+  ctx.lineTo(x + w / 2, y + 24);
+  ctx.lineTo(x + w - 10, y + 70);
+  ctx.closePath();
+  ctx.fill();
+
+  // Đỉnh tháp mạ vàng Shachihoko
+  ctx.fillStyle = "#fbbf24";
+  ctx.fillRect(x + 2, y - 22, 4, 8);
+  ctx.fillRect(x + w - 6, y - 22, 4, 8);
+
+  // Lá cờ hồng công chúa tung bay
   ctx.fillStyle = "#ec4899";
   ctx.beginPath();
-  ctx.moveTo(x + 5, y - 20);
-  ctx.lineTo(x + 35, y - 10);
-  ctx.lineTo(x + 5, y);
+  ctx.moveTo(x + 4, y - 20);
+  ctx.lineTo(x + 28, y - 14);
+  ctx.lineTo(x + 4, y - 8);
+  ctx.closePath();
   ctx.fill();
-  ctx.fillStyle = "#1e293b";
+
   ctx.beginPath();
-  ctx.arc(x + w / 2, y + h, 36, Math.PI, 0);
+  ctx.moveTo(x + w - 4, y - 20);
+  ctx.lineTo(x + w + 20, y - 14);
+  ctx.lineTo(x + w - 4, y - 8);
+  ctx.closePath();
+  ctx.fill();
+
+  // Cổng vòm lớn
+  ctx.fillStyle = "#0f172a";
+  ctx.beginPath();
+  ctx.arc(x + w / 2, y + h, 42, Math.PI, 0);
+  ctx.fill();
+
+  // Ánh đèn lồng ấm áp hắt ra từ cổng thành
+  const gateGlow = ctx.createRadialGradient(x + w / 2, y + h - 10, 5, x + w / 2, y + h - 10, 42);
+  gateGlow.addColorStop(0, "rgba(254, 240, 138, 0.85)");
+  gateGlow.addColorStop(0.6, "rgba(245, 158, 11, 0.4)");
+  gateGlow.addColorStop(1, "rgba(15, 23, 42, 0)");
+  ctx.fillStyle = gateGlow;
+  ctx.beginPath();
+  ctx.arc(x + w / 2, y + h, 42, Math.PI, 0);
   ctx.fill();
 }
 
-function drawPrincess(ctx, x, y, rescued) {
+function drawPrincess(ctx, x, y, rescued, animTick) {
   ctx.save();
-  ctx.translate(x, y);
+  const bounce = rescued ? Math.abs(Math.sin(animTick * 0.2)) * 8 : 0;
+  ctx.translate(x, y - bounce);
+
+  // 1. Mái tóc vàng óng ả
+  ctx.fillStyle = "#f59e0b";
+  ctx.beginPath();
+  ctx.arc(0, -6, 17, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#fbbf24";
+  ctx.beginPath();
+  ctx.arc(0, -7, 15, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#f59e0b";
+  ctx.fillRect(-17, -4, 5, 26);
+  ctx.fillRect(12, -4, 5, 26);
+
+  // 2. Váy lụa công chúa màu hồng phấn lộng lẫy
+  ctx.fillStyle = "#ec4899";
+  ctx.beginPath();
+  ctx.moveTo(0, 10);
+  ctx.lineTo(20, 48);
+  ctx.lineTo(-20, 48);
+  ctx.closePath();
+  ctx.fill();
 
   ctx.fillStyle = "#f472b6";
   ctx.beginPath();
   ctx.moveTo(0, 10);
-  ctx.lineTo(18, 45);
-  ctx.lineTo(-18, 45);
+  ctx.lineTo(14, 48);
+  ctx.lineTo(-14, 48);
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = "#fde047";
+  // Viền ren trắng
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(-7, 20, 14, 24);
+  ctx.fillStyle = "#fbcfe8";
+  ctx.fillRect(-9, 12, 18, 4);
+
+  // 3. Gương mặt anime xinh xắn
+  ctx.fillStyle = "#fed7aa";
   ctx.beginPath();
-  ctx.arc(0, -6, 14, 0, Math.PI * 2);
+  ctx.arc(0, -4, 11, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = "#fde68a";
+  // Đôi mắt to tròn xanh biếc
+  ctx.fillStyle = "#0284c7";
+  ctx.fillRect(-5, -6, 3, 5);
+  ctx.fillRect(2, -6, 3, 5);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(-5, -6, 1.5, 2);
+  ctx.fillRect(2, -6, 1.5, 2);
+
+  // Má hồng e ấp
+  ctx.fillStyle = "rgba(244, 114, 182, 0.6)";
   ctx.beginPath();
-  ctx.arc(0, -4, 10, 0, Math.PI * 2);
+  ctx.arc(-6, -1, 3, 0, Math.PI * 2);
+  ctx.arc(6, -1, 3, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = "#fbbf24";
+  // Nụ cười rạng rỡ
+  ctx.strokeStyle = "#e11d48";
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(-8, -14);
-  ctx.lineTo(-8, -22);
-  ctx.lineTo(-3, -16);
+  ctx.arc(0, -1, 3, 0.2, Math.PI - 0.2);
+  ctx.stroke();
+
+  // 4. Vương miện vàng đính ngọc lam
+  ctx.fillStyle = "#f59e0b";
+  ctx.beginPath();
+  ctx.moveTo(-9, -13);
+  ctx.lineTo(-9, -22);
+  ctx.lineTo(-4, -16);
   ctx.lineTo(0, -24);
-  ctx.lineTo(3, -16);
-  ctx.lineTo(8, -22);
-  ctx.lineTo(8, -14);
+  ctx.lineTo(4, -16);
+  ctx.lineTo(9, -22);
+  ctx.lineTo(9, -13);
+  ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = "#fde68a";
+  ctx.fillStyle = "#38bdf8";
+  ctx.fillRect(-2, -18, 4, 4);
+
+  // 5. Cử chỉ tay
+  ctx.fillStyle = "#fed7aa";
   if (rescued) {
-    ctx.fillRect(-16, 2, 6, 12);
-    ctx.fillRect(10, 2, 6, 12);
+    const waveHand = Math.sin(animTick * 0.3) * 4;
+    ctx.fillRect(-20, -12 + waveHand, 6, 16);
+    ctx.fillRect(14, -12 - waveHand, 6, 16);
+
+    ctx.fillStyle = "#f43f5e";
+    ctx.font = "14px sans-serif";
+    ctx.fillText("💖", -18, -26 - (animTick % 30));
+    ctx.fillText("✨", 14, -28 - ((animTick + 15) % 30));
   } else {
-    ctx.fillRect(-16, -10, 6, 14);
-    ctx.fillRect(10, -10, 6, 14);
+    ctx.fillRect(-6, 14, 12, 6);
   }
 
   ctx.restore();
 }
 
-function drawFireDragon(ctx, x, y) {
+function drawFireDragon(ctx, x, y, animTick) {
   ctx.save();
   ctx.translate(x, y);
 
+  for (let i = 0; i < 7; i++) {
+    const segX = -i * 26 + Math.sin(animTick * 0.3 + i) * 6;
+    const segY = Math.cos(animTick * 0.3 + i * 0.8) * 10;
+    const radius = 24 - i * 2.5;
+
+    const fireGrad = ctx.createRadialGradient(segX, segY, 4, segX, segY, radius);
+    fireGrad.addColorStop(0, "#fef08a");
+    fireGrad.addColorStop(0.4, "#f97316");
+    fireGrad.addColorStop(1, "rgba(220, 38, 38, 0)");
+
+    ctx.fillStyle = fireGrad;
+    ctx.beginPath();
+    ctx.arc(segX, segY, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   ctx.fillStyle = "#ea580c";
   ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(60, -20);
-  ctx.lineTo(80, 0);
-  ctx.lineTo(60, 20);
+  ctx.moveTo(10, -18);
+  ctx.lineTo(65, -8);
+  ctx.lineTo(75, 4);
+  ctx.lineTo(55, 18);
+  ctx.lineTo(10, 14);
   ctx.closePath();
   ctx.fill();
 
   ctx.fillStyle = "#facc15";
   ctx.beginPath();
-  ctx.arc(35, 0, 18, 0, Math.PI * 2);
+  ctx.moveTo(18, -16);
+  ctx.lineTo(6, -34);
+  ctx.lineTo(26, -20);
+  ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(45, -8, 8, 6);
+  ctx.fillStyle = "#fef08a";
+  ctx.beginPath();
+  ctx.arc(42, -5, 6, 0, Math.PI * 2);
+  ctx.fill();
   ctx.fillStyle = "#dc2626";
-  ctx.fillRect(48, -7, 4, 4);
+  ctx.beginPath();
+  ctx.arc(44, -5, 3, 0, Math.PI * 2);
+  ctx.fill();
 
-  ctx.strokeStyle = "#fed7aa";
-  ctx.lineWidth = 4;
+  ctx.strokeStyle = "#fef08a";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(56, 4);
+  ctx.quadraticCurveTo(80, 20 + Math.sin(animTick * 0.4) * 8, 95, 12);
   ctx.stroke();
 
   ctx.restore();
 }
 
-function drawMarioHUD(ctx, p) {
+function drawMarioHUD(ctx, p, marioState) {
+  const cw = marioState.canvasWidth;
+
+  // Thanh kính HUD mờ hiện đại
+  ctx.fillStyle = "rgba(15, 23, 42, 0.82)";
+  ctx.beginPath();
+  ctx.roundRect(14, 12, cw - 28, 48, 12);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // 1. Tim máu (❤️)
   for (let i = 0; i < p.maxHp; i++) {
-    ctx.font = "24px sans-serif";
-    ctx.fillText(i < p.hp ? "❤️" : "🖤", 20 + i * 30, 36);
+    const hx = 34 + i * 28;
+    const hy = 36;
+    if (i < p.hp) {
+      ctx.fillStyle = "#ef4444";
+      ctx.beginPath();
+      ctx.arc(hx - 5, hy - 4, 6, Math.PI, 0, false);
+      ctx.arc(hx + 5, hy - 4, 6, Math.PI, 0, false);
+      ctx.lineTo(hx, hy + 9);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = "#fca5a5";
+      ctx.beginPath();
+      ctx.arc(hx - 6, hy - 6, 2, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = "#475569";
+      ctx.beginPath();
+      ctx.arc(hx - 5, hy - 4, 6, Math.PI, 0, false);
+      ctx.arc(hx + 5, hy - 4, 6, Math.PI, 0, false);
+      ctx.lineTo(hx, hy + 9);
+      ctx.closePath();
+      ctx.fill();
+    }
   }
 
+  // 2. Đồng xu vàng
   ctx.fillStyle = "#fbbf24";
-  ctx.font = "bold 20px monospace";
-  ctx.fillText(`🪙 x${p.coins}`, 140, 34);
+  ctx.beginPath();
+  ctx.arc(142, 36, 9, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#b45309";
+  ctx.fillRect(139, 33, 6, 6);
 
-  ctx.fillStyle = "#fff";
-  ctx.shadowColor = "#000";
-  ctx.shadowBlur = 4;
-  ctx.font = "bold 18px var(--font-display, sans-serif)";
-  ctx.fillText(`ĐIỂM: ${p.score}`, 240, 34);
-  ctx.shadowBlur = 0;
+  ctx.fillStyle = "#fef08a";
+  ctx.font = "bold 16px monospace";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText(`x${p.coins}`, 158, 36);
+
+  // 3. Điểm số
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 15px var(--font-display, sans-serif)";
+  ctx.fillText(`⭐ ${p.score}`, 226, 36);
+
+  // 4. Thanh cự ly đến lâu đài
+  const progW = 140;
+  const progX = 350;
+  const progY = 32;
+  const pct = Math.min(1, Math.max(0, p.x / (marioState.worldWidth - 280)));
+
+  ctx.fillStyle = "#334155";
+  ctx.beginPath();
+  ctx.roundRect(progX, progY, progW, 8, 4);
+  ctx.fill();
+
+  ctx.fillStyle = "#10b981";
+  ctx.beginPath();
+  ctx.roundRect(progX, progY, progW * pct, 8, 4);
+  ctx.fill();
+
+  ctx.font = "12px sans-serif";
+  ctx.fillText("🏰", progX + progW + 8, progY + 5);
+
+  // 5. Trạng thái Tuyệt chiêu
+  ctx.fillStyle = "#c084fc";
+  ctx.font = "bold 13px var(--font-display, sans-serif)";
+  ctx.textAlign = "right";
+  ctx.fillText("⚡ [K] Hỏa Long Trảm", cw - 32, 36);
+  ctx.textAlign = "left";
 }
 
 function renderPrincessGameHtml() {
@@ -1207,78 +1876,78 @@ function renderPrincessGameHtml() {
       </div>
 
       <div class="mario-canvas-container">
-        <canvas id="mario-canvas" width="820" height="460"></canvas>
+        <canvas id="mario-canvas" width="840" height="460"></canvas>
+      </div>
 
-        <div class="mario-touch-controls-bar">
-          <div class="touch-ctrl-dpad">
-            <button type="button" class="touch-btn touch-btn-dir" data-mario-dir="left">◀</button>
-            <button type="button" class="touch-btn touch-btn-dir" data-mario-dir="right">▶</button>
-          </div>
-          <div class="touch-ctrl-actions">
-            <button type="button" class="touch-btn touch-btn-jump" data-mario-ctrl="jump">▲ Nhảy</button>
-            <button type="button" class="touch-btn touch-btn-attack" data-mario-ctrl="attack">⚔️ Chém</button>
-            <button type="button" class="touch-btn touch-btn-spell" data-mario-ctrl="spell">⚡ Tuyệt chiêu</button>
+      <div class="mario-touch-controls-bar">
+        <div class="touch-ctrl-dpad">
+          <button type="button" class="touch-btn touch-btn-dir" data-mario-dir="left">◀ Trái (A)</button>
+          <button type="button" class="touch-btn touch-btn-dir" data-mario-dir="right">Phải ▶ (D)</button>
+        </div>
+        <div class="touch-ctrl-actions">
+          <button type="button" class="touch-btn touch-btn-jump" data-mario-ctrl="jump">▲ Nhảy (Space)</button>
+          <button type="button" class="touch-btn touch-btn-attack" data-mario-ctrl="attack">⚔️ Chém (J)</button>
+          <button type="button" class="touch-btn touch-btn-spell" data-mario-ctrl="spell">⚡ Tuyệt chiêu (K)</button>
+        </div>
+      </div>
+
+      ${marioState.isSpellPaused && marioState.currentSpellQuestion ? `
+        <div class="mario-spell-modal-overlay">
+          <div class="mario-spell-box glass-panel">
+            <div class="spell-box-header">
+              <span class="spell-tag">${marioState.currentSpellQuestion.title}</span>
+              <span class="spell-timer-badge">⏱️ Giải mã nhanh!</span>
+            </div>
+            <p class="spell-desc-sub">Trả lời chính xác để phóng Hỏa Long Trảm quét sạch toàn bộ quái vật trên đường đi!</p>
+            
+            <div class="spell-prompt-text">${marioState.currentSpellQuestion.prompt}</div>
+
+            <div class="mario-spell-options-grid">
+              ${marioState.currentSpellQuestion.options.map((opt, idx) => `
+                <button type="button" class="mario-spell-ans-btn" data-spell-opt-idx="${idx}">
+                  <span>（${idx + 1}）</span> <strong>${opt}</strong>
+                </button>
+              `).join("")}
+            </div>
           </div>
         </div>
+      ` : ''}
 
-        ${marioState.isSpellPaused && marioState.currentSpellQuestion ? `
-          <div class="mario-spell-modal-overlay">
-            <div class="mario-spell-box glass-panel">
-              <div class="spell-box-header">
-                <h3>${marioState.currentSpellQuestion.title}</h3>
-                <span class="spell-timer-badge">⏱️ Giải mã nhanh!</span>
-              </div>
-              <p class="spell-desc-sub">Trả lời chính xác để phóng Hỏa Long Trảm quét sạch toàn bộ quái vật trên đường đi!</p>
-              
-              <div class="spell-prompt-text">${marioState.currentSpellQuestion.prompt}</div>
-
-              <div class="mario-spell-options-grid">
-                ${marioState.currentSpellQuestion.options.map((opt, idx) => `
-                  <button type="button" class="mario-spell-ans-btn" data-spell-opt-idx="${idx}">
-                    <span>（${idx + 1}）</span> <strong>${opt}</strong>
-                  </button>
-                `).join("")}
-              </div>
+      ${marioState.gameOver ? `
+        <div class="mario-spell-modal-overlay">
+          <div class="battle-end-modal glass-panel game-over-box">
+            <div class="end-icon">💀</div>
+            <h3>HIỆP SĨ ĐÃ HẾT MÁU!</h3>
+            <p>Công chúa vẫn đang ngóng chờ bạn ở Lâu Đài. Hãy củng cố từ vựng và thử lại nhé!</p>
+            <div class="end-actions">
+              <button type="button" class="btn btn-primary btn-lg" id="retry-mario-game-btn">🔄 Chơi Lại Từ Đầu</button>
+              <button type="button" class="btn btn-secondary btn-back-to-game-hub">Quay lại Game Hub</button>
             </div>
           </div>
-        ` : ''}
+        </div>
+      ` : ''}
 
-        ${marioState.gameOver ? `
-          <div class="mario-spell-modal-overlay">
-            <div class="battle-end-modal glass-panel game-over-box">
-              <div class="end-icon">💀</div>
-              <h3>HIỆP SĨ ĐÃ HẾT MÁU!</h3>
-              <p>Công chúa vẫn đang ngóng chờ bạn ở Lâu Đài. Hãy củng cố từ vựng và thử lại nhé!</p>
-              <div class="end-actions">
-                <button type="button" class="btn btn-primary btn-lg" id="retry-mario-game-btn">🔄 Chơi Lại Từ Đầu</button>
-                <button type="button" class="btn btn-secondary btn-back-to-game-hub">Quay lại Game Hub</button>
-              </div>
+      ${marioState.victory ? `
+        <div class="mario-spell-modal-overlay">
+          <div class="battle-end-modal glass-panel victory-box">
+            <div class="end-icon">👸👑🎉</div>
+            <h3>CHÚC MỪNG! GIẢI CỨU CÔNG CHÚA THÀNH CÔNG!</h3>
+            <p>
+              Bạn đã vượt qua mọi cạm bẫy quái vật và tiến thẳng vào Lâu Đài Lộng Lẫy! 
+              Công chúa trao tặng bạn Vương Miện Hiệp Sĩ Cứu Thế.
+            </p>
+            <div class="victory-stat-summary">
+              <span>🪙 Vàng nhặt được: <strong>${marioState.player.coins}</strong></span>
+              <span>⭐ Tổng điểm: <strong>${marioState.player.score}</strong></span>
+              <span>🏆 Thưởng EXP: <strong>+300 EXP</strong></span>
+            </div>
+            <div class="end-actions">
+              <button type="button" class="btn btn-primary btn-lg" id="retry-mario-game-btn">🎮 Chơi Lại Màn Mới</button>
+              <button type="button" class="btn btn-secondary btn-back-to-game-hub">Quay lại Game Hub</button>
             </div>
           </div>
-        ` : ''}
-
-        ${marioState.victory ? `
-          <div class="mario-spell-modal-overlay">
-            <div class="battle-end-modal glass-panel victory-box">
-              <div class="end-icon">👸👑🎉</div>
-              <h3>CHÚC MỪNG! GIẢI CỨU CÔNG CHÚA THÀNH CÔNG!</h3>
-              <p>
-                Bạn đã vượt qua mọi cạm bẫy quái vật và tiến thẳng vào Lâu Đài Lộng Lẫy! 
-                Công chúa trao tặng bạn Vương Miện Hiệp Sĩ Cứu Thế.
-              </p>
-              <div class="victory-stat-summary">
-                <span>🪙 Vàng nhặt được: <strong>${marioState.player.coins}</strong></span>
-                <span>⭐ Tổng điểm: <strong>${marioState.player.score}</strong></span>
-                <span>🏆 Thưởng EXP: <strong>+300 EXP</strong></span>
-              </div>
-              <div class="end-actions">
-                <button type="button" class="btn btn-primary btn-lg" id="retry-mario-game-btn">🎮 Chơi Lại Màn Mới</button>
-                <button type="button" class="btn btn-secondary btn-back-to-game-hub">Quay lại Game Hub</button>
-              </div>
-            </div>
-          </div>
-        ` : ''}
-      </div>
+        </div>
+      ` : ''}
     </div>
   `;
 }

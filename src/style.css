@@ -11676,7 +11676,7 @@ body.view-grammar-active .container,
    ========================================================================== */
 .mario-game-wrapper {
   position: relative;
-  max-width: 900px;
+  max-width: 920px;
   margin: 0 auto;
   user-select: none;
   font-family: inherit;
@@ -11685,10 +11685,10 @@ body.view-grammar-active .container,
 .mario-canvas-container {
   position: relative;
   width: 100%;
-  border-radius: 14px;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25);
-  border: 3px solid #1e293b;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35), 0 0 25px rgba(56, 189, 248, 0.2);
+  border: 3px solid #334155;
   background: #0f172a;
 }
 
@@ -11696,7 +11696,7 @@ body.view-grammar-active .container,
   display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 840 / 440;
+  aspect-ratio: 840 / 460;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
@@ -11707,11 +11707,11 @@ body.view-grammar-active .container,
   justify-content: center;
   gap: 16px;
   flex-wrap: wrap;
-  padding: 8px 12px;
-  background: rgba(15, 23, 42, 0.04);
+  padding: 8px 14px;
+  background: rgba(15, 23, 42, 0.05);
   border-radius: 8px;
   margin-top: 8px;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   color: var(--ink-soft);
 }
 
@@ -11720,64 +11720,73 @@ body.view-grammar-active .container,
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  margin-top: 10px;
-  padding: 12px 16px;
+  margin-top: 14px;
+  padding: 14px 20px;
   background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
   color: #f8fafc;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
 }
 
 .touch-ctrl-dpad,
 .touch-ctrl-actions {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
 }
 
 .touch-btn {
-  padding: 10px 18px;
-  border-radius: 10px;
+  padding: 11px 20px;
+  border-radius: 12px;
   border: none;
   font-weight: 800;
   font-size: 0.95rem;
   cursor: pointer;
-  transition: transform 0.08s ease, filter 0.15s ease;
+  transition: transform 0.08s ease, filter 0.15s ease, box-shadow 0.08s ease;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  letter-spacing: 0.02em;
 }
 
 .touch-btn:active {
-  transform: scale(0.92);
-  filter: brightness(0.85);
+  transform: translateY(3px) scale(0.96);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4) !important;
+  filter: brightness(0.9);
 }
 
 .touch-btn-dir {
   background: #334155;
   color: #ffffff;
-  min-width: 48px;
-  box-shadow: 0 3px 0 #1e293b;
+  min-width: 58px;
+  box-shadow: 0 4px 0 #1e293b;
 }
 
 .touch-btn-jump {
-  background: #10b981;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: #ffffff;
-  box-shadow: 0 3px 0 #059669;
+  box-shadow: 0 4px 0 #047857;
 }
 
 .touch-btn-attack {
-  background: #f59e0b;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
   color: #ffffff;
-  box-shadow: 0 3px 0 #d97706;
+  box-shadow: 0 4px 0 #b45309;
 }
 
 .touch-btn-spell {
   background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
   color: #ffffff;
-  box-shadow: 0 3px 0 #7c3aed;
+  box-shadow: 0 4px 0 #6d28d9;
+  animation: pulseGlowSpell 2s infinite alternate;
+}
+
+@keyframes pulseGlowSpell {
+  from { box-shadow: 0 4px 0 #6d28d9, 0 0 8px rgba(236, 72, 153, 0.35); }
+  to { box-shadow: 0 4px 0 #6d28d9, 0 0 20px rgba(139, 92, 246, 0.7); }
 }
 
 /* Modal Tuyệt chiêu câu hỏi */
@@ -11820,9 +11829,9 @@ body.view-grammar-active .container,
 .spell-tag {
   background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
   color: #ffffff;
-  padding: 4px 12px;
+  padding: 5px 14px;
   border-radius: 999px;
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   font-weight: 800;
   letter-spacing: 0.05em;
 }

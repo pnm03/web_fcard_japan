@@ -151,9 +151,33 @@ test("game-center.js: Game Mario 2D Giải Cứu Công Chúa - Vật lý, chém 
   const mario = gameModule.startPrincessGameForTest();
   assert.ok(mario, "Mario state phải được khởi tạo");
   assert.equal(mario.player.hp, 3, "Hiệp sĩ có 3 tim/máu");
+  assert.equal(typeof mario.player.w, "number", "Player w phải là số hợp lệ");
+  assert.equal(typeof mario.player.h, "number", "Player h phải là số hợp lệ");
+  assert.ok(mario.player.w > 0 && mario.player.h > 0, "Kích thước player phải lớn hơn 0");
   assert.ok(mario.enemies.length >= 6, "Phải có nhiều quái vật tuần tra trên đường");
   assert.ok(mario.blocks.length >= 5, "Phải có khối gạch và ô chứa bùa bí ẩn");
   assert.ok(mario.castle && mario.castle.x > 2000, "Phải có lâu đài công chúa ở cuối map");
+
+  // Giả lập tiếp đất: Player rơi từ y:320 xuống mặt đất tại y:340 (block y:390 - h:50)
+  for (let f = 0; f < 15; f++) {
+    mario.player.vy += 0.58;
+    mario.player.y += mario.player.vy;
+    mario.player.onGround = false;
+    mario.blocks.forEach(b => {
+      const p = mario.player;
+      if (p.x < b.x + b.w && p.x + p.w > b.x && p.y < b.y + b.h && p.y + p.h > b.y) {
+        if (p.vy > 0) {
+          p.y = b.y - p.h;
+          p.vy = 0;
+          p.onGround = true;
+        }
+      }
+    });
+    if (mario.player.onGround) break;
+  }
+  assert.equal(mario.player.onGround, true, "Player phải tiếp đất an toàn, không bị rơi xuyên sàn");
+  assert.equal(mario.player.y, 340, "Tọa độ y khi đứng trên đất phải chuẩn xác");
+  assert.equal(mario.player.hp, 3, "HP không bị mất khi đứng trên mặt đất");
 
   // Đòn đánh thường chém kiếm
   gameModule.triggerMarioNormalAttack();
