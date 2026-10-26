@@ -205,6 +205,74 @@ test("game-center.js: Game Mario 2D Giải Cứu Công Chúa - Vật lý, chém 
   assert.ok(mario.coins.length >= initialCoins + 3, "Tiêu diệt quái vật phải nổ rơi ra ít nhất 3 đồng xu vàng");
 });
 
+test("game-center.js: Hệ thống Mana, Quái vật nhiều HP & Đòn kết liễu, Rương kho báu và Bẫy lồng giam Công Chúa", async () => {
+  const gameModule = await import("../src/game-center.js");
+
+  // Khởi tạo game Mario
+  const mario = gameModule.startPrincessGameForTest();
+  assert.equal(mario.player.mana, 100, "Mana khởi điểm phải là 100");
+  assert.equal(mario.player.maxMana, 100, "Max mana phải là 100");
+  assert.ok(mario.chests && mario.chests.length >= 4, "Phải có ít nhất 4 rương báu trên map");
+
+  // Quái vật có nhiều HP
+  const enemy = mario.enemies[0];
+  assert.ok(enemy.hp >= 2, "Quái vật thông thường phải có ít nhất 2 HP");
+  const initHp = enemy.hp;
+
+  // Chém thường: quái mất 1 HP
+  gameModule.damageEnemy(enemy, 1, mario.player);
+  assert.equal(enemy.hp, initHp - 1, "Quái phải mất 1 HP sau khi bị chém đòn 1");
+  assert.equal(enemy.alive, true, "Quái chưa chết sau đòn 1");
+
+  // Đòn 2 chí mạng: Quái hết HP -> Kích hoạt Đòn kết liễu (Finisher Modal)
+  gameModule.damageEnemy(enemy, 1, mario.player);
+  assert.equal(mario.isSpellPaused, true, "Đòn kết liễu phải tạm dừng game để trả lời câu hỏi");
+  assert.equal(mario.modalContext, "finisher", "Modal context phải là finisher");
+  assert.ok(mario.currentSpellQuestion.title.includes("ĐÒN KẾT LIỄU"), "Tiêu đề phải là ĐÒN KẾT LIỄU");
+
+  // Trả lời đúng đòn kết liễu -> Quái chết, thưởng điểm và hồi 25 mana
+  const manaBeforeFinisher = mario.player.mana;
+  const correctIdx = mario.currentSpellQuestion.correct;
+  gameModule.handleMarioSpellAnswer(correctIdx);
+  assert.equal(enemy.alive, false, "Trả lời đúng kết liễu quái vật phải chết");
+  assert.equal(mario.isSpellPaused, false, "Game tiếp tục sau khi kết liễu thành công");
+  assert.ok(mario.player.mana >= manaBeforeFinisher, "Đòn kết liễu thành công phải hồi Mana");
+
+  // Hồi Mana (R / button)
+  mario.player.mana = 10;
+  gameModule.triggerMarioManaRecharge();
+  assert.equal(mario.isSpellPaused, true, "Hồi mana phải mở câu hỏi");
+  assert.equal(mario.modalContext, "mana", "Context phải là mana");
+  gameModule.handleMarioSpellAnswer(mario.currentSpellQuestion.correct);
+  assert.equal(mario.player.mana, 100, "Trả lời đúng hồi mana phải nạp đầy 100 Mana");
+
+  // Mở rương kho báu
+  const chest = mario.chests[0];
+  gameModule.triggerChestModal(chest);
+  assert.equal(mario.modalContext, "chest", "Context phải là chest");
+  gameModule.handleMarioSpellAnswer(mario.currentSpellQuestion.correct);
+  assert.equal(chest.opened, true, "Trả lời đúng phải mở rương báu");
+
+  // Cạm bẫy Lồng Giam Công Chúa: Trả lời sai -> Sập bẫy, trừ máu và dịch chuyển về đầu map
+  mario.player.x = 4450;
+  mario.player.y = 200;
+  mario.player.hp = 3;
+  gameModule.triggerPrincessSealModal();
+  assert.equal(mario.modalContext, "princess_seal", "Context phải là princess_seal");
+  
+  // Trả lời SAI
+  const wrongIdx = (mario.currentSpellQuestion.correct + 1) % 4;
+  gameModule.handleMarioSpellAnswer(wrongIdx);
+  assert.equal(mario.player.hp, 2, "Trả lời sai phong ấn phải bị mất 1 máu do sập bẫy");
+  assert.equal(mario.player.x, 80, "Trả lời sai phong ấn phải bị đưa ngược về đầu map (x=80)");
+  assert.equal(mario.cameraX, 0, "Camera phải reset về 0");
+
+  // Trả lời ĐÚNG phong ấn -> Chiến thắng giải cứu công chúa
+  gameModule.triggerPrincessSealModal();
+  gameModule.handleMarioSpellAnswer(mario.currentSpellQuestion.correct);
+  assert.equal(mario.victory, true, "Giải mã thành công phong ấn phải chiến thắng giải cứu công chúa!");
+});
+
 test("style.css: Chứa đầy đủ CSS sàn đấu quái vật, lâu đài công chúa, Mario 2D và lật thẻ đa kích thước", () => {
   const cssPath = path.resolve(__dirname, "../src/style.css");
   const css = fs.readFileSync(cssPath, "utf-8");
@@ -223,6 +291,7 @@ test("style.css: Chứa đầy đủ CSS sàn đấu quái vật, lâu đài cô
   assert.ok(css.includes("#mario-canvas"), "CSS phải có #mario-canvas");
   assert.ok(css.includes(".mario-touch-controls-bar"), "CSS phải có .mario-touch-controls-bar");
   assert.ok(css.includes(".touch-btn-spell"), "CSS phải có nút bùa chú .touch-btn-spell");
+  assert.ok(css.includes(".touch-btn-recharge"), "CSS phải có nút nạp mana .touch-btn-recharge");
   assert.ok(css.includes(".mario-spell-modal-overlay"), "CSS phải có modal tuyệt chiêu .mario-spell-modal-overlay");
 
   // Memory Game Grid Sizing CSS
