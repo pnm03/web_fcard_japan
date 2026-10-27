@@ -16,14 +16,15 @@ export const GRAMMAR_CHAPTERS = [
         id: "n5-lesson-1",
         number: 1,
         title: "Bài 1: Giới thiệu bản thân (じこしょうかい)",
-        subtitle: "Khẳng định (です) · Phủ định (じゃありません) · Nghi vấn (ですか) · Trợ từ cũng (も)",
+        subtitle: "Khẳng định (です) · Phủ định (じゃありません) · Nghi vấn (ですか) · Trợ từ cũng (も) · Trợ từ sở hữu (の)",
         level: "N5",
         keyTakeaways: [
           "Trợ từ は viết là 'ha' nhưng BẮT BUỘC phát âm là 'wa'. Tuyệt đối không viết là わ.",
           "です đứng cuối câu khẳng định danh từ một cách lịch sự, phát âm nuốt nhẹ âm u giống 'des'.",
           "じゃありません dùng trong văn nói hàng ngày; ではありません dùng trong văn viết và trang trọng.",
           "Thêm か vào cuối câu để tạo thành câu hỏi nghi vấn xác nhận, ngữ điệu hơi lên giọng.",
-          "Trợ từ も (cũng) THAY THẾ hoàn toàn cho は khi có cùng tính chất. Cấm kỵ: không nói 'A はも B'."
+          "Trợ từ も (cũng) THAY THẾ hoàn toàn cho は khi có cùng tính chất. Cấm kỵ: không nói 'A はも B'.",
+          "Trợ từ の: N1 の N2 (N1 bổ nghĩa cho N2: tổ chức/người sở hữu đứng trước, đối tượng trực thuộc đứng sau). Ví dụ: IMC の しゃいん."
         ],
         patterns: [
           {
@@ -103,14 +104,36 @@ export const GRAMMAR_CHAPTERS = [
               { jp: "わたし <span class=\"gp-mark gp-ha\">は</span> がくせい です。あのかた <span class=\"gp-mark gp-mo\">も</span> がくせい <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Watashi wa gakusei desu. Ano kata mo gakusei desu.", vi: "Tôi là học sinh. Vị kia CŨNG là học sinh.", audio: "わたしはがくせいです。あのかたもがくせいです" },
               { jp: "ミラーさん <span class=\"gp-mark gp-ha\">は</span> かいしゃいん です。グプタさん <span class=\"gp-mark gp-mo\">も</span> かいしゃいん <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Miraa-san wa kaishain desu. Guputa-san mo kaishain desu.", vi: "Anh Miller là nhân viên công ty. Anh Gupta CŨNG là nhân viên công ty.", audio: "ミラーさんはかいしゃいんです。グプタさんもかいしゃいんです" }
             ]
+          },
+          {
+            id: "pattern-5",
+            name: "N1 の N2",
+            targetHighlight: "の",
+            meaning: "N2 của N1 / N2 thuộc N1 (Trợ từ liên kết & sở hữu)",
+            formula: "Danh từ 1 [ <span class=\"gp-mark gp-no\">の</span> ] Danh từ 2",
+            explanation: "Trợ từ の dùng để kết nối hai danh từ lại với nhau. Trong đó Danh từ 1 bổ nghĩa cho Danh từ 2, thể hiện sự sở hữu cá nhân, trực thuộc một công ty, trường học hay tổ chức.",
+            deepPoints: [
+              "<strong>1. Quy tắc trật tự 'Tổ chức lớn đứng trước - Bộ phận/Cá nhân đứng sau':</strong><br>• Khác với tiếng Việt (nói <em>'Nhân viên của công ty IMC'</em>), tiếng Nhật <strong>bắt buộc</strong> đưa Tổ chức / Cơ quan lớn ra trước: <strong>IMC <span class=\"gp-mark gp-no\">の</span> しゃいん</strong>.<br>• <u>Mẹo nhớ cốt lõi:</u> [Tổ chức lớn / Người sở hữu] + <span class=\"gp-mark gp-no\">の</span> + [Bộ phận trực thuộc / Nghề nghiệp / Đồ vật].",
+              "<strong>2. Biểu thị trực thuộc trường học hoặc doanh nghiệp:</strong><br>• Dùng để giới thiệu chức vụ, nghề nghiệp gắn liền với cơ quan, đơn vị làm việc.<br>• Ví dụ: <em>さくらだいがく <span class=\"gp-mark gp-no\">の</span> がくせい</em> (Sinh viên trường Đại học Sakura), <em>FPT <span class=\"gp-mark gp-no\">の</span> エンジニア</em> (Kỹ sư của công ty FPT).",
+              "<strong>3. Biểu thị quan hệ sở hữu cá nhân:</strong><br>• Dùng khi đồ vật hoặc người thuộc quyền sở hữu, mối quan hệ của một cá nhân.<br>• Ví dụ: <em>わたし <span class=\"gp-mark gp-no\">の</span> ほん</em> (Cuốn sách của tôi), <em>タインさん <span class=\"gp-mark gp-no\">の</span> ともだち</em> (Bạn của anh Thanh).",
+              "<strong>4. Trợ từ の KHÔNG ĐƯỢC phép lược bỏ:</strong><br>• Trong tiếng Nhật, hai danh từ đặt cạnh nhau để bổ nghĩa cho nhau không thể nối trực tiếp mà bắt buộc phải có trợ từ <span class=\"gp-mark gp-no\">の</span> làm cầu nối. Tuyệt đối không nói <s>IMC しゃいん</s> hay <s>わたし ほん</s>."
+            ],
+            notes: "🔴 <u>Ghi nhớ vàng:</u> [N1] + <span class=\"gp-mark gp-no\">の</span> + [N2] = 'N2 của N1' hoặc 'N2 thuộc tổ chức N1'.",
+            examples: [
+              { jp: "ミラーさん <span class=\"gp-mark gp-ha\">は</span> IMC <span class=\"gp-mark gp-no\">の</span> しゃいん <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Miraa-san wa IMC no shain desu.", vi: "Anh Miller là nhân viên của công ty IMC.", audio: "ミラーさんはIMCのしゃいんです" },
+              { jp: "カリナさん <span class=\"gp-mark gp-ha\">は</span> ふじだいがく <span class=\"gp-mark gp-no\">の</span> がくせい <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Karina-san wa Fuji daigaku no gakusei desu.", vi: "Chị Karina là sinh viên của trường Đại học Fuji.", audio: "カリナさんはふじだいがくのがくせいです" },
+              { jp: "タインさん <span class=\"gp-mark gp-ha\">は</span> FPT <span class=\"gp-mark gp-no\">の</span> エンジニア <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Thanh-san wa FPT no enjinia desu.", vi: "Anh Thanh là kỹ sư của công ty FPT.", audio: "タインさんはFPTのエンジニアです" },
+              { jp: "あのかた <span class=\"gp-mark gp-ha\">は</span> さくらびょういん <span class=\"gp-mark gp-no\">の</span> いしゃ <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Ano kata wa Sakura byouin no isha desu.", vi: "Vị kia là bác sĩ của bệnh viện Sakura.", audio: "あのかたはさくらびょういんのいしゃです" },
+              { jp: "これ <span class=\"gp-mark gp-ha\">は</span> わたし <span class=\"gp-mark gp-no\">の</span> ほん <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Kore wa watashi no hon desu.", vi: "Đây là cuốn sách của tôi.", audio: "これはわたしのほんです" }
+            ]
           }
         ],
         readingArticle: {
           title: "Đoạn văn & Hội thoại tự giới thiệu bản thân mẫu (じこしょうかい)",
-          passageJp: "はじめまして。わたし <span class=\"gp-mark gp-ha\">は</span> タイン <span class=\"gp-mark gp-desu\">です</span>。ベトナム から きました。25さい <span class=\"gp-mark gp-desu\">です</span>。エンジニア <span class=\"gp-mark gp-desu\">です</span>。がくせい <span class=\"gp-mark gp-ja\">じゃありません</span>。ナムさん <span class=\"gp-mark gp-mo\">も</span> ベトナムじん <span class=\"gp-mark gp-desu\">です</span>。どうぞ よろしく おねがいします。",
-          passageRomaji: "Hajimemashite. Watashi wa Thanh desu. Betonamu kara kimashita. 25-sai desu. Enjinia desu. Gakusei ja arimasen. Nam-san mo Betonamu-jin desu. Douzo yoroshiku onegaishimasu.",
-          passageVi: "Rất vui được làm quen với bạn. Tôi là Thanh. Tôi đến từ Việt Nam. Tôi 25 tuổi. Tôi là kỹ sư. Tôi không phải là học sinh. Anh Nam cũng là người Việt Nam. Rất mong được sự giúp đỡ của bạn.",
-          audio: "はじめまして。わたしはタインです。ベトナムからきました。にじゅうごさいです。エンジニアです。がくせいじゃありません。ナムさんもベトナムじんです。どうぞよろしくおねがいします"
+          passageJp: "はじめまして。わたし <span class=\"gp-mark gp-ha\">は</span> タイン <span class=\"gp-mark gp-desu\">です</span>。ベトナム から きました。25さい <span class=\"gp-mark gp-desu\">です</span>。FPT <span class=\"gp-mark gp-no\">の</span> エンジニア <span class=\"gp-mark gp-desu\">です</span>。がくせい <span class=\"gp-mark gp-ja\">じゃありません</span>。ナムさん <span class=\"gp-mark gp-mo\">も</span> FPT <span class=\"gp-mark gp-no\">の</span> エンジニア <span class=\"gp-mark gp-desu\">です</span>。どうぞ よろしく おねがいします。",
+          passageRomaji: "Hajimemashite. Watashi wa Thanh desu. Betonamu kara kimashita. 25-sai desu. FPT no enjinia desu. Gakusei ja arimasen. Nam-san mo FPT no enjinia desu. Douzo yoroshiku onegaishimasu.",
+          passageVi: "Rất vui được làm quen với bạn. Tôi là Thanh. Tôi đến từ Việt Nam. Tôi 25 tuổi. Tôi là kỹ sư của công ty FPT. Tôi không phải là học sinh. Anh Nam cũng là kỹ sư của công ty FPT. Rất mong được sự giúp đỡ của bạn.",
+          audio: "はじめまして。わたしはタインです。ベトナムからきました。にじゅうごさいです。FPTのエンジニアです。がくせいじゃありません。ナムさんもFPTのエンジニアです。どうぞよろしくおねがいします"
         },
         exercises: [
           {
@@ -178,6 +201,15 @@ export const GRAMMAR_CHAPTERS = [
             ],
             correct: 0,
             explanation: "Cấu trúc câu hỏi nghi vấn: Chủ ngữ (あなた) + は + Danh từ (がくせい) + ですか."
+          },
+          {
+            id: "ex-6",
+            type: "fill",
+            typeLabel: "✏️ Điền trợ từ の",
+            question: "ミラーさん は IMC [ ... ] しゃいん です。",
+            options: ["の", "は", "も", "か"],
+            correct: 0,
+            explanation: "IMC là tên công ty, しゃいん là nhân viên thuộc công ty đó nên bắt buộc dùng trợ từ 'の' để nối: IMC の しゃいん."
           }
         ],
         testQuestions: [
@@ -258,15 +290,15 @@ export const GRAMMAR_CHAPTERS = [
           },
           {
             id: "tq-8",
-            q: "Để giới thiệu 'Tôi là học sinh', câu nào sau đây là chính xác?",
+            q: "Để nói 'Anh Miller là nhân viên của công ty IMC', câu nào sau đây viết ĐÚNG ngữ pháp?",
             options: [
-              "わたし は がくせい です。",
-              "わたし が がくせい ですか。",
-              "わたし も がくせい じゃありません。",
-              "わたし は がくせい ですか。"
+              "ミラーさん は IMC の しゃいん です。",
+              "ミラーさん は しゃいん の IMC です。",
+              "ミラーさん の IMC は しゃいん です。",
+              "ミラーさん は IMC も しゃいん です。"
             ],
             correct: 0,
-            explanation: "Cấu trúc khẳng định danh từ: A は B です (Tôi là học sinh)."
+            explanation: "Quy tắc trợ từ の: [Tổ chức lớn] + の + [Người / Bộ phận trực thuộc] ➔ ミラーさん は IMC の しゃいん です."
           }
         ]
       },
@@ -683,6 +715,25 @@ export function generateLessonReviewQuestions(lesson, mode) {
             "ano kata wa sensei ja arimasen"
           ],
           explanation: "Dạng phủ định trang trọng (văn viết hoặc phát biểu): あのかた + は + せんせい + ではありません."
+        },
+        {
+          id: "q-tr-6",
+          type: "translate",
+          pattern: "N1 の N2",
+          prompt: "Dịch sang tiếng Nhật: 'Anh Miller là nhân viên của công ty IMC.'",
+          vi: "Anh Miller là nhân viên của công ty IMC.",
+          targetJp: "ミラーさんはIMCのしゃいんです",
+          targetRomaji: "miraa-san wa IMC no shain desu",
+          acceptedVariations: [
+            "ミラーさんはIMCのしゃいんです",
+            "ミラーさんはIMCの社員です",
+            "ミラーさんはIMCのしゃいんです。",
+            "ミラーさんはIMCの社員です。",
+            "miraa-san wa imc no shain desu",
+            "miraa san wa imc no shain desu",
+            "miraasanwaimcnoshaindesu"
+          ],
+          explanation: "Mẫu câu trợ từ の: Tổ chức/doanh nghiệp lớn đứng trước (IMC) + の + Nhân sự trực thuộc (しゃいん) + です."
         }
       ]
     };
@@ -731,6 +782,14 @@ export function generateLessonReviewQuestions(lesson, mode) {
           options: ["ではありません", "じゃありませんか", "でした", "もではありません"],
           correct: 0,
           explanation: "ではありません mang sắc thái trang trọng, chuẩn mực nhất trong văn viết và phát biểu công sở."
+        },
+        {
+          id: "q-cl-6",
+          type: "cloze",
+          question: "ミラーさん は IMC [ ... ] しゃいん です。",
+          options: ["の", "は", "も", "か"],
+          correct: 0,
+          explanation: "IMC là tên công ty, しゃいん là nhân viên trực thuộc công ty đó nên bắt buộc dùng trợ từ 'の' để nối: IMC の しゃいん."
         }
       ]
     };
@@ -1257,14 +1316,21 @@ function renderTheoryTabHtml(lesson, progress) {
       tag: "Nâng cao",
       title: "Phần 4: Trợ từ đồng nhất (A も B です)",
       phaseClass: "divider-phase-4"
+    },
+    {
+      id: "sec-tro-tu-no",
+      exId: "sec-tro-tu-no-examples",
+      tag: "Hoàn thiện",
+      title: "Phần 5: Trợ từ sở hữu & liên kết (N1 の N2)",
+      phaseClass: "divider-phase-5"
     }
   ];
 
   return `
     <div class="theory-view-wrapper">
       <div class="theory-intro-banner">
-        <h3>Bài 1: Giới Thiệu Bản Thân (自己紹介)</h3>
-        <p>Học kỹ 4 cấu trúc nền tảng. Các từ khóa ngữ pháp chính (<span class="gp-mark gp-ha">は</span>, <span class="gp-mark gp-desu">です</span>, <span class="gp-mark gp-ja">じゃありません</span>, <span class="gp-mark gp-ka">ですか</span>, <span class="gp-mark gp-mo">も</span>) đã được gạch chân và tô màu nổi bật. Bấm nút 🔊 Loa để nghe phát âm tự nhiên:</p>
+        <h3>Bài 1: Giới Thiệu Bản Thân (じこしょうかい)</h3>
+        <p>Học kỹ 5 cấu trúc nền tảng. Các từ khóa ngữ pháp chính (<span class="gp-mark gp-ha">は</span>, <span class="gp-mark gp-desu">です</span>, <span class="gp-mark gp-ja">じゃありません</span>, <span class="gp-mark gp-ka">ですか</span>, <span class="gp-mark gp-mo">も</span>, <span class="gp-mark gp-no">の</span>) đã được gạch chân và tô màu nổi bật. Bấm nút 🔊 Loa hoặc nhấp vào bất kỳ từ khóa nào để nghe phát âm tự nhiên:</p>
       </div>
 
       <div class="grammar-patterns-stack">
@@ -2536,7 +2602,8 @@ export function generateRoadmapStepsHtml(lesson) {
     { id: "sec-khang-dinh", exId: "sec-khang-dinh-examples", title: "Khẳng định", sub: "A は B です" },
     { id: "sec-phu-dinh", exId: "sec-phu-dinh-examples", title: "Phủ định", sub: "じゃありません" },
     { id: "sec-nghi-van", exId: "sec-nghi-van-examples", title: "Nghi vấn", sub: "A は B ですか" },
-    { id: "sec-tro-tu-mo", exId: "sec-tro-tu-mo-examples", title: "Trợ từ も (Cũng)", sub: "A も B です" }
+    { id: "sec-tro-tu-mo", exId: "sec-tro-tu-mo-examples", title: "Trợ từ も (Cũng)", sub: "A も B です" },
+    { id: "sec-tro-tu-no", exId: "sec-tro-tu-no-examples", title: "Trợ từ の (Sở hữu)", sub: "N1 の N2" }
   ];
 
   const patterns = lesson.patterns || [];
@@ -2641,8 +2708,8 @@ export function initGrammarRoadmapScrollspy() {
     // Cập nhật pill tiến độ
     const progressPill = document.getElementById("roadmap-badge-progress");
     if (progressPill) {
-      const phaseMap = ["1/5", "1/5", "2/5", "2/5", "3/5", "3/5", "4/5", "4/5", "5/5"];
-      progressPill.textContent = `Phần ${phaseMap[activeIdx] || '1/5'}`;
+      const phaseMap = ["1/6", "1/6", "2/6", "2/6", "3/6", "3/6", "4/6", "4/6", "5/6", "5/6", "6/6"];
+      progressPill.textContent = `Phần ${phaseMap[activeIdx] || '1/6'}`;
     }
   }
 

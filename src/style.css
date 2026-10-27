@@ -7835,6 +7835,15 @@ body.view-grammar-active .container,
   background: rgba(124, 58, 237, 0.12) !important;
 }
 
+.gp-no {
+  color: #0891b2 !important;
+  text-decoration-color: #0891b2 !important;
+  text-decoration-thickness: 2.5px !important;
+  background: rgba(8, 145, 178, 0.14) !important;
+  border-bottom: 2px solid #0891b2;
+  box-shadow: 0 0 0 1px rgba(8, 145, 178, 0.25);
+}
+
 /* --------------------------------------------------------------------------
    CỘT TRÁI (SÁT LỀ TRÁI): MENU KHÓA HỌC & LỘ TRÌNH BÀI 1
    -------------------------------------------------------------------------- */
@@ -8765,6 +8774,16 @@ body.view-grammar-active .container,
 }
 .grammar-section-divider.divider-phase-4 .divider-line-right {
   background: linear-gradient(90deg, rgba(220, 38, 38, 0.4), transparent);
+}
+
+.grammar-section-divider.divider-phase-5 .divider-step-tag {
+  background: #0d9488;
+}
+.grammar-section-divider.divider-phase-5 .divider-line-left {
+  background: linear-gradient(90deg, transparent, rgba(13, 148, 136, 0.4));
+}
+.grammar-section-divider.divider-phase-5 .divider-line-right {
+  background: linear-gradient(90deg, rgba(13, 148, 136, 0.4), transparent);
 }
 
 .grammar-section-divider.divider-phase-reading .divider-step-tag {

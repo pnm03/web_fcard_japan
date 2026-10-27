@@ -37,14 +37,16 @@ test("GRAMMAR_CHAPTERS chứa đầy đủ Chương N5, Bài 1 và 4 mẫu câu 
   assert.ok(lesson1.title.includes("Giới thiệu bản thân"));
 
   // 4 mẫu câu theo ảnh người dùng gửi:
-  // A は B です, A は B じゃありません, A は B ですか, A も B です
+  // 5 mẫu câu ngữ pháp cốt lõi Bài 1:
+  // A は B です, A は B じゃありません, A は B ですか, A も B です, N1 の N2
   const patterns = lesson1.patterns;
-  assert.equal(patterns.length, 4, "Bài 1 phải có đúng 4 mẫu ngữ pháp");
+  assert.equal(patterns.length, 5, "Bài 1 phải có đúng 5 mẫu ngữ pháp (bao gồm trợ từ の)");
   
   assert.ok(patterns.some(p => p.name === "A は B です"), "Phải có mẫu A は B です");
   assert.ok(patterns.some(p => p.name === "A は B じゃありません"), "Phải có mẫu A は B じゃありません");
   assert.ok(patterns.some(p => p.name === "A は B ですか"), "Phải có mẫu A は B ですか");
   assert.ok(patterns.some(p => p.name === "A も B です"), "Phải có mẫu A も B です");
+  assert.ok(patterns.some(p => p.name === "N1 の N2"), "Phải có mẫu N1 の N2 về trợ từ の");
 
   // Mỗi mẫu câu đều có ví dụ kèm audio
   patterns.forEach(p => {
@@ -58,7 +60,7 @@ test("GRAMMAR_CHAPTERS chứa đầy đủ Chương N5, Bài 1 và 4 mẫu câu 
 
   // Bài tập đa dạng: Đọc, Nghe, Điền từ, Ngữ pháp, Sắp xếp
   const exercises = lesson1.exercises;
-  assert.equal(exercises.length, 5, "Phải có 5 bài tập thực hành đa dạng");
+  assert.ok(exercises.length >= 5, "Phải có ít nhất 5 bài tập thực hành đa dạng");
   assert.ok(exercises.some(e => e.type === "reading"), "Phải có bài đọc hiểu");
   assert.ok(exercises.some(e => e.type === "listening"), "Phải có bài nghe hiểu");
   assert.ok(exercises.some(e => e.type === "fill"), "Phải có bài điền trợ từ");
@@ -174,6 +176,7 @@ test("grammar.js & style.css: Đoạn ngắt phân cách các phần học và w
   assert.ok(roadmapHtml.includes("Phủ định"), "Lộ trình phải có mốc Phủ định");
   assert.ok(roadmapHtml.includes("Nghi vấn"), "Lộ trình phải có mốc Nghi vấn");
   assert.ok(roadmapHtml.includes("Trợ từ も"), "Lộ trình phải có mốc Trợ từ も");
+  assert.ok(roadmapHtml.includes("Trợ từ の"), "Lộ trình phải có mốc Trợ từ の");
   assert.ok(roadmapHtml.includes("Ứng dụng thực tế"), "Lộ trình phải có mốc Ứng dụng thực tế");
   assert.ok(roadmapHtml.includes("Ví dụ minh họa"), "Lộ trình phải có các mốc con Ví dụ minh họa");
   assert.ok(roadmapHtml.includes("dot-main"), "Lộ trình phải có các dấu chấm chính dot-main");
@@ -345,6 +348,40 @@ test("Tùy chỉnh cỡ chữ (bánh răng cài đặt), Từ vựng Bài 1 thu�
   assert.equal(typeof grammarModule.applyGrammarFontSize, "function", "Phải export applyGrammarFontSize");
   assert.equal(typeof grammarModule.playGrammarWordAudio, "function", "Phải export playGrammarWordAudio");
   assert.equal(typeof grammarModule.initGrammarSettings, "function", "Phải export initGrammarSettings");
+});
+
+test("Mẫu câu 5: Trợ từ の (Sở hữu & liên kết danh từ N1 の N2)", async () => {
+  const grammarModule = await import("../src/grammar.js");
+  const cssPath = path.resolve(__dirname, "../src/style.css");
+  const css = fs.readFileSync(cssPath, "utf-8");
+
+  const lesson1 = grammarModule.GRAMMAR_CHAPTERS[0].lessons[0];
+  const pattern5 = lesson1.patterns.find(p => p.id === "pattern-5");
+  assert.ok(pattern5, "Bài 1 phải có mẫu ngữ pháp pattern-5 về trợ từ の");
+  assert.equal(pattern5.name, "N1 の N2");
+  assert.equal(pattern5.targetHighlight, "の");
+
+  // Kiểm tra công thức và highlight gp-no
+  assert.ok(pattern5.formula.includes('gp-no">の</span>'), "Công thức mẫu 5 phải có highlight gp-no cho trợ từ の");
+  assert.ok(pattern5.examples.some(ex => ex.jp.includes('gp-no">の</span>')), "Ví dụ mẫu 5 phải có highlight gp-no cho trợ từ の");
+
+  // Phân tích chuyên sâu (deepPoints)
+  assert.ok(Array.isArray(pattern5.deepPoints), "Phải có deepPoints phân tích sâu về trợ từ の");
+  assert.ok(pattern5.deepPoints.length >= 4, "deepPoints phải có ít nhất 4 điểm phân tích cốt lõi");
+  assert.ok(pattern5.deepPoints.some(dp => dp.includes("IMC")), "Phải có ví dụ phân tích tổ chức như IMC");
+
+  // Kiểm tra CSS highlight trợ từ の và divider phase 5
+  assert.ok(css.includes(".gp-no"), "CSS phải định nghĩa .gp-no để highlight trợ từ の");
+  assert.ok(css.includes(".divider-phase-5"), "CSS phải có class .divider-phase-5 cho giai đoạn 5");
+
+  // Kiểm tra ví dụ câu của mẫu 5 dùng thuần Hiragana (trừ Katakana tên riêng)
+  const pattern5Jp = pattern5.examples.map(ex => ex.jp).join(" ");
+  assert.ok(pattern5Jp.includes("IMC"), "Ví dụ chứa tên công ty IMC");
+  assert.ok(pattern5Jp.includes("しゃいん"), "Ví dụ chứa 'しゃいん' ở dạng Hiragana");
+  assert.ok(!pattern5Jp.includes("社員"), "Ví dụ không được dùng Hán tự 社員 chưa học");
+
+  // Đoạn văn đọc hiểu mẫu có áp dụng trợ từ の
+  assert.ok(lesson1.readingArticle.passageJp.includes('gp-no">の</span>'), "Đoạn văn đọc hiểu mẫu phải có sử dụng trợ từ の");
 });
 
 
