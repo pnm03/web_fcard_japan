@@ -15,7 +15,7 @@ export const GRAMMAR_CHAPTERS = [
       {
         id: "n5-lesson-1",
         number: 1,
-        title: "Bài 1: Giới thiệu bản thân (自己紹介)",
+        title: "Bài 1: Giới thiệu bản thân (じこしょうかい)",
         subtitle: "Khẳng định (です) · Phủ định (じゃありません) · Nghi vấn (ですか) · Trợ từ cũng (も)",
         level: "N5",
         keyTakeaways: [
@@ -42,9 +42,9 @@ export const GRAMMAR_CHAPTERS = [
             notes: "🔴 <u>Ghi nhớ vàng:</u> Công thức: <strong>A</strong> (Ai đó) + <span class=\"gp-mark gp-ha\">は (wa)</span> + <strong>B</strong> (Là gì) + <span class=\"gp-mark gp-desu\">です (desu)</span>.",
             examples: [
               { jp: "わたし <span class=\"gp-mark gp-ha\">は</span> マイ <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Watashi wa Mai desu.", vi: "Tôi là Mai.", audio: "わたしはマイです" },
-              { jp: "タインさん <span class=\"gp-mark gp-ha\">は</span> ベトナム人 <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Thanh-san wa Betonamu-jin desu.", vi: "Anh Thanh là người Việt Nam.", audio: "タインさんはベトナムじんです" },
-              { jp: "ミラーさん <span class=\"gp-mark gp-ha\">は</span> 会社員 <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Miraa-san wa kaishain desu.", vi: "Anh Miller là nhân viên công ty.", audio: "ミラーさんはかいしゃいんです" },
-              { jp: "ワンさん <span class=\"gp-mark gp-ha\">は</span> 医者 <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Wan-san wa isha desu.", vi: "Anh Wang là bác sĩ.", audio: "ワンさんはいしゃです" }
+              { jp: "タインさん <span class=\"gp-mark gp-ha\">は</span> ベトナムじん <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Thanh-san wa Betonamu-jin desu.", vi: "Anh Thanh là người Việt Nam.", audio: "タインさんはベトナムじんです" },
+              { jp: "ミラーさん <span class=\"gp-mark gp-ha\">は</span> かいしゃいん <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Miraa-san wa kaishain desu.", vi: "Anh Miller là nhân viên công ty.", audio: "ミラーさんはかいしゃいんです" },
+              { jp: "ワンさん <span class=\"gp-mark gp-ha\">は</span> いしゃ <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Wan-san wa isha desu.", vi: "Anh Wang là bác sĩ.", audio: "ワンさんはいしゃです" }
             ]
           },
           {
@@ -61,9 +61,9 @@ export const GRAMMAR_CHAPTERS = [
             ],
             notes: "💡 <u>Mẹo thực hành:</u> Khi đàm thoại cứ tự tin dùng <strong>じゃありません</strong> cho tự nhiên, khi viết bài kiểm tra hoặc email công việc thì dùng <strong>ではありません</strong>.",
             examples: [
-              { jp: "わたし <span class=\"gp-mark gp-ha\">は</span> 学生 <span class=\"gp-mark gp-ja\">じゃありません</span>。", romaji: "Watashi wa gakusei ja arimasen.", vi: "Tôi không phải là học sinh.", audio: "わたしはがくせいじゃありません" },
-              { jp: "サントスさん <span class=\"gp-mark gp-ha\">は</span> 医者 <span class=\"gp-mark gp-ja\">じゃありません</span>。", romaji: "Santosu-san wa isha ja arimasen.", vi: "Anh Santos không phải là bác sĩ.", audio: "サントスさんはいしゃじゃありません" },
-              { jp: "あの方 <span class=\"gp-mark gp-ha\">は</span> 先生 <span class=\"gp-mark gp-ja\">ではありません</span>。", romaji: "Ano kata wa sensei dewa arimasen.", vi: "Vị kia không phải là giáo viên. (Trang trọng)", audio: "あのかたはせんせいではありません" }
+              { jp: "わたし <span class=\"gp-mark gp-ha\">は</span> がくせい <span class=\"gp-mark gp-ja\">じゃありません</span>。", romaji: "Watashi wa gakusei ja arimasen.", vi: "Tôi không phải là học sinh.", audio: "わたしはがくせいじゃありません" },
+              { jp: "サントスさん <span class=\"gp-mark gp-ha\">は</span> いしゃ <span class=\"gp-mark gp-ja\">じゃありません</span>。", romaji: "Santosu-san wa isha ja arimasen.", vi: "Anh Santos không phải là bác sĩ.", audio: "サントスさんはいしゃじゃありません" },
+              { jp: "あのかた <span class=\"gp-mark gp-ha\">は</span> せんせい <span class=\"gp-mark gp-ja\">ではありません</span>。", romaji: "Ano kata wa sensei dewa arimasen.", vi: "Vị kia không phải là giáo viên. (Trang trọng)", audio: "あのかたはせんせいではありません" }
             ]
           },
           {
@@ -76,13 +76,13 @@ export const GRAMMAR_CHAPTERS = [
             deepPoints: [
               "<strong>1. Trợ từ か đóng vai trò như dấu hỏi chấm bằng lời nói:</strong><br>• Không cần đảo ngữ hay đổi trật tự từ như tiếng Anh (không cần đảo động từ lên đầu). Chỉ cần giữ nguyên câu khẳng định và thêm <span class=\"gp-mark gp-ka\">か</span> vào cuối.",
               "<strong>2. Dấu câu và ngữ điệu (Intonation):</strong><br>• Trong văn bản tiếng Nhật chuẩn, cuối câu dùng dấu chấm tròn <code>。</code> chứ không bắt buộc dùng dấu <code>?</code> (dù văn cảnh hiện đại vẫn chấp nhận <code>?</code>).<br>• Khi phát âm, âm <strong>か</strong> ở cuối câu được phát âm với ngữ điệu <u>hơi đi lên nhẹ nhàng</u>.",
-              "<strong>3. Nghệ thuật trả lời câu hỏi:</strong><br>• <strong>Khi đồng ý:</strong> Nói <em>はい、[B] です。</em> (Vâng, đúng là B). Có thể lược bỏ chủ ngữ A để câu gọn gàng.<br>• <strong>Khi từ chối:</strong> Nói <em>いいえ、[B] じゃありません。</em> (Không, không phải là B). Sau đó nói thêm thông tin đúng (ví dụ: <em>いいえ、学生じゃありません。会社員です。</em>)."
+              "<strong>3. Nghệ thuật trả lời câu hỏi:</strong><br>• <strong>Khi đồng ý:</strong> Nói <em>はい、[B] です。</em> (Vâng, đúng là B). Có thể lược bỏ chủ ngữ A để câu gọn gàng.<br>• <strong>Khi từ chối:</strong> Nói <em>いいえ、[B] じゃありません。</em> (Không, không phải là B). Sau đó nói thêm thông tin đúng (ví dụ: <em>いいえ、がくせいじゃありません。かいしゃいんです。</em>)."
             ],
             notes: "🗣️ <u>Cặp thoại mẫu:</u><br>Q: タインさん は エンジニア ですか。<br>A: はい、エンジニア です。(Đồng ý) / いいえ、エンジニア じゃありません。(Từ chối)",
             examples: [
               { jp: "タインさん <span class=\"gp-mark gp-ha\">は</span> エンジニア <span class=\"gp-mark gp-ka\">ですか</span>。", romaji: "Thanh-san wa enjinia desu ka.", vi: "Anh Thanh có phải là kỹ sư không? ➔ [はい、エンジニア です。]", audio: "タインさんはエンジニアですか" },
-              { jp: "ミラーさん <span class=\"gp-mark gp-ha\">は</span> アメリカ人 <span class=\"gp-mark gp-ka\">ですか</span>。", romaji: "Miraa-san wa Amerikajin desu ka.", vi: "Anh Miller có phải là người Mỹ không? ➔ [はい、アメリカ人 です。]", audio: "ミラーさんはアメリカじんですか" },
-              { jp: "あの方 <span class=\"gp-mark gp-ha\">は</span> 社長 <span class=\"gp-mark gp-ka\">ですか</span>。", romaji: "Ano kata wa shachou desu ka.", vi: "Vị kia có phải là giám đốc không? ➔ [いいえ、社長 じゃありません。]", audio: "あのかたはしゃちょうですか" }
+              { jp: "ミラーさん <span class=\"gp-mark gp-ha\">は</span> アメリカじん <span class=\"gp-mark gp-ka\">ですか</span>。", romaji: "Miraa-san wa Amerikajin desu ka.", vi: "Anh Miller có phải là người Mỹ không? ➔ [はい、アメリカじん です。]", audio: "ミラーさんはアメリカじんですか" },
+              { jp: "あのかた <span class=\"gp-mark gp-ha\">は</span> しゃちょう <span class=\"gp-mark gp-ka\">ですか</span>。", romaji: "Ano kata wa shachou desu ka.", vi: "Vị kia có phải là giám đốc không? ➔ [いいえ、しゃちょう じゃありません。]", audio: "あのかたはしゃちょうですか" }
             ]
           },
           {
@@ -95,19 +95,19 @@ export const GRAMMAR_CHAPTERS = [
             deepPoints: [
               "<strong>1. Bản chất cốt lõi của trợ từ も:</strong><br>• Dùng khi chủ ngữ thứ 2 có cùng tính chất, đặc điểm hoặc hành động với chủ ngữ trước đó đã được nhắc đến.",
               "<strong>2. Quy tắc thay thế tuyệt đối (CỰC KỲ QUAN TRỌNG):</strong><br>• Trợ từ <span class=\"gp-mark gp-mo\">も</span> sẽ <strong>thay thế hoàn toàn vị trí của trợ từ は</strong>.<br>• 🔴 <u>CẤM KỴ:</u> Tuyệt đối không dùng cả <em>は</em> và <em>も</em> cùng lúc (sai hoàn toàn: <s>A はも B です</s> hoặc <s>A もは B です</s>).",
-              "<strong>3. Cách dùng も trong câu hỏi và trả lời:</strong><br>• Hỏi: <em>ナムさん <span class=\"gp-mark gp-mo\">も</span> ベトナム人 ですか。</em> (Anh Nam cũng là người VN à?)<br>• Trả lời khẳng định: <em>はい、ナムさん <span class=\"gp-mark gp-mo\">も</span> ベトナム人 です。</em><br>• Trả lời phủ định: <em>いいえ、ナムさん <span class=\"gp-mark gp-ha\">は</span> ベトナム人 じゃありません。</em> ➔ <u>Chú ý:</u> Khi phủ định, trợ từ lại quay trở về dùng <span class=\"gp-mark gp-ha\">は</span>!"
+              "<strong>3. Cách dùng も trong câu hỏi và trả lời:</strong><br>• Hỏi: <em>ナムさん <span class=\"gp-mark gp-mo\">も</span> ベトナムじん ですか。</em> (Anh Nam cũng là người VN à?)<br>• Trả lời khẳng định: <em>はい、ナムさん <span class=\"gp-mark gp-mo\">も</span> ベトナムじん です。</em><br>• Trả lời phủ định: <em>いいえ、ナムさん <span class=\"gp-mark gp-ha\">は</span> ベトナムじん じゃありません。</em> ➔ <u>Chú ý:</u> Khi phủ định, trợ từ lại quay trở về dùng <span class=\"gp-mark gp-ha\">は</span>!"
             ],
             notes: "🔴 <u>Công thức cần khắc cốt ghi tâm:</u> Câu trước dùng <strong>は</strong>, câu sau có cùng tính chất thì thay thế bằng <span class=\"gp-mark gp-mo\">も</span>.",
             examples: [
-              { jp: "タインさん <span class=\"gp-mark gp-ha\">は</span> ベトナム人 です。ナムさん <span class=\"gp-mark gp-mo\">も</span> ベトナム人 <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Thanh-san wa Betonamu-jin desu. Nam-san mo Betonamu-jin desu.", vi: "Anh Thanh là người Việt Nam. Anh Nam CŨNG là người Việt Nam.", audio: "タインさんはベトナムじんです。ナムさんもベトナムじんです" },
-              { jp: "わたし <span class=\"gp-mark gp-ha\">は</span> 学生 です。あの方 <span class=\"gp-mark gp-mo\">も</span> 学生 <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Watashi wa gakusei desu. Ano kata mo gakusei desu.", vi: "Tôi là học sinh. Vị kia CŨNG là học sinh.", audio: "わたしはがくせいです。あのかたもがくせいです" },
-              { jp: "ミラーさん <span class=\"gp-mark gp-ha\">は</span> 会社員 です。グプタさん <span class=\"gp-mark gp-mo\">も</span> 会社員 <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Miraa-san wa kaishain desu. Guputa-san mo kaishain desu.", vi: "Anh Miller là nhân viên công ty. Anh Gupta CŨNG là nhân viên công ty.", audio: "ミラーさんはかいしゃいんです。グプタさんもかいしゃいんです" }
+              { jp: "タインさん <span class=\"gp-mark gp-ha\">は</span> ベトナムじん です。ナムさん <span class=\"gp-mark gp-mo\">も</span> ベトナムじん <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Thanh-san wa Betonamu-jin desu. Nam-san mo Betonamu-jin desu.", vi: "Anh Thanh là người Việt Nam. Anh Nam CŨNG là người Việt Nam.", audio: "タインさんはベトナムじんです。ナムさんもベトナムじんです" },
+              { jp: "わたし <span class=\"gp-mark gp-ha\">は</span> がくせい です。あのかた <span class=\"gp-mark gp-mo\">も</span> がくせい <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Watashi wa gakusei desu. Ano kata mo gakusei desu.", vi: "Tôi là học sinh. Vị kia CŨNG là học sinh.", audio: "わたしはがくせいです。あのかたもがくせいです" },
+              { jp: "ミラーさん <span class=\"gp-mark gp-ha\">は</span> かいしゃいん です。グプタさん <span class=\"gp-mark gp-mo\">も</span> かいしゃいん <span class=\"gp-mark gp-desu\">です</span>。", romaji: "Miraa-san wa kaishain desu. Guputa-san mo kaishain desu.", vi: "Anh Miller là nhân viên công ty. Anh Gupta CŨNG là nhân viên công ty.", audio: "ミラーさんはかいしゃいんです。グプタさんもかいしゃいんです" }
             ]
           }
         ],
         readingArticle: {
-          title: "Đoạn văn & Hội thoại tự giới thiệu bản thân mẫu (自己紹介)",
-          passageJp: "初めまして。わたし <span class=\"gp-mark gp-ha\">は</span> タイン <span class=\"gp-mark gp-desu\">です</span>。ベトナム から 来ました。25歳 <span class=\"gp-mark gp-desu\">です</span>。エンジニア <span class=\"gp-mark gp-desu\">です</span>。学生 <span class=\"gp-mark gp-ja\">じゃありません</span>。ナムさん <span class=\"gp-mark gp-mo\">も</span> ベトナム人 <span class=\"gp-mark gp-desu\">です</span>。どうぞ よろしく お願いします。",
+          title: "Đoạn văn & Hội thoại tự giới thiệu bản thân mẫu (じこしょうかい)",
+          passageJp: "はじめまして。わたし <span class=\"gp-mark gp-ha\">は</span> タイン <span class=\"gp-mark gp-desu\">です</span>。ベトナム から きました。25さい <span class=\"gp-mark gp-desu\">です</span>。エンジニア <span class=\"gp-mark gp-desu\">です</span>。がくせい <span class=\"gp-mark gp-ja\">じゃありません</span>。ナムさん <span class=\"gp-mark gp-mo\">も</span> ベトナムじん <span class=\"gp-mark gp-desu\">です</span>。どうぞ よろしく おねがいします。",
           passageRomaji: "Hajimemashite. Watashi wa Thanh desu. Betonamu kara kimashita. 25-sai desu. Enjinia desu. Gakusei ja arimasen. Nam-san mo Betonamu-jin desu. Douzo yoroshiku onegaishimasu.",
           passageVi: "Rất vui được làm quen với bạn. Tôi là Thanh. Tôi đến từ Việt Nam. Tôi 25 tuổi. Tôi là kỹ sư. Tôi không phải là học sinh. Anh Nam cũng là người Việt Nam. Rất mong được sự giúp đỡ của bạn.",
           audio: "はじめまして。わたしはタインです。ベトナムからきました。にじゅうごさいです。エンジニアです。がくせいじゃありません。ナムさんもベトナムじんです。どうぞよろしくおねがいします"
@@ -119,19 +119,19 @@ export const GRAMMAR_CHAPTERS = [
             typeLabel: "📖 Đọc hiểu",
             question: "Dựa vào đoạn văn giới thiệu ở trên: Anh Thanh làm nghề gì?",
             options: [
-              "Học sinh (学生)",
+              "Học sinh (がくせい)",
               "Kỹ sư (エンジニア)",
-              "Bác sĩ (医者)",
-              "Nhân viên công ty (会社員)"
+              "Bác sĩ (いしゃ)",
+              "Nhân viên công ty (かいしゃいん)"
             ],
             correct: 1,
-            explanation: "Trong bài có câu: 'エンジニア です。学生 じゃありません。' (Tôi là kỹ sư. Tôi không phải học sinh)."
+            explanation: "Trong bài có câu: 'エンジニア です。がくせい じゃありません。' (Tôi là kỹ sư. Tôi không phải học sinh)."
           },
           {
             id: "ex-2",
             type: "listening",
             typeLabel: "🎧 Nghe hiểu",
-            audioText: "ミラーさんはアメリカ人じゃありません",
+            audioText: "ミラーさんはアメリカじんじゃありません",
             question: "Bấm nút 🔊 Nghe câu phát âm và chọn ý nghĩa chính xác nhất:",
             options: [
               "Anh Miller là người Mỹ.",
@@ -140,13 +140,13 @@ export const GRAMMAR_CHAPTERS = [
               "Anh Miller cũng là người Mỹ."
             ],
             correct: 1,
-            explanation: "Câu phát âm: 'ミラーさんはアメリカ人じゃありません' kết thúc bằng 'じゃありません' là câu phủ định: Anh Miller không phải người Mỹ."
+            explanation: "Câu phát âm: 'ミラーさんはアメリカじんじゃありません' kết thúc bằng 'じゃありません' là câu phủ định: Anh Miller không phải người Mỹ."
           },
           {
             id: "ex-3",
             type: "fill",
             typeLabel: "✏️ Điền trợ từ",
-            question: "タインさん は ベトナム人 です。ナムさん [ ... ] ベトナム人 です。",
+            question: "タインさん は ベトナムじん です。ナムさん [ ... ] ベトナムじん です。",
             options: ["は", "も", "か", "の"],
             correct: 1,
             explanation: "Cả Thanh và Nam đều là người Việt Nam nên câu thứ hai dùng trợ từ 'も' (cũng) để thay thế hoàn toàn cho 'は'."
@@ -155,12 +155,12 @@ export const GRAMMAR_CHAPTERS = [
             id: "ex-4",
             type: "grammar",
             typeLabel: "🔍 Ngữ pháp phủ định",
-            question: "Cách nói phủ định của câu: 'サントスさん は 医者 です' là gì?",
+            question: "Cách nói phủ định của câu: 'サントスさん は いしゃ です' là gì?",
             options: [
-              "サントスさん は 医者 ですか",
-              "サントスさん も 医者 です",
-              "サントスさん は 医者 じゃありません",
-              "サントスさん は 医者 でした"
+              "サントスさん は いしゃ ですか",
+              "サントスさん も いしゃ です",
+              "サントスさん は いしゃ じゃありません",
+              "サントスさん は いしゃ でした"
             ],
             correct: 2,
             explanation: "Phủ định của 'です' là 'じゃありません' hoặc 'ではありません'."
@@ -171,13 +171,13 @@ export const GRAMMAR_CHAPTERS = [
             typeLabel: "🧩 Sắp xếp câu",
             question: "Hãy chọn thứ tự ghép đúng để tạo câu hỏi: 'Bạn có phải là học sinh không?'",
             options: [
-              "あなた は 学生 ですか",
-              "学生 は あなた ですか",
-              "あなた も 学生 ですか",
-              "あなた は ですか 学生"
+              "あなた は がくせい ですか",
+              "がくせい は あなた ですか",
+              "あなた も がくせい ですか",
+              "あなた は ですか がくせい"
             ],
             correct: 0,
-            explanation: "Cấu trúc câu hỏi nghi vấn: Chủ ngữ (あなた) + は + Danh từ (学生) + ですか."
+            explanation: "Cấu trúc câu hỏi nghi vấn: Chủ ngữ (あなた) + は + Danh từ (がくせい) + ですか."
           }
         ],
         testQuestions: [
@@ -190,7 +190,7 @@ export const GRAMMAR_CHAPTERS = [
           },
           {
             id: "tq-2",
-            q: "Câu 'あの方 は 先生 じゃありません' có nghĩa là gì?",
+            q: "Câu 'あのかた は せんせい じゃありません' có nghĩa là gì?",
             options: [
               "Vị kia là giáo viên.",
               "Vị kia có phải giáo viên không?",
@@ -214,7 +214,7 @@ export const GRAMMAR_CHAPTERS = [
           },
           {
             id: "tq-4",
-            q: "Điền trợ từ: 'A: わたしは会社員です。 B: わたし [ ? ] 会社員です。'",
+            q: "Điền trợ từ: 'A: わたしはかいしゃいんです。 B: わたし [ ? ] かいしゃいんです。'",
             options: ["は", "も", "か", "に"],
             correct: 1,
             explanation: "B cũng là nhân viên công ty giống A nên dùng trợ từ 'も' (cũng)."
@@ -234,7 +234,7 @@ export const GRAMMAR_CHAPTERS = [
           {
             id: "tq-6",
             q: "Bấm nút 🔊 Nghe phát âm và chọn ý nghĩa đúng:",
-            audioText: "ワンさんは医者ですか",
+            audioText: "ワンさんはいしゃですか",
             options: [
               "Anh Wang là bác sĩ.",
               "Anh Wang không phải là bác sĩ.",
@@ -248,10 +248,10 @@ export const GRAMMAR_CHAPTERS = [
             id: "tq-7",
             q: "Chọn câu viết ĐÚNG ngữ pháp hoàn hảo nhất:",
             options: [
-              "わたし はも ベトナム人 です。",
-              "わたし も ベトナム人 です。",
-              "わたし か ベトナム人 です。",
-              "わたし は ベトナム人 も です。"
+              "わたし はも ベトナムじん です。",
+              "わたし も ベトナムじん です。",
+              "わたし か ベトナムじん です。",
+              "わたし は ベトナムじん も です。"
             ],
             correct: 1,
             explanation: "Trợ từ 'も' đứng ngay sau danh từ và thay thế cho 'は', tuyệt đối không được viết ghép 'はも'."
@@ -260,10 +260,10 @@ export const GRAMMAR_CHAPTERS = [
             id: "tq-8",
             q: "Để giới thiệu 'Tôi là học sinh', câu nào sau đây là chính xác?",
             options: [
-              "わたし は 学生 です。",
-              "わたし が 学生 ですか。",
-              "わたし も 学生 じゃありません。",
-              "わたし は 学生 ですか。"
+              "わたし は がくせい です。",
+              "わたし が がくせい ですか。",
+              "わたし も がくせい じゃありません。",
+              "わたし は がくせい ですか。"
             ],
             correct: 0,
             explanation: "Cấu trúc khẳng định danh từ: A は B です (Tôi là học sinh)."
@@ -532,7 +532,7 @@ export function extractLessonAndProjectVocab(lesson) {
   const baseSubjects = [
     { jp: "わたし", romaji: "watashi", vi: "tôi" },
     { jp: "あなた", romaji: "anata", vi: "bạn" },
-    { jp: "あの方", romaji: "ano kata", vi: "vị kia" },
+    { jp: "あのかた", romaji: "ano kata", vi: "vị kia" },
     { jp: "タインさん", romaji: "Thanh-san", vi: "anh Thanh" },
     { jp: "マイさん", romaji: "Mai-san", vi: "chị Mai" },
     { jp: "ミラーさん", romaji: "Miraa-san", vi: "anh Miller" },
@@ -541,14 +541,14 @@ export function extractLessonAndProjectVocab(lesson) {
   ];
 
   const baseNouns = [
-    { jp: "学生", romaji: "gakusei", vi: "học sinh" },
-    { jp: "先生", romaji: "sensei", vi: "giáo viên" },
-    { jp: "会社員", romaji: "kaishain", vi: "nhân viên công ty" },
+    { jp: "がくせい", romaji: "gakusei", vi: "học sinh" },
+    { jp: "せんせい", romaji: "sensei", vi: "giáo viên" },
+    { jp: "かいしゃいん", romaji: "kaishain", vi: "nhân viên công ty" },
     { jp: "エンジニア", romaji: "enjinia", vi: "kỹ sư" },
-    { jp: "医者", romaji: "isha", vi: "bác sĩ" },
-    { jp: "ベトナム人", romaji: "Betonamu-jin", vi: "người Việt Nam" },
-    { jp: "日本人", romaji: "Nihon-jin", vi: "người Nhật" },
-    { jp: "アメリカ人", romaji: "Amerika-jin", vi: "người Mỹ" }
+    { jp: "いしゃ", romaji: "isha", vi: "bác sĩ" },
+    { jp: "ベトナムじん", romaji: "Betonamu-jin", vi: "người Việt Nam" },
+    { jp: "にほんじん", romaji: "Nihon-jin", vi: "người Nhật" },
+    { jp: "アメリカじん", romaji: "Amerika-jin", vi: "người Mỹ" }
   ];
 
   return { userVocab, baseSubjects, baseNouns };
@@ -618,17 +618,17 @@ export function generateLessonReviewQuestions(lesson, mode) {
           pattern: "A は B じゃありません",
           prompt: "Dịch sang tiếng Nhật: 'Anh Miller không phải là bác sĩ.'",
           vi: "Anh Miller không phải là bác sĩ.",
-          targetJp: "ミラーさんは医者じゃありません",
+          targetJp: "ミラーさんはいしゃじゃありません",
           targetRomaji: "miraa-san wa isha ja arimasen",
           acceptedVariations: [
-            "ミラーさんは医者じゃありません",
-            "ミラーさんは医者ではありません",
             "ミラーさんはいしゃじゃありません",
+            "ミラーさんは医者じゃありません",
             "ミラーさんはいしゃではありません",
+            "ミラーさんは医者ではありません",
             "miraa-san wa isha ja arimasen",
             "miraa san wa isha ja arimasen"
           ],
-          explanation: "Mẫu câu phủ định danh từ: ミラーさん + は + 医者 + じゃありません (hoặc ではありません trong văn viết)."
+          explanation: "Mẫu câu phủ định danh từ: ミラーさん + は + いしゃ + じゃありません (hoặc ではありません trong văn viết)."
         },
         {
           id: "q-tr-3",
@@ -636,16 +636,17 @@ export function generateLessonReviewQuestions(lesson, mode) {
           pattern: "A は B ですか",
           prompt: "Dịch sang tiếng Nhật: 'Bạn có phải là học sinh không?'",
           vi: "Bạn có phải là học sinh không?",
-          targetJp: "あなたは学生ですか",
+          targetJp: "あなたはがくせいですか",
           targetRomaji: "anata wa gakusei desu ka",
           acceptedVariations: [
-            "あなたは学生ですか",
             "あなたはがくせいですか",
+            "あなたは学生ですか",
+            "あなた は がくせい ですか",
             "あなた は 学生 ですか",
             "anata wa gakusei desu ka",
             "anata wa gakusei desuka"
           ],
-          explanation: "Mẫu câu hỏi xác nhận thông tin: あなた + は + 学生 + ですか (ngữ điệu trợ từ か lên giọng nhẹ)."
+          explanation: "Mẫu câu hỏi xác nhận thông tin: あなた + は + がくせい + ですか (ngữ điệu trợ từ か lên giọng nhẹ)."
         },
         {
           id: "q-tr-4",
@@ -653,16 +654,17 @@ export function generateLessonReviewQuestions(lesson, mode) {
           pattern: "A も B です",
           prompt: "Dịch sang tiếng Nhật: 'Anh Thanh là người Việt Nam. Tôi cũng là người Việt Nam.'",
           vi: "Anh Thanh là người Việt Nam. Tôi cũng là người Việt Nam.",
-          targetJp: "タインさんはベトナム人です。わたしもベトナム人です",
+          targetJp: "タインさんはベトナムじんです。わたしもベトナムじんです",
           targetRomaji: "thanh-san wa betonamujin desu. watashi mo betonamujin desu",
           acceptedVariations: [
-            "タインさんはベトナム人です。わたしもベトナム人です",
             "タインさんはベトナムじんです。わたしもベトナムじんです",
+            "タインさんはベトナム人です。わたしもベトナム人です",
+            "タインさんはベトナムじんです。わたしもベトナムじんです。",
             "タインさんはベトナム人です。わたしもベトナム人です。",
             "thanh-san wa betonamujin desu. watashi mo betonamujin desu",
             "thanh san wa betonamu jin desu. watashi mo betonamu jin desu"
           ],
-          explanation: "Trợ từ も (cũng) thay thế hoàn toàn cho は ở câu thứ hai khi có cùng tính chất 'ベトナム人'."
+          explanation: "Trợ từ も (cũng) thay thế hoàn toàn cho は ở câu thứ hai khi có cùng tính chất 'ベトナムじん'."
         },
         {
           id: "q-tr-5",
@@ -670,17 +672,17 @@ export function generateLessonReviewQuestions(lesson, mode) {
           pattern: "A は B ではありません",
           prompt: "Dịch sang tiếng Nhật (dạng trang trọng): 'Vị kia không phải là giáo viên.'",
           vi: "Vị kia không phải là giáo viên.",
-          targetJp: "あの方は先生ではありません",
+          targetJp: "あのかたはせんせいではありません",
           targetRomaji: "ano kata wa sensei dewa arimasen",
           acceptedVariations: [
-            "あの方は先生ではありません",
             "あのかたはせんせいではありません",
-            "あの方は先生じゃありません",
+            "あの方は先生ではありません",
             "あのかたはせんせいじゃありません",
+            "あの方は先生じゃありません",
             "ano kata wa sensei dewa arimasen",
             "ano kata wa sensei ja arimasen"
           ],
-          explanation: "Dạng phủ định trang trọng (văn viết hoặc phát biểu): あの方 + は + 先生 + ではありません."
+          explanation: "Dạng phủ định trang trọng (văn viết hoặc phát biểu): あのかた + は + せんせい + ではありません."
         }
       ]
     };
@@ -693,7 +695,7 @@ export function generateLessonReviewQuestions(lesson, mode) {
         {
           id: "q-cl-1",
           type: "cloze",
-          question: "タインさん [ ... ] ベトナム人 です。",
+          question: "タインさん [ ... ] ベトナムじん です。",
           options: ["は", "も", "か", "の"],
           correct: 0,
           explanation: "Trợ từ 'は' (phát âm là wa) đứng sau chủ ngữ タインさん để xác định chủ đề của câu khẳng định."
@@ -701,7 +703,7 @@ export function generateLessonReviewQuestions(lesson, mode) {
         {
           id: "q-cl-2",
           type: "cloze",
-          question: "マイさん は 学生 です。ナムさん [ ... ] 学生 です。",
+          question: "マイさん は がくせい です。ナムさん [ ... ] がくせい です。",
           options: ["は", "も", "が", "か"],
           correct: 1,
           explanation: "Cả Mai và Nam đều là học sinh, câu thứ hai dùng trợ từ 'も' (cũng) để biểu thị tính tương đồng, thay thế cho は."
@@ -709,7 +711,7 @@ export function generateLessonReviewQuestions(lesson, mode) {
         {
           id: "q-cl-3",
           type: "cloze",
-          question: "ワンさん は 医者 [ ... ]。エンジニア です。",
+          question: "ワンさん は いしゃ [ ... ]。エンジニア です。",
           options: ["です", "じゃありません", "ですか", "も"],
           correct: 1,
           explanation: "Vế sau đính chính 'エンジニア です' nên vế trước phải phủ định bằng 'じゃありません' (không phải là bác sĩ)."
@@ -717,7 +719,7 @@ export function generateLessonReviewQuestions(lesson, mode) {
         {
           id: "q-cl-4",
           type: "cloze",
-          question: "ミラーさん は アメリカ人 です [ ... ]。 ➔ はい、アメリカ人 です。",
+          question: "ミラーさん は アメリカじん です [ ... ]。 ➔ はい、アメリカじん です。",
           options: ["ね", "か", "よ", "も"],
           correct: 1,
           explanation: "Câu đối thoại kết thúc bằng 'ですか' để hỏi xác nhận: 'Anh Miller có phải người Mỹ không?'."
@@ -725,7 +727,7 @@ export function generateLessonReviewQuestions(lesson, mode) {
         {
           id: "q-cl-5",
           type: "cloze",
-          question: "あの方 は 先生 [ ... ]。（Dạng văn viết lịch sự chuẩn mực）",
+          question: "あのかた は せんせい [ ... ]。（Dạng văn viết lịch sự chuẩn mực）",
           options: ["ではありません", "じゃありませんか", "でした", "もではありません"],
           correct: 0,
           explanation: "ではありません mang sắc thái trang trọng, chuẩn mực nhất trong văn viết và phát biểu công sở."
@@ -738,7 +740,7 @@ export function generateLessonReviewQuestions(lesson, mode) {
   return {
     mode: "reading",
     passage: {
-      jp: "初めまして。わたしはマイです。ベトナム人です。23歳です。エンジニアです。医者じゃありません。ナムさんもベトナム人です。ナムさんは会社員です。どうぞよろしくお願いします。",
+      jp: "はじめまして。わたしはマイです。ベトナムじんです。23さいです。エンジニアです。いしゃじゃありません。ナムさんもベトナムじんです。ナムさんはかいしゃいんです。どうぞよろしくおねがいします。",
       romaji: "Hajimemashite. Watashi wa Mai desu. Betonamu-jin desu. 23-sai desu. Enjinia desu. Isha ja arimasen. Nam-san mo Betonamu-jin desu. Nam-san wa kaishain desu. Douzo yoroshiku onegaishimasu.",
       vi: "Rất vui được gặp bạn. Tôi là Mai. Tôi là người Việt Nam. Tôi 23 tuổi. Tôi là kỹ sư. Tôi không phải là bác sĩ. Anh Nam cũng là người Việt Nam. Anh Nam là nhân viên công ty. Rất mong nhận được sự giúp đỡ."
     },
@@ -747,38 +749,38 @@ export function generateLessonReviewQuestions(lesson, mode) {
         id: "q-rd-1",
         type: "reading",
         question: "マイさんの仕事（職業）は何ですか？",
-        options: ["学生", "医者", "エンジニア", "先生"],
+        options: ["がくせい", "いしゃ", "エンジニア", "せんせい"],
         correct: 2,
-        explanation: "Trong đoạn văn giới thiệu rõ: 'エンジニアです。医者じゃありません。' (Mai là kỹ sư, không phải bác sĩ)."
+        explanation: "Trong đoạn văn giới thiệu rõ: 'エンジニアです。いしゃじゃありません。' (Mai là kỹ sư, không phải bác sĩ)."
       },
       {
         id: "q-rd-2",
         type: "reading",
         question: "マイさんはどの国の人ですか？",
-        options: ["ベトナム人", "日本人", "アメリカ人", "中国人"],
+        options: ["ベトナムじん", "にほんじん", "アメリカじん", "ちゅうごくじん"],
         correct: 0,
-        explanation: "Trong bài giới thiệu: 'わたしはマイです。ベトナム人です。' (Mai là người Việt Nam)."
+        explanation: "Trong bài giới thiệu: 'わたしはマイです。ベトナムじんです。' (Mai là người Việt Nam)."
       },
       {
         id: "q-rd-3",
         type: "reading",
         question: "ナムさんについて、đoạn văn trên cho biết điều gì đúng nhất?",
         options: [
-          "ナムさんは医者です。",
-          "ナムさんもベトナム人です。",
-          "ナムさんはアメリカ人です。",
-          "ナムさんは学生です。"
+          "ナムさんはいしゃです。",
+          "ナムさんもベトナムじんです。",
+          "ナムさんはアメリカじんです。",
+          "ナムさんはがくせいです。"
         ],
         correct: 1,
-        explanation: "Trong bài có câu: 'ナムさんもベトナム人です。ナムさんは会社員です。' (Anh Nam cũng là người Việt Nam)."
+        explanation: "Trong bài có câu: 'ナムさんもベトナムじんです。ナムさんはかいしゃいんです。' (Anh Nam cũng là người Việt Nam)."
       },
       {
         id: "q-rd-4",
         type: "reading",
-        question: "[Điền từ vào chỗ trống theo ngữ cảnh đoạn văn] マイさんはエンジニアです。医者 [ ... ]。",
+        question: "[Điền từ vào chỗ trống theo ngữ cảnh đoạn văn] マイさんはエンジニアです。いしゃ [ ... ]。",
         options: ["です", "じゃありません", "ですか", "も"],
         correct: 1,
-        explanation: "Theo mạch văn tự giới thiệu: 'エンジニアです。医者じゃありません。' để bác bỏ việc mình là bác sĩ."
+        explanation: "Theo mạch văn tự giới thiệu: 'エンジニアです。いしゃじゃありません。' để bác bỏ việc mình là bác sĩ."
       }
     ]
   };
@@ -867,11 +869,139 @@ TRẢ VỀ DUY NHẤT MỘT ĐỐI TƯỢNG JSON HỢP LỆ (không bọc trong 
   }
 }
 
+export const STORAGE_KEY_GRAMMAR_FONT_SIZE = "miw_grammar_content_font_size";
+
+// Phát âm tự động cho từ vựng / trợ từ ngữ pháp khi bấm vào
+export function playGrammarWordAudio(word, markEl) {
+  if (!word) return;
+  const cleanWord = String(word).trim();
+  if (!cleanWord) return;
+
+  if (markEl && markEl.classList) {
+    markEl.classList.add("gp-speaking");
+    setTimeout(() => markEl.classList.remove("gp-speaking"), 600);
+  }
+
+  // Trợ từ は: khi đứng một mình TTS trong tiếng Nhật hay đọc là 'ha',
+  // nhưng khi đóng vai trò trợ từ ngữ pháp, bắt buộc phát âm là 'wa'.
+  if (cleanWord === "は" || markEl?.classList?.contains("gp-ha")) {
+    speakJapanese("わ", true);
+  } else {
+    speakJapanese(cleanWord, true);
+  }
+}
+
+// Điều chỉnh cỡ chữ nội dung bài học linh hoạt
+export function applyGrammarFontSize(sizePx) {
+  const size = parseFloat(sizePx) || 18.5;
+  const grammarMain = document.getElementById("grammar-main-content");
+  if (grammarMain) {
+    grammarMain.style.setProperty("--grammar-content-font-size", `${size}px`);
+  }
+  const grammarView = document.getElementById("grammar-view");
+  if (grammarView) {
+    grammarView.style.setProperty("--grammar-content-font-size", `${size}px`);
+  }
+
+  // Cập nhật text badge hiển thị cỡ chữ
+  const badge = document.getElementById("grammar-font-size-indicator");
+  if (badge) {
+    let label = "Vừa";
+    if (size <= 15) label = "Nhỏ";
+    else if (size <= 17) label = "Vừa";
+    else if (size <= 19.5) label = "Lớn";
+    else label = "Rất lớn";
+    badge.textContent = `${size}px · ${label}`;
+  }
+
+  const slider = document.getElementById("grammar-font-slider");
+  if (slider) slider.value = size;
+
+  if (typeof document !== "undefined") {
+    document.querySelectorAll(".font-size-preset-btn").forEach(btn => {
+      const btnSize = parseFloat(btn.dataset.size);
+      if (Math.abs(btnSize - size) < 1) {
+        btn.classList.add("active");
+      } else {
+        btn.classList.remove("active");
+      }
+    });
+  }
+
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem(STORAGE_KEY_GRAMMAR_FONT_SIZE, String(size));
+  }
+}
+
+let isGrammarSettingsInitialized = false;
+
+export function initGrammarSettings() {
+  const savedSize = (typeof localStorage !== "undefined" && localStorage.getItem(STORAGE_KEY_GRAMMAR_FONT_SIZE)) || "18.5";
+  applyGrammarFontSize(savedSize);
+
+  if (isGrammarSettingsInitialized) return;
+  isGrammarSettingsInitialized = true;
+
+  const settingsBtn = document.getElementById("grammar-settings-btn");
+  const popover = document.getElementById("grammar-settings-popover");
+  const closeBtn = document.getElementById("grammar-close-settings-btn");
+  const slider = document.getElementById("grammar-font-slider");
+
+  if (settingsBtn && popover) {
+    settingsBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      popover.classList.toggle("hidden");
+    });
+  }
+
+  if (closeBtn && popover) {
+    closeBtn.addEventListener("click", () => {
+      popover.classList.add("hidden");
+    });
+  }
+
+  // Bấm ra ngoài popover để đóng
+  document.addEventListener("click", (e) => {
+    if (popover && !popover.classList.contains("hidden")) {
+      if (!popover.contains(e.target) && !settingsBtn?.contains(e.target)) {
+        popover.classList.add("hidden");
+      }
+    }
+  });
+
+  // Kéo thanh trượt thay đổi cỡ chữ tức thì
+  if (slider) {
+    slider.addEventListener("input", (e) => {
+      applyGrammarFontSize(e.target.value);
+    });
+  }
+
+  // Các nút chọn nhanh preset cỡ chữ
+  document.querySelectorAll(".font-size-preset-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const size = btn.dataset.size;
+      applyGrammarFontSize(size);
+    });
+  });
+
+  // Tự động phát âm khi bấm vào bất kỳ từ khóa ngữ pháp in đậm / có màu
+  document.getElementById("grammar-view")?.addEventListener("click", (e) => {
+    const mark = e.target.closest(".gp-mark, .gp-speak-target, [data-speak]");
+    if (mark) {
+      e.stopPropagation();
+      const textToSpeak = mark.getAttribute("data-speak") || mark.innerText;
+      playGrammarWordAudio(textToSpeak, mark);
+    }
+  });
+}
+
 // Khởi tạo các sự kiện giao diện
 export function setupGrammarUI() {
   const state = loadAllGrammarProgress();
   if (state.activeLessonId) currentLessonId = state.activeLessonId;
   if (state.activeSubStep) currentSubStep = state.activeSubStep;
+
+  initGrammarSettings();
 
   const grammarNavBtn = document.getElementById("nav-grammar");
   if (grammarNavBtn) {
@@ -889,6 +1019,10 @@ export function renderGrammarView() {
   if (typeof document !== "undefined" && document.body) {
     document.body.classList.add("view-grammar-active");
   }
+
+  // Phục hồi và áp dụng cỡ chữ đã lưu
+  const savedSize = (typeof localStorage !== "undefined" && localStorage.getItem(STORAGE_KEY_GRAMMAR_FONT_SIZE)) || "18.5";
+  applyGrammarFontSize(savedSize);
 
   const currentLesson = getCurrentLessonData();
   if (!currentLesson) return;

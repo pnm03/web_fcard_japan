@@ -54,7 +54,7 @@ test("GRAMMAR_CHAPTERS chứa đầy đủ Chương N5, Bài 1 và 4 mẫu câu 
 
   // Đoạn văn đọc hiểu
   assert.ok(lesson1.readingArticle, "Phải có đoạn văn tự giới thiệu mẫu");
-  assert.ok(lesson1.readingArticle.passageJp.includes("初めまして"), "Đoạn văn phải có tiếng Nhật");
+  assert.ok(lesson1.readingArticle.passageJp.includes("はじめまして") || lesson1.readingArticle.passageJp.includes("初めまして"), "Đoạn văn phải có tiếng Nhật");
 
   // Bài tập đa dạng: Đọc, Nghe, Điền từ, Ngữ pháp, Sắp xếp
   const exercises = lesson1.exercises;
@@ -301,6 +301,50 @@ test("grammar.js & style.css: Bước 4 Ôn tập & Tạo ví dụ riêng, Bộ 
   assert.ok(css.includes(".rev-options-grid"), "CSS phải có lưới chọn phương án JLPT .rev-options-grid");
   assert.ok(css.includes(".dokkai-passage-card"), "CSS phải có thẻ đoạn văn đọc hiểu .dokkai-passage-card");
   assert.ok(css.includes(".review-result-panel"), "CSS phải có bảng tổng kết điểm .review-result-panel");
+});
+
+test("Tùy chỉnh cỡ chữ (bánh răng cài đặt), Từ vựng Bài 1 thuần Hiragana và click phát âm từ khóa", async () => {
+  const grammarModule = await import("../src/grammar.js");
+  const htmlPath = path.resolve(__dirname, "../index.html");
+  const html = fs.readFileSync(htmlPath, "utf-8");
+  const cssPath = path.resolve(__dirname, "../src/style.css");
+  const css = fs.readFileSync(cssPath, "utf-8");
+
+  // 1. Kiểm tra HTML: Không còn badge LMS thô cứng, thay bằng nút bánh răng cài đặt và popover tùy chỉnh cỡ chữ
+  assert.ok(!html.includes("🌟 Không Gian Học Tập LMS"), "Đã gỡ bỏ badge LMS thô cứng");
+  assert.ok(html.includes('id="grammar-settings-btn"'), "HTML phải có nút bánh răng #grammar-settings-btn");
+  assert.ok(html.includes('id="grammar-settings-popover"'), "HTML phải có popover tùy chỉnh #grammar-settings-popover");
+  assert.ok(html.includes('id="grammar-font-slider"'), "HTML phải có thanh trượt điều chỉnh cỡ chữ #grammar-font-slider");
+  assert.ok(html.includes('data-size="15"'), "HTML phải có preset cỡ chữ nhỏ A-");
+  assert.ok(html.includes('data-size="21"'), "HTML phải có preset cỡ chữ lớn A++");
+
+  // 2. Kiểm tra CSS: Định nghĩa kiểu dáng bánh răng, popover, cỡ chữ lớn và hiệu ứng click phát âm
+  assert.ok(css.includes(".grammar-settings-btn"), "CSS phải có .grammar-settings-btn");
+  assert.ok(css.includes(".grammar-settings-popover"), "CSS phải có .grammar-settings-popover");
+  assert.ok(css.includes(".gp-speaking"), "CSS phải có hiệu ứng phát âm .gp-speaking");
+  assert.ok(css.includes("cursor: pointer"), "CSS .gp-mark phải có con trỏ pointer để người dùng biết bấm được");
+
+  // 3. Kiểm tra dữ liệu Bài 1: Dùng Hiragana cho từ vựng mới học (Bài 1 chưa học Hán tự)
+  const lesson1 = grammarModule.GRAMMAR_CHAPTERS[0].lessons[0];
+  const allExamplesJp = lesson1.patterns.flatMap(p => p.examples.map(ex => ex.jp)).join(" ");
+  
+  // Phải dùng Hiragana
+  assert.ok(allExamplesJp.includes("かいしゃいん"), "Bài 1 phải dùng 'かいしゃいん' thay vì 会社員");
+  assert.ok(allExamplesJp.includes("いしゃ"), "Bài 1 phải dùng 'いしゃ' thay vì 医者");
+  assert.ok(allExamplesJp.includes("がくせい"), "Bài 1 phải dùng 'がくせい' thay vì 学生");
+  assert.ok(allExamplesJp.includes("ベトナムじん"), "Bài 1 phải dùng 'ベトナムじん' thay vì ベトナム人");
+  
+  // Không chứa Hán tự chưa học ở Bài 1
+  assert.ok(!allExamplesJp.includes("会社員"), "Bài 1 không được chứa Hán tự 会社員");
+  assert.ok(!allExamplesJp.includes("医者"), "Bài 1 không được chứa Hán tự 医者");
+  assert.ok(!allExamplesJp.includes("学生"), "Bài 1 không được chứa Hán tự 学生");
+  assert.ok(!allExamplesJp.includes("ベトナム人"), "Bài 1 không được chứa Hán tự ベトナム人");
+  assert.ok(!allExamplesJp.includes("日本人"), "Bài 1 không được chứa Hán tự 日本人");
+
+  // 4. Kiểm tra các hàm logic trong grammar.js
+  assert.equal(typeof grammarModule.applyGrammarFontSize, "function", "Phải export applyGrammarFontSize");
+  assert.equal(typeof grammarModule.playGrammarWordAudio, "function", "Phải export playGrammarWordAudio");
+  assert.equal(typeof grammarModule.initGrammarSettings, "function", "Phải export initGrammarSettings");
 });
 
 

@@ -1339,13 +1339,44 @@
                 <span class="breadcrumb-sep">/</span>
                 <span id="grammar-active-chapter-title">Chương 1: Khởi Động & Giới Thiệu Bản Thân</span>
               </div>
-              <h1 id="grammar-lesson-main-title">Bài 1: Giới Thiệu Bản Thân (自己紹介)</h1>
+              <h1 id="grammar-lesson-main-title">Bài 1: Giới Thiệu Bản Thân (じこしょうかい)</h1>
               <p class="grammar-lesson-desc">
                 Nắm vững 4 mẫu câu nền tảng trong tiếng Nhật: Khẳng định (です), Phủ định (じゃありません), Nghi vấn (ですか) và Trợ từ cũng (も).
               </p>
             </div>
             <div class="grammar-header-actions">
-              <span class="grammar-mode-pill">🌟 Không Gian Học Tập LMS</span>
+              <div class="grammar-settings-wrapper">
+                <button type="button" class="btn grammar-settings-btn" id="grammar-settings-btn" title="Cài đặt hiển thị & Cỡ chữ">
+                  <span class="settings-gear-icon">⚙️</span>
+                  <span class="settings-btn-text">Cài đặt hiển thị</span>
+                </button>
+                <div class="grammar-settings-popover hidden" id="grammar-settings-popover">
+                  <div class="settings-popover-header">
+                    <span class="popover-title">⚙️ Tùy chỉnh hiển thị bài học</span>
+                    <button type="button" class="btn-close-popover" id="grammar-close-settings-btn" aria-label="Đóng">✕</button>
+                  </div>
+                  <div class="settings-popover-body">
+                    <div class="settings-row-label">
+                      <span>Cỡ chữ nội dung bài học:</span>
+                      <span class="font-size-indicator" id="grammar-font-size-indicator">18.5px · Lớn</span>
+                    </div>
+                    <div class="font-size-presets-row">
+                      <button type="button" class="font-size-preset-btn" data-size="15" title="Cỡ nhỏ (15px)">A- (Nhỏ)</button>
+                      <button type="button" class="font-size-preset-btn" data-size="16.5" title="Cỡ vừa (16.5px)">A (Vừa)</button>
+                      <button type="button" class="font-size-preset-btn active" data-size="18.5" title="Cỡ lớn (18.5px)">A+ (Lớn)</button>
+                      <button type="button" class="font-size-preset-btn" data-size="21" title="Cỡ rất lớn (21px)">A++ (Rất lớn)</button>
+                    </div>
+                    <div class="font-size-slider-wrapper">
+                      <span class="slider-end-label">14px</span>
+                      <input type="range" id="grammar-font-slider" min="14" max="22" step="0.5" value="18.5" class="grammar-font-slider">
+                      <span class="slider-end-label">22px</span>
+                    </div>
+                    <div class="settings-hint-note">
+                      💡 Nhấp vào các từ ngữ pháp in đậm / đổi màu để nghe phát âm ngay.
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
