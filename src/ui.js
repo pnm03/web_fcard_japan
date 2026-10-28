@@ -64,6 +64,7 @@ import { setupSpokenNotesUI, renderSpokenNotesList } from "./spoken-notes.js";
 import { setupGrammarUI, renderGrammarView } from "./grammar.js";
 import { setupJlptExamUI, renderJlptExamView } from "./jlpt-exam.js";
 import { setupGameCenterUI, renderGameCenterView } from "./game-center.js";
+import { setupAquariumUI, addAquariumCoins } from "./aquarium.js";
 
 
 // Khai báo các biến trạng thái giao diện toàn cục
@@ -363,6 +364,7 @@ export function initUI() {
   setupGrammarUI();
   setupJlptExamUI();
   setupGameCenterUI();
+  setupAquariumUI();
   
   // Tải danh sách giọng nói speechSynthesis một cách chủ động (khắc phục lỗi Chrome trả về mảng rỗng lần đầu)
   if ('speechSynthesis' in window) {
@@ -2214,6 +2216,13 @@ function renderDashboard() {
         setTimeout(() => stealthBtn.classList.remove("highlight-pulse"), 2500);
       }
     };
+  }
+
+  // Khởi tạo Bể Cá Zen & MMO Community Pond trên Dashboard
+  try {
+    setupAquariumUI();
+  } catch (err) {
+    console.warn("Lỗi khởi tạo Bể cá Zen:", err);
   }
 }
 
@@ -6203,6 +6212,11 @@ function finishQuiz() {
   if (!quizActiveSettings.disableConfetti) {
     triggerConfetti();
   }
+
+  // Thưởng Xu Bể cá Thủy sinh khi hoàn thành bài kiểm tra
+  try {
+    addAquariumCoins(20);
+  } catch (e) {}
 }
 
 function setupQuizActiveEvents() {
