@@ -344,6 +344,7 @@ export function initUI() {
   setupReloadReviewReminder();
   setupDesktopReviewEvents();
   setupNavigation();
+  setupDashboardActions();
   setupLearningGoalsUI({
     startQuiz,
     switchView,
@@ -1583,7 +1584,71 @@ function setupNavigation() {
     });
   }
 
+  // Lắng nghe sự kiện Back/Forward của trình duyệt để điều hướng view chuẩn SPA
+  if (typeof window !== "undefined") {
+    window.addEventListener("popstate", () => restoreActiveView());
+    window.addEventListener("hashchange", () => restoreActiveView());
+  }
+
   setupLogoMorphTransition();
+}
+
+export function setupDashboardActions() {
+  // Nút Luyện tập ngay ở hero banner
+  const resumeBtn = document.getElementById("dash-quick-resume-btn");
+  if (resumeBtn) {
+    resumeBtn.onclick = () => {
+      const dueVocab = getReviewDueVocab(30, "due");
+      if (dueVocab.length > 0) {
+        startQuizWithVocabIds(dueVocab.map(v => v.id), `Bắt đầu ôn tập ${dueVocab.length} từ đến hạn.`);
+        return;
+      }
+      const projects = getProjects();
+      if (projects.length > 0 && projects.some(p => p.vocab.length > 0)) {
+        switchView("quiz-setup-view");
+      } else {
+        switchView("projects-view");
+      }
+    };
+  }
+
+  // Nút Học ngữ pháp N5
+  const grammarBtn = document.getElementById("dash-goto-grammar-btn");
+  if (grammarBtn) grammarBtn.onclick = () => switchView("grammar-view");
+
+  // Nút Góc Game
+  const gamesBtn = document.getElementById("dash-goto-games-btn");
+  if (gamesBtn) gamesBtn.onclick = () => switchView("game-center-view");
+
+  // Streak hero badge -> Điểm danh
+  const heroStreak = document.getElementById("dash-hero-streak-badge");
+  if (heroStreak) heroStreak.onclick = () => switchView("attendance-view");
+
+  // Bento stat cards clicks
+  const cardProjects = document.getElementById("dash-stat-card-projects");
+  if (cardProjects) cardProjects.onclick = () => switchView("projects-view");
+
+  const cardWords = document.getElementById("dash-stat-card-words");
+  if (cardWords) cardWords.onclick = () => switchView("projects-view");
+
+  const cardAccuracy = document.getElementById("dash-stat-card-accuracy");
+  if (cardAccuracy) cardAccuracy.onclick = () => switchView("smart-review-view");
+
+  const cardStreak = document.getElementById("dash-stat-card-streak");
+  if (cardStreak) cardStreak.onclick = () => switchView("attendance-view");
+
+  // Feature Hub cards
+  const featGrammar = document.getElementById("dash-feature-grammar");
+  if (featGrammar) featGrammar.onclick = () => switchView("grammar-view");
+
+  const featGames = document.getElementById("dash-feature-games");
+  if (featGames) featGames.onclick = () => switchView("game-center-view");
+
+  const featGoals = document.getElementById("dash-feature-goals");
+  if (featGoals) featGoals.onclick = () => switchView("learning-goals-view");
+
+  const featJlpt = document.getElementById("dash-feature-jlpt");
+  if (featJlpt) featJlpt.onclick = () => switchView("jlpt-exam-view");
 }
 
 let logoMorphIntervalId = null;
@@ -1656,8 +1721,88 @@ export function setupLogoMorphTransition(intervalMs = 4500) {
   });
 }
 
+// Bảng ánh xạ URL Routes sang View IDs phục vụ định tuyến và phân trang SPA
+export const ROUTE_VIEW_MAP = {
+  "/": "dashboard-view",
+  "/dashboard": "dashboard-view",
+  "/projects": "projects-view",
+  "/grammar": "grammar-view",
+  "/games": "game-center-view",
+  "/quiz": "quiz-setup-view",
+  "/kana": "kana-setup-view",
+  "/jlpt": "jlpt-exam-view",
+  "/attendance": "attendance-view",
+  "/smart-review": "smart-review-view",
+  "/goals": "learning-goals-view",
+  "/spoken-notes": "spoken-notes-view",
+  "/weak-vocab": "weak-vocab-view",
+  "/dictionary": "dictionary-view"
+};
+
+export const VIEW_ROUTE_MAP = {
+  "dashboard-view": "/",
+  "projects-view": "/projects",
+  "grammar-view": "/grammar",
+  "game-center-view": "/games",
+  "quiz-setup-view": "/quiz",
+  "kana-setup-view": "/kana",
+  "jlpt-exam-view": "/jlpt",
+  "attendance-view": "/attendance",
+  "smart-review-view": "/smart-review",
+  "learning-goals-view": "/goals",
+  "spoken-notes-view": "/spoken-notes",
+  "weak-vocab-view": "/weak-vocab",
+  "dictionary-view": "/dictionary"
+};
+
+export function updateRouteUrl(viewId) {
+  if (typeof window === "undefined" || !window.history || !window.location) return;
+  const targetRoute = VIEW_ROUTE_MAP[viewId];
+  if (targetRoute === undefined) return;
+
+  const currentPath = window.location.pathname;
+  const currentHash = window.location.hash;
+
+  if (currentHash && currentHash.startsWith("#/")) {
+    const targetHash = targetRoute === "/" ? "#/" : `#${targetRoute}`;
+    if (currentHash !== targetHash) {
+      window.history.pushState({ viewId }, "", targetHash);
+    }
+  } else {
+    if (currentPath !== targetRoute) {
+      try {
+        window.history.pushState({ viewId }, "", targetRoute);
+      } catch (e) {
+        window.location.hash = `#${targetRoute}`;
+      }
+    }
+  }
+}
+
 export function restoreActiveView() {
-  let activeView = localStorage.getItem("web_fcard_active_view") || "dashboard-view";
+  let activeView = null;
+
+  // 1. Kiểm tra Hash URL trước (ví dụ: #/grammar hoặc #grammar)
+  if (typeof window !== "undefined" && window.location && window.location.hash) {
+    const cleanHash = window.location.hash.replace(/^#\/?/, "/").toLowerCase();
+    if (ROUTE_VIEW_MAP[cleanHash]) {
+      activeView = ROUTE_VIEW_MAP[cleanHash];
+    }
+  }
+
+  // 2. Kiểm tra Pathname URL (ví dụ: /grammar hoặc /games)
+  if (!activeView && typeof window !== "undefined" && window.location && window.location.pathname) {
+    const cleanPath = (window.location.pathname.replace(/\/$/, "") || "/").toLowerCase();
+    if (ROUTE_VIEW_MAP[cleanPath]) {
+      activeView = ROUTE_VIEW_MAP[cleanPath];
+    }
+  }
+
+  // 3. Fallback về localStorage hoặc dashboard
+  if (!activeView) {
+    activeView = localStorage.getItem("web_fcard_active_view") || "dashboard-view";
+  }
+
   const activeProjectId = localStorage.getItem("web_fcard_active_project_id");
 
   // Đưa các màn hình thực hành động về màn hình cài đặt tương ứng để tránh rỗng dữ liệu
@@ -1665,21 +1810,24 @@ export function restoreActiveView() {
     activeView = "quiz-setup-view";
   } else if (activeView === "kana-practice-view") {
     activeView = "kana-setup-view";
-  } else if (activeView === "attendance-view") {
-    activeView = "dashboard-view";
   }
 
   if (activeView === "project-detail-view" && activeProjectId) {
     showProjectDetail(activeProjectId);
   } else {
-    switchView(activeView);
+    switchView(activeView, { updateUrl: false });
   }
 }
 
-export function switchView(viewId) {
+export function switchView(viewId, { updateUrl = true } = {}) {
   // Dừng timer của quiz nếu đang chạy mà người dùng thoát ra ngoài
   if (viewId !== "quiz-active-view" && quizTimerInterval) {
     clearInterval(quizTimerInterval);
+  }
+
+  // Cập nhật URL trên thanh địa chỉ trình duyệt
+  if (updateUrl) {
+    updateRouteUrl(viewId);
   }
 
   // Lưu trạng thái view hiện tại vào localStorage
@@ -1709,7 +1857,7 @@ export function switchView(viewId) {
     if (group === "projects") {
       isGroupActive = viewId === "projects-view" || viewId === "project-detail-view" || viewId === "dictionary-view";
     } else if (group === "review") {
-      isGroupActive = viewId === "smart-review-view" || viewId === "learning-goals-view" || viewId === "weak-vocab-view";
+      isGroupActive = viewId === "smart-review-view" || viewId === "learning-goals-view" || viewId === "weak-vocab-view" || viewId === "attendance-view";
     } else if (group === "quiz") {
       isGroupActive = viewId === "quiz-setup-view" || viewId === "quiz-active-view" || viewId === "quiz-report-view" || viewId === "kana-setup-view" || viewId === "kana-practice-view";
     } else if (group === "learn") {
@@ -1778,6 +1926,11 @@ export function switchView(viewId) {
       document.body.classList.remove("view-grammar-active");
     }
     renderGameCenterView();
+  } else if (viewId === "attendance-view") {
+    if (typeof document !== "undefined" && document.body) {
+      document.body.classList.remove("view-grammar-active");
+    }
+    renderAttendanceView();
   } else {
     if (typeof document !== "undefined" && document.body) {
       document.body.classList.remove("view-grammar-active");
@@ -1801,12 +1954,165 @@ function renderDashboard() {
   });
 
   // Hiển thị số liệu thống kê
-  document.getElementById("stat-projects-count").textContent = projects.length;
-  document.getElementById("stat-words-count").textContent = totalWords;
+  const pCountEl = document.getElementById("stat-projects-count");
+  if (pCountEl) pCountEl.textContent = projects.length;
+
+  const wCountEl = document.getElementById("stat-words-count");
+  if (wCountEl) wCountEl.textContent = totalWords;
 
   const totalTests = totalCorrect + totalWrong;
   const accuracy = totalTests > 0 ? Math.round((totalCorrect / totalTests) * 100) : 0;
-  document.getElementById("stat-accuracy").textContent = accuracy + "%";
+  const accEl = document.getElementById("stat-accuracy");
+  if (accEl) accEl.textContent = accuracy + "%";
+
+  // Thêm hiển thị Báo cáo học tập, Sơ đồ trực quan, Streak và XP trên Dashboard
+  try {
+    const attStats = getAttendanceStats();
+    const streakCount = attStats ? (attStats.streak || 0) : 0;
+    const xpCount = attStats ? (attStats.xp || 0) : 0;
+    
+    // 1. Tính toán ngày tham gia & ngày thực học
+    let joinDateStr = localStorage.getItem("web_fcard_join_date");
+    if (!joinDateStr) {
+      const dayKeys = Object.keys(attStats?.days || {}).sort();
+      joinDateStr = dayKeys[0] || attStats?.todayKey || new Date().toISOString().slice(0, 10);
+      localStorage.setItem("web_fcard_join_date", joinDateStr);
+    }
+    const joinDate = new Date(joinDateStr);
+    const now = new Date(attStats?.todayKey || new Date());
+    const daysJoined = Math.max(1, Math.round((now - joinDate) / (1000 * 60 * 60 * 24)) + 1);
+
+    const activeStudyDays = Object.values(attStats?.days || {}).filter(d => (d.words || 0) > 0).length || (streakCount > 0 ? 1 : 0);
+    const consistencyPct = Math.min(100, Math.round((activeStudyDays / daysJoined) * 100));
+
+    // Cập nhật DOM các chỉ số báo cáo
+    const joinedEl = document.getElementById("dash-joined-days");
+    if (joinedEl) joinedEl.textContent = `${daysJoined} ngày`;
+
+    const studyDaysEl = document.getElementById("dash-study-days");
+    if (studyDaysEl) studyDaysEl.textContent = `${activeStudyDays} ngày`;
+
+    const consistencyEl = document.getElementById("dash-consistency-pct");
+    if (consistencyEl) consistencyEl.textContent = `${consistencyPct}%`;
+
+    // 2. Render Biểu đồ Hoạt động 7 ngày gần nhất
+    const recent7 = getRecentAttendanceDays(attStats, 7);
+    const weeklyWords = recent7.reduce((sum, d) => sum + (d.data?.words || 0), 0);
+    const weekWordsEl = document.getElementById("dash-week-words");
+    if (weekWordsEl) weekWordsEl.textContent = `${weeklyWords} từ`;
+
+    const maxWordsInWeek = Math.max(15, ...recent7.map(d => d.data?.words || 0));
+    const chartContainer = document.getElementById("dash-weekly-chart");
+    if (chartContainer) {
+      const dayNames = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+      chartContainer.innerHTML = recent7.map(d => {
+        const words = d.data?.words || 0;
+        const heightPct = Math.min(100, Math.max(6, Math.round((words / maxWordsInWeek) * 100)));
+        const dateObj = new Date(d.key + "T00:00:00");
+        const dayLabel = dayNames[dateObj.getDay()] || d.label.slice(0, 2);
+        const isTodayClass = d.isToday ? "is-today" : "";
+        const flameTag = (d.isToday && words > 0) ? "🔥" : "";
+
+        return `
+          <div class="bar-col ${isTodayClass}" title="${d.key}: ${words} từ đã rèn luyện">
+            <span class="bar-val">${words > 0 ? words : ""}</span>
+            <div class="bar-track">
+              <div class="bar-fill" style="height: ${heightPct}%;"></div>
+            </div>
+            <span class="bar-label">${dayLabel}${flameTag}</span>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // 3. Render Phân bổ Trí nhớ (FSRS Mastery Breakdown) & Tiến độ N5
+    let masteredCount = 0;   // >= 80%
+    let reviewingCount = 0;  // 40% - 79%
+    let learningCount = 0;   // 1% - 39% hoặc chưa test
+    let weakCount = 0;       // sai nhiều / yếu
+
+    projects.forEach(p => {
+      p.vocab.forEach(v => {
+        const score = v.masteryScore || 0;
+        if ((v.wrongCount || 0) > (v.correctCount || 0) && (v.wrongCount || 0) > 0) {
+          weakCount++;
+        } else if (score >= 80) {
+          masteredCount++;
+        } else if (score >= 40) {
+          reviewingCount++;
+        } else {
+          learningCount++;
+        }
+      });
+    });
+
+    const mPct = totalWords > 0 ? Math.round((masteredCount / totalWords) * 100) : 0;
+    const rPct = totalWords > 0 ? Math.round((reviewingCount / totalWords) * 100) : 0;
+    const lPct = totalWords > 0 ? Math.round((learningCount / totalWords) * 100) : 0;
+    const wPct = totalWords > 0 ? Math.round((weakCount / totalWords) * 100) : 0;
+
+    const segM = document.getElementById("seg-mastered");
+    if (segM) segM.style.width = `${mPct}%`;
+    const segR = document.getElementById("seg-reviewing");
+    if (segR) segR.style.width = `${rPct}%`;
+    const segL = document.getElementById("seg-learning");
+    if (segL) segL.style.width = `${lPct}%`;
+    const segW = document.getElementById("seg-weak");
+    if (segW) segW.style.width = `${wPct}%`;
+
+    const memM = document.getElementById("mem-val-mastered");
+    if (memM) memM.textContent = `${masteredCount} từ (${mPct}%)`;
+    const memR = document.getElementById("mem-val-reviewing");
+    if (memR) memR.textContent = `${reviewingCount} từ (${rPct}%)`;
+    const memL = document.getElementById("mem-val-learning");
+    if (memL) memL.textContent = `${learningCount} từ (${lPct}%)`;
+    const memW = document.getElementById("mem-val-weak");
+    if (memW) memW.textContent = `${weakCount} từ (${wPct}%)`;
+
+    // Tiến độ N5 Minna (Mục tiêu chuẩn 100 từ N5 đầu tiên)
+    const n5Target = 100;
+    const n5Pct = Math.min(100, Math.round((totalWords / n5Target) * 100));
+    const n5TextEl = document.getElementById("dash-n5-progress-text");
+    if (n5TextEl) n5TextEl.textContent = `${totalWords} / ${n5Target} từ (${n5Pct}%)`;
+    const n5FillEl = document.getElementById("dash-n5-progress-fill");
+    if (n5FillEl) n5FillEl.style.width = `${n5Pct}%`;
+
+    // Streak & XP
+    const heroStreakEl = document.getElementById("dash-streak-count");
+    if (heroStreakEl) heroStreakEl.textContent = streakCount;
+
+    const heroXpEl = document.getElementById("dash-xp-count");
+    if (heroXpEl) heroXpEl.textContent = xpCount;
+
+    const streakDispEl = document.getElementById("stat-streak-display");
+    if (streakDispEl) streakDispEl.innerHTML = `${streakCount} <span class="unit" style="font-size: 1rem; font-weight: 500; color: var(--ink-faint);">ngày</span>`;
+
+    const streakDescEl = document.getElementById("stat-streak-desc");
+    if (streakDescEl) {
+      const today = attStats?.days?.[attStats.todayKey];
+      const doneToday = (today?.words || 0) > 0;
+      streakDescEl.textContent = doneToday ? "Đã điểm danh hôm nay 🎉" : "Chưa điểm danh hôm nay";
+    }
+
+    const accLabelEl = document.getElementById("dash-accuracy-label");
+    if (accLabelEl) {
+      if (totalTests === 0) {
+        accLabelEl.textContent = "Chưa có dữ liệu";
+        accLabelEl.className = "bento-tag";
+      } else if (accuracy >= 85) {
+        accLabelEl.textContent = "Xuất sắc 🌟";
+        accLabelEl.className = "bento-tag badge-green";
+      } else if (accuracy >= 70) {
+        accLabelEl.textContent = "Khá tốt ✨";
+        accLabelEl.className = "bento-tag badge-blue";
+      } else {
+        accLabelEl.textContent = "Cần cố gắng ⚡";
+        accLabelEl.className = "bento-tag badge-amber";
+      }
+    }
+  } catch (err) {
+    console.warn("Lỗi tính attendance stats cho dashboard:", err);
+  }
 
   updateWelcomeGreeting(currentAccountProfile?.displayName || currentAuthSession?.user?.email);
 
@@ -1816,20 +2122,25 @@ function renderDashboard() {
   // Hiển thị danh sách từ yếu xem trước (Weak Vocab Preview)
   const weakVocab = getWeakVocab(null, 5); // Lấy tối đa 5 từ yếu nhất
   const previewContainer = document.getElementById("dashboard-weak-vocab-preview");
+  const weakBtn = document.getElementById("dashboard-start-weak-btn");
 
   if (weakVocab.length === 0) {
-    previewContainer.innerHTML = `
-      <div style="text-align: center; padding: 2rem; color: var(--ink-faint); font-family: var(--font-serif); font-size: 16px;">
-        🎉 Tuyệt vời! Bạn không có từ vựng nào bị xếp vào nhóm yếu. Hãy tiếp tục phát huy!
-      </div>
-    `;
-    document.getElementById("dashboard-start-weak-btn").style.display = "none";
+    if (previewContainer) {
+      previewContainer.innerHTML = `
+        <div class="dash-empty-state">
+          <div class="dash-empty-icon">🎉</div>
+          <div class="dash-empty-title">Trí nhớ xuất sắc!</div>
+          <div class="dash-empty-desc">Không có từ vựng nào nằm trong nhóm yếu. Hãy tiếp tục duy trì phong độ hoặc thử thách bản thân trong Đấu Trường Game!</div>
+        </div>
+      `;
+    }
+    if (weakBtn) weakBtn.style.display = "none";
   } else {
-    document.getElementById("dashboard-start-weak-btn").style.display = "inline-flex";
+    if (weakBtn) weakBtn.style.display = "inline-flex";
     
     let tableHtml = `
       <div class="vocab-table-container">
-        <table class="vocab-table">
+        <table class="vocab-table dash-vocab-table">
           <thead>
             <tr>
               <th>Tiếng Nhật</th>
@@ -1849,11 +2160,11 @@ function renderDashboard() {
       tableHtml += `
         <tr>
           <td data-label="Tiếng Nhật" class="vocab-jp-cell">
-            ${cleanToKanaOnly(v.japanese)}
-            <button class="btn btn-secondary speak-row-btn" data-text="${cleanToKanaOnly(v.japanese)}" style="width:24px; height:24px; font-size:0.7rem; vertical-align:middle; padding:0; border:none; background:transparent; box-shadow:none; cursor:pointer;" title="Nghe phát âm">🔊</button>
+            <span class="vocab-jp-text">${cleanToKanaOnly(v.japanese)}</span>
+            <button class="btn btn-secondary speak-row-btn" data-text="${cleanToKanaOnly(v.japanese)}" style="width:26px; height:26px; font-size:0.75rem; vertical-align:middle; padding:0; border:none; background:var(--bg); border-radius:50%; box-shadow:none; cursor:pointer;" title="Nghe phát âm">🔊</button>
           </td>
           <td data-label="Romaji" style="font-family: var(--font-mono); font-size: 0.95rem; color: var(--ink-soft);">${v.romaji}</td>
-          <td data-label="Ý nghĩa">${v.meaning}</td>
+          <td data-label="Ý nghĩa" style="font-weight: 500;">${v.meaning}</td>
           <td data-label="Dự án" style="color: var(--ink-faint); font-family: var(--font-mono); font-size: 11px;">${v.projectName}</td>
           <td data-label="Mức yếu" style="text-align: center;">${getWeakLevelBadgeHtml(analysis)}</td>
           <td data-label="Lý do" style="color: var(--ink-soft); font-size: 13px;">${getWeakReasonSummary(analysis)}</td>
@@ -1866,10 +2177,10 @@ function renderDashboard() {
         </table>
       </div>
     `;
-    previewContainer.innerHTML = tableHtml;
+    if (previewContainer) previewContainer.innerHTML = tableHtml;
 
     // Đăng ký phát âm cho dòng
-    document.querySelectorAll(".speak-row-btn").forEach(btn => {
+    document.querySelectorAll("#dashboard-weak-vocab-preview .speak-row-btn").forEach(btn => {
       btn.onclick = (e) => {
         e.stopPropagation();
         speakJapanese(btn.getAttribute("data-text"));
@@ -1877,32 +2188,34 @@ function renderDashboard() {
     });
   }
 
-    // Đăng ký sự kiện nút Ôn tập từ yếu nhanh từ dashboard
-    document.getElementById("dashboard-start-weak-btn").onclick = () => {
+  // Đăng ký sự kiện nút Ôn tập từ yếu nhanh từ dashboard
+  if (weakBtn) {
+    weakBtn.onclick = () => {
       switchView("weak-vocab-view");
     };
-
-    // Đăng ký sự kiện nút Stealth 2 Ô Mini từ dashboard
-    const quickStealthBtn = document.getElementById("dashboard-quick-stealth-btn");
-    if (quickStealthBtn) {
-      quickStealthBtn.onclick = () => {
-        launchQuickStealthQuiz(10);
-      };
-    }
-
-    const setupStealthBtn = document.getElementById("dashboard-setup-stealth-btn");
-    if (setupStealthBtn) {
-      setupStealthBtn.onclick = () => {
-        switchView("quiz-setup-view");
-        const stealthBtn = document.getElementById("start-stealth-quiz-btn");
-        if (stealthBtn) {
-          stealthBtn.scrollIntoView({ behavior: "smooth", block: "center" });
-          stealthBtn.classList.add("highlight-pulse");
-          setTimeout(() => stealthBtn.classList.remove("highlight-pulse"), 2500);
-        }
-      };
-    }
   }
+
+  // Đăng ký sự kiện nút Stealth 2 Ô Mini từ dashboard
+  const quickStealthBtn = document.getElementById("dashboard-quick-stealth-btn");
+  if (quickStealthBtn) {
+    quickStealthBtn.onclick = () => {
+      launchQuickStealthQuiz(10);
+    };
+  }
+
+  const setupStealthBtn = document.getElementById("dashboard-setup-stealth-btn");
+  if (setupStealthBtn) {
+    setupStealthBtn.onclick = () => {
+      switchView("quiz-setup-view");
+      const stealthBtn = document.getElementById("start-stealth-quiz-btn");
+      if (stealthBtn) {
+        stealthBtn.scrollIntoView({ behavior: "smooth", block: "center" });
+        stealthBtn.classList.add("highlight-pulse");
+        setTimeout(() => stealthBtn.classList.remove("highlight-pulse"), 2500);
+      }
+    };
+  }
+}
 
 function renderDashboardReviewSchedule() {
   const container = document.getElementById("dashboard-review-overview");
@@ -1930,29 +2243,49 @@ function renderDashboardReviewSchedule() {
   }
 
   const cardsHtml = `
-    <div class="dashboard-grid" style="margin-bottom: 1rem;">
-      <div class="stats-card" style="border: 1px solid var(--line-strong); background: var(--field);">
+    <div class="bento-4-grid dash-review-stats-grid" style="margin-bottom: 1.5rem;">
+      <div class="stats-card dash-review-pill-card stat-pill-due">
+        <div class="dash-review-card-header">
+          <span class="dash-review-dot dot-due"></span>
+          <span class="dash-review-label">Đến hạn</span>
+        </div>
         <div class="stats-info">
           <h3>Đến hạn</h3>
-          <p>${overview.due}</p>
+          <p class="dash-review-num">${overview.due}</p>
+          <span class="dash-review-sub">Cần ôn trong ngày</span>
         </div>
       </div>
-      <div class="stats-card" style="border: 1px solid var(--line-strong); background: var(--field);">
+      <div class="stats-card dash-review-pill-card stat-pill-overdue">
+        <div class="dash-review-card-header">
+          <span class="dash-review-dot dot-overdue"></span>
+          <span class="dash-review-label">Quá hạn</span>
+        </div>
         <div class="stats-info">
           <h3>Quá hạn</h3>
-          <p>${overview.overdue}</p>
+          <p class="dash-review-num">${overview.overdue}</p>
+          <span class="dash-review-sub">Trễ chu kỳ lặp lại</span>
         </div>
       </div>
-      <div class="stats-card" style="border: 1px solid var(--line-strong); background: var(--field);">
+      <div class="stats-card dash-review-pill-card stat-pill-stale">
+        <div class="dash-review-card-header">
+          <span class="dash-review-dot dot-stale"></span>
+          <span class="dash-review-label">Lâu chưa học</span>
+        </div>
         <div class="stats-info">
           <h3>Lâu chưa học</h3>
-          <p>${overview.stale}</p>
+          <p class="dash-review-num">${overview.stale}</p>
+          <span class="dash-review-sub">Cần kích hoạt trí nhớ</span>
         </div>
       </div>
-      <div class="stats-card" style="border: 1px solid var(--line-strong); background: var(--field);">
+      <div class="stats-card dash-review-pill-card stat-pill-mastered">
+        <div class="dash-review-card-header">
+          <span class="dash-review-dot dot-mastered"></span>
+          <span class="dash-review-label">Khó vừa đúng</span>
+        </div>
         <div class="stats-info">
           <h3>Khó vừa đúng</h3>
-          <p>${overview.hardCorrect}</p>
+          <p class="dash-review-num">${overview.hardCorrect}</p>
+          <span class="dash-review-sub">FSRS đang giữ nhịp</span>
         </div>
       </div>
     </div>
@@ -1960,8 +2293,10 @@ function renderDashboardReviewSchedule() {
 
   if (dueVocab.length === 0) {
     container.innerHTML = cardsHtml + `
-      <div style="text-align: center; padding: 1.5rem; color: var(--ink-faint); font-family: var(--font-serif); font-size: 15px;">
-        Chưa có từ nào đến hạn ôn. Sau khi bạn làm bài kiểm tra, lịch ôn sẽ tự động xuất hiện ở đây.
+      <div class="dash-empty-state">
+        <div class="dash-empty-icon">✨</div>
+        <div class="dash-empty-title">Chưa có từ nào đến hạn ôn</div>
+        <div class="dash-empty-desc">Sau khi bạn làm bài kiểm tra hoặc luyện từ mới, thuật toán Spaced Repetition (FSRS) sẽ tự động phân bổ lịch ôn tối ưu tại đây.</div>
       </div>
     `;
     return;
@@ -1969,7 +2304,7 @@ function renderDashboardReviewSchedule() {
 
   let tableHtml = `
     <div class="vocab-table-container">
-      <table class="vocab-table">
+      <table class="vocab-table dash-vocab-table">
         <thead>
           <tr>
             <th>Tiếng Nhật</th>
@@ -1987,13 +2322,13 @@ function renderDashboardReviewSchedule() {
     tableHtml += `
       <tr>
         <td data-label="Tiếng Nhật" class="vocab-jp-cell">
-          ${cleanToKanaOnly(v.japanese)}
-          <button class="btn btn-secondary speak-row-btn" data-text="${cleanToKanaOnly(v.japanese)}" style="width:24px; height:24px; font-size:0.7rem; vertical-align:middle; padding:0; border:none; background:transparent; box-shadow:none; cursor:pointer;" title="Nghe phát âm">🔊</button>
+          <span class="vocab-jp-text">${cleanToKanaOnly(v.japanese)}</span>
+          <button class="btn btn-secondary speak-row-btn" data-text="${cleanToKanaOnly(v.japanese)}" style="width:26px; height:26px; font-size:0.75rem; vertical-align:middle; padding:0; border:none; background:var(--bg); border-radius:50%; box-shadow:none; cursor:pointer;" title="Nghe phát âm">🔊</button>
         </td>
         <td data-label="Romaji" style="font-family: var(--font-mono); font-size: 0.95rem; color: var(--ink-soft);">${v.romaji}</td>
-        <td data-label="Ý nghĩa">${v.meaning}</td>
+        <td data-label="Ý nghĩa" style="font-weight: 500;">${v.meaning}</td>
         <td data-label="Dự án" style="color: var(--ink-faint); font-family: var(--font-mono); font-size: 11px;">${v.projectName}</td>
-        <td data-label="Mastery" style="text-align: center; font-family: var(--font-mono);">${v.masteryScore || 0}%</td>
+        <td data-label="Mastery" style="text-align: center; font-family: var(--font-mono); font-weight: 600;">${v.masteryScore || 0}%</td>
         <td data-label="Lịch ôn" style="text-align: center;">${getReviewBadgeHtml(v)}</td>
       </tr>
     `;
@@ -2006,7 +2341,7 @@ function renderDashboardReviewSchedule() {
   `;
 
   container.innerHTML = cardsHtml + tableHtml;
-  container.querySelectorAll(".speak-row-btn").forEach(btn => {
+  container.querySelectorAll("#dashboard-review-overview .speak-row-btn").forEach(btn => {
     btn.onclick = (e) => {
       e.stopPropagation();
       speakJapanese(btn.getAttribute("data-text"));

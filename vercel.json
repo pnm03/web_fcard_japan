@@ -1,3 +1,9 @@
 {
-  "name": "web-fcard-japan"
+  "name": "web-fcard-japan",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }

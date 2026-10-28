@@ -10,6 +10,7 @@
     <link rel="apple-touch-icon" href="/favicon-192x192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MIW Nihongo - Sổ Tay Luyện Tập Tiếng Nhật</title>
+    <link rel="stylesheet" href="/src/style.css" />
     <script>
       try {
         const savedTheme = localStorage.getItem("nihongo_account_theme");
@@ -641,38 +642,299 @@
         
         <!-- ================= VIEW 1: DASHBOARD ================= -->
         <section id="dashboard-view" class="view-section active">
-          <div class="dashboard-banner">
-            <h1 id="welcome-text">Kính chào Học viên!</h1>
-            <p>Chào mừng bạn đến với MIW Nihongo. Hãy luyện tập đều đặn hàng ngày để nâng cao phản xạ tiếng Nhật và ghi nhớ từ vựng lâu hơn.</p>
+          <!-- Bento Hero Banner -->
+          <div class="dashboard-banner dash-bento-hero">
+            <div class="dash-hero-content">
+              <div class="dash-hero-badge-row">
+                <span class="dash-badge dash-badge-level">
+                  <span class="badge-dot"></span>
+                  Lộ trình Minna N5
+                </span>
+                <button type="button" class="dash-badge dash-badge-streak" id="dash-hero-streak-badge" title="Bấm để xem chi tiết Điểm danh học tập">
+                  <span class="streak-flame">🔥</span>
+                  <span id="dash-streak-count">0</span> ngày liên tiếp
+                </button>
+                <span class="dash-badge dash-badge-xp" id="dash-hero-xp-badge" title="Điểm kinh nghiệm tích lũy">
+                  ⚡ <span id="dash-xp-count">0</span> XP
+                </span>
+              </div>
+              <h1 id="welcome-text">Kính chào Học viên!</h1>
+              <p class="dash-hero-sub">Chào mừng bạn trở lại với MIW Nihongo. Hãy luyện tập đều đặn hàng ngày để nâng cao phản xạ tiếng Nhật và ghi nhớ từ vựng lâu hơn.</p>
+              <div class="dash-hero-actions">
+                <button type="button" class="btn btn-primary dash-cta-btn" id="dash-quick-resume-btn">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  <span>Luyện tập ngay</span>
+                </button>
+                <button type="button" class="btn btn-secondary" id="dash-goto-grammar-btn">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                  <span>Học Ngữ pháp N5</span>
+                </button>
+                <button type="button" class="btn btn-secondary" id="dash-goto-games-btn">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="6"/><circle cx="15.5" cy="10.5" r="1" fill="currentColor"/><circle cx="17.5" cy="13.5" r="1" fill="currentColor"/></svg>
+                  <span>Góc Game 🎮</span>
+                </button>
+              </div>
+            </div>
+            <div class="dash-hero-deco" aria-hidden="true">
+              <div class="deco-circle deco-circle-1"></div>
+              <div class="deco-circle deco-circle-2"></div>
+              <span class="deco-kanji">日本語</span>
+            </div>
           </div>
 
-          <div class="dashboard-grid">
-            <div class="stats-card glass-panel">
-              <div class="stats-info">
+          <!-- Bento Stats Grid: 4 Modern Cards (Guaranteed 4 columns on desktop, 2x2 on tablet) -->
+          <div class="bento-4-grid dash-stats-bento">
+            <!-- Card 1: Dự án -->
+            <div class="stats-card dash-bento-card" id="dash-stat-card-projects" role="button" tabindex="0" title="Bấm để mở danh sách dự án">
+              <div class="bento-card-top">
+                <div class="duo-icon-box duo-box-purple">
+                  <svg class="duo-anim-card" width="34" height="34" viewBox="0 0 48 48" fill="none">
+                    <rect x="7" y="13" width="28" height="26" rx="6" fill="#7C3AED" opacity="0.45" transform="rotate(-7 7 13)"/>
+                    <rect x="11" y="9" width="28" height="26" rx="6" fill="#8B5CF6"/>
+                    <rect x="15" y="13" width="20" height="5" rx="2.5" fill="#DDD6FE"/>
+                    <rect x="15" y="21" width="14" height="4" rx="2" fill="#C4B5FD"/>
+                    <circle cx="28" cy="26" r="4" fill="#FBBF24"/>
+                  </svg>
+                </div>
+                <span class="bento-tag">Quản lý</span>
+              </div>
+              <div class="stats-info bento-card-body">
                 <h3>Dự án</h3>
                 <p id="stat-projects-count">0</p>
+                <div class="bento-stat-desc">Bộ từ vựng đang theo dõi</div>
               </div>
             </div>
-            <div class="stats-card glass-panel">
-              <div class="stats-info">
+
+            <!-- Card 2: Tổng số từ -->
+            <div class="stats-card dash-bento-card" id="dash-stat-card-words" role="button" tabindex="0" title="Bấm để xem tất cả từ vựng">
+              <div class="bento-card-top">
+                <div class="duo-icon-box duo-box-blue">
+                  <svg class="duo-anim-vocab" width="34" height="34" viewBox="0 0 48 48" fill="none">
+                    <rect x="6" y="8" width="36" height="32" rx="8" fill="#0284C7" stroke="#38BDF8" stroke-width="2"/>
+                    <rect x="10" y="12" width="28" height="24" rx="5" fill="#0369A1"/>
+                    <text x="24" y="29" font-family="'Noto Sans JP', sans-serif" font-weight="900" font-size="16" fill="#FFFFFF" text-anchor="middle">あ</text>
+                    <circle cx="34" cy="15" r="3" fill="#38BDF8"/>
+                  </svg>
+                </div>
+                <span class="bento-tag">Thẻ Flashcard</span>
+              </div>
+              <div class="stats-info bento-card-body">
                 <h3>Tổng số từ</h3>
                 <p id="stat-words-count">0</p>
+                <div class="bento-stat-desc">Sẵn sàng để luyện phản xạ</div>
               </div>
             </div>
-            <div class="stats-card glass-panel">
-              <div class="stats-info">
+
+            <!-- Card 3: Độ chính xác -->
+            <div class="stats-card dash-bento-card" id="dash-stat-card-accuracy" role="button" tabindex="0" title="Tỷ lệ trả lời đúng qua các bài kiểm tra">
+              <div class="bento-card-top">
+                <div class="duo-icon-box duo-box-green">
+                  <svg class="duo-anim-target" width="34" height="34" viewBox="0 0 48 48" fill="none">
+                    <circle cx="24" cy="24" r="20" fill="#059669"/>
+                    <circle cx="24" cy="24" r="15" fill="#FFFFFF"/>
+                    <circle cx="24" cy="24" r="10" fill="#10B981"/>
+                    <circle cx="24" cy="24" r="5" fill="#FBBF24"/>
+                    <path d="M36 12L25 23" stroke="#DC2626" stroke-width="3" stroke-linecap="round"/>
+                    <polygon points="23,21 21,27 27,25" fill="#DC2626"/>
+                    <polygon points="34,14 38,10 37,16" fill="#EF4444"/>
+                  </svg>
+                </div>
+                <span class="bento-tag badge-accuracy-pill" id="dash-accuracy-label">Chưa có dữ liệu</span>
+              </div>
+              <div class="stats-info bento-card-body">
                 <h3>Độ chính xác</h3>
                 <p id="stat-accuracy">0%</p>
+                <div class="bento-stat-desc">Đánh giá theo thuật toán FSRS</div>
               </div>
+            </div>
+
+            <!-- Card 4: Chuỗi học tập (Streak) -->
+            <div class="stats-card dash-bento-card" id="dash-stat-card-streak" role="button" tabindex="0" title="Bấm để vào trang Điểm danh học tập">
+              <div class="bento-card-top">
+                <div class="duo-icon-box duo-box-orange">
+                  <svg class="duo-anim-flame" width="34" height="34" viewBox="0 0 48 48" fill="none">
+                    <path d="M24 4C24 4 33 13 33 24C33 30.6 28.6 36 24 36C19.4 36 15 30.6 15 24C15 15 24 4 24 4Z" fill="#EA580C"/>
+                    <path d="M24 12C24 12 30 18 30 25C30 29.4 27 34 24 34C21 34 18 29.4 18 25C18 19 24 12 24 12Z" fill="#F59E0B"/>
+                    <path d="M24 20C24 20 27 24 27 27C27 29.8 25.4 32 24 32C22.6 32 21 29.8 21 27C21 24 24 20 24 20Z" fill="#FEF08A"/>
+                    <circle class="duo-spark spark-1" cx="32" cy="14" r="2" fill="#F59E0B"/>
+                    <circle class="duo-spark spark-2" cx="16" cy="18" r="1.5" fill="#EA580C"/>
+                  </svg>
+                </div>
+                <span class="bento-tag">Kỷ luật</span>
+              </div>
+              <div class="stats-info bento-card-body">
+                <h3>Chuỗi ngày liên tiếp</h3>
+                <p id="stat-streak-display">0 <span class="unit" style="font-size: 1rem; font-weight: 500; color: var(--ink-faint);">ngày</span></p>
+                <div class="bento-stat-desc" id="stat-streak-desc">Chưa điểm danh hôm nay</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ================= BENTO REPORT & VISUAL CHARTS ================= -->
+          <div class="dash-analytics-row">
+            <!-- Box 1: Biểu đồ Hoạt động 7 ngày & Kỷ luật chuyên cần -->
+            <div class="dash-chart-card glass-panel">
+              <div class="chart-card-header">
+                <div class="chart-card-title-group">
+                  <div class="dash-mini-badge badge-blue">
+                    <span class="pulse-dot"></span>
+                    Theo dõi hàng tuần
+                  </div>
+                  <h3>Hoạt Động & Chuyên Cần 7 Ngày</h3>
+                  <p class="chart-subtitle">Thống kê số từ bạn đã rèn luyện mỗi ngày trong tuần qua</p>
+                </div>
+                <div class="chart-header-stat">
+                  <div class="consistency-pill" title="Tỷ lệ ngày thực học trên tổng số ngày tham gia">
+                    <span class="label">Chuyên cần:</span>
+                    <strong id="dash-consistency-pct">0%</strong>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Top Metrics Row: Ngày tham gia, Ngày thực học, Từ tuần này -->
+              <div class="chart-metrics-strip">
+                <div class="metric-strip-item">
+                  <span class="metric-strip-label">Đã tham gia</span>
+                  <strong class="metric-strip-val" id="dash-joined-days">1 ngày</strong>
+                </div>
+                <div class="metric-strip-divider"></div>
+                <div class="metric-strip-item">
+                  <span class="metric-strip-label">Đã thực học</span>
+                  <strong class="metric-strip-val" id="dash-study-days">0 ngày</strong>
+                </div>
+                <div class="metric-strip-divider"></div>
+                <div class="metric-strip-item">
+                  <span class="metric-strip-label">Luyện tập tuần này</span>
+                  <strong class="metric-strip-val" id="dash-week-words">0 từ</strong>
+                </div>
+              </div>
+
+              <!-- 7-Day Bar Chart -->
+              <div class="weekly-bar-chart" id="dash-weekly-chart">
+                <!-- Sẽ được render động bởi ui.js -->
+              </div>
+            </div>
+
+            <!-- Box 2: Phân bổ Trí nhớ FSRS & Tiến độ Lộ trình N5 -->
+            <div class="dash-chart-card glass-panel">
+              <div class="chart-card-header">
+                <div class="chart-card-title-group">
+                  <div class="dash-mini-badge badge-purple">
+                    <span>🧠</span>
+                    Đường cong FSRS
+                  </div>
+                  <h3>Phân Bổ Trí Nhớ & Lộ Trình N5</h3>
+                  <p class="chart-subtitle">Tỷ lệ ghi nhớ từ vựng và tiến độ hoàn thành Minna N5</p>
+                </div>
+              </div>
+
+              <!-- JLPT N5 Master Progress Bar -->
+              <div class="roadmap-progress-wrap">
+                <div class="roadmap-progress-header">
+                  <span>Tiến độ N5 Sơ Cấp (Minna)</span>
+                  <strong id="dash-n5-progress-text">0 / 100 từ (0%)</strong>
+                </div>
+                <div class="roadmap-track">
+                  <div class="roadmap-fill" id="dash-n5-progress-fill" style="width: 0%;"></div>
+                </div>
+              </div>
+
+              <!-- Multi-Segmented Memory Bar -->
+              <div class="memory-segments-wrap">
+                <div class="memory-segments-bar">
+                  <div class="seg-fill seg-mastered" id="seg-mastered" style="width: 0%;" title="Thành thạo (≥80%)"></div>
+                  <div class="seg-fill seg-reviewing" id="seg-reviewing" style="width: 0%;" title="Đang nhớ (40-79%)"></div>
+                  <div class="seg-fill seg-learning" id="seg-learning" style="width: 0%;" title="Mới học (<40%)"></div>
+                  <div class="seg-fill seg-weak" id="seg-weak" style="width: 0%;" title="Cần ôn gấp"></div>
+                </div>
+              </div>
+
+              <!-- Memory Legend List -->
+              <div class="memory-legend-grid">
+                <div class="legend-item">
+                  <span class="legend-color dot-mastered"></span>
+                  <span class="legend-name">Thành thạo (≥80%)</span>
+                  <strong class="legend-val" id="mem-val-mastered">0 từ (0%)</strong>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-color dot-reviewing"></span>
+                  <span class="legend-name">Đang nhớ (40-79%)</span>
+                  <strong class="legend-val" id="mem-val-reviewing">0 từ (0%)</strong>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-color dot-learning"></span>
+                  <span class="legend-name">Mới học (&lt;40%)</span>
+                  <strong class="legend-val" id="mem-val-learning">0 từ (0%)</strong>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-color dot-weak"></span>
+                  <span class="legend-name">Cần ôn gấp</span>
+                  <strong class="legend-val" id="mem-val-weak">0 từ (0%)</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Feature Hub: 4 Commercial Learning Shortcuts (Guaranteed 4 columns) -->
+          <div class="bento-4-grid dash-feature-hub">
+            <div class="dash-feature-card" id="dash-feature-grammar" role="button" tabindex="0">
+              <div class="feature-card-icon badge-sky">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              </div>
+              <div class="feature-card-content">
+                <div class="feature-badge">LMS Chuẩn Minna</div>
+                <h4>Ngữ pháp N5</h4>
+                <p>Lộ trình 3 cột, highlight trợ từ chi tiết, chỉnh cỡ chữ & click nghe giọng đọc.</p>
+              </div>
+              <span class="feature-arrow">➔</span>
+            </div>
+
+            <div class="dash-feature-card" id="dash-feature-games" role="button" tabindex="0">
+              <div class="feature-card-icon badge-amber">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="6"/><circle cx="15.5" cy="10.5" r="1" fill="currentColor"/><circle cx="17.5" cy="13.5" r="1" fill="currentColor"/></svg>
+              </div>
+              <div class="feature-card-content">
+                <div class="feature-badge">Game Center HD</div>
+                <h4>Đấu Trường Quái Vật & Mario</h4>
+                <p>Chém quái, giải cứu công chúa, lật thẻ nhớ từ & tích lũy vàng mua trang bị.</p>
+              </div>
+              <span class="feature-arrow">➔</span>
+            </div>
+
+            <div class="dash-feature-card" id="dash-feature-goals" role="button" tabindex="0">
+              <div class="feature-card-icon badge-emerald">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+              </div>
+              <div class="feature-card-content">
+                <div class="feature-badge">FSRS Spaced Repetition</div>
+                <h4>Mục Tiêu & Deadline</h4>
+                <p>Lập kế hoạch thi JLPT có mốc ngày, phân bổ lịch học thông minh chống quên.</p>
+              </div>
+              <span class="feature-arrow">➔</span>
+            </div>
+
+            <div class="dash-feature-card" id="dash-feature-jlpt" role="button" tabindex="0">
+              <div class="feature-card-icon badge-indigo">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </div>
+              <div class="feature-card-content">
+                <div class="feature-badge">Phòng Thi Thử</div>
+                <h4>Đề Thi JLPT N5</h4>
+                <p>Mô phỏng thi thực chiến có bấm giờ, chấm điểm và bảng câu hỏi palette.</p>
+              </div>
+              <span class="feature-arrow">➔</span>
             </div>
           </div>
 
           <!-- Section: Smart Review Schedule -->
-          <div class="glass-panel" style="margin-top: 2rem;">
+          <div class="glass-panel dash-section-panel">
             <div class="project-list-header">
-              <div>
-                <h2>Lịch Ôn Thông Minh</h2>
-                <p style="color: var(--text-muted); margin-top: 0.2rem;">Theo dõi các từ đang đến hạn ôn dựa trên lịch lặp lại ngắt quãng.</p>
+              <div class="dash-section-header-title">
+                <div class="dash-section-icon-pill pill-purple">🧠</div>
+                <div>
+                  <h2>Lịch Ôn Thông Minh</h2>
+                  <p style="color: var(--text-muted); margin-top: 0.2rem;">Thuật toán Spaced Repetition (FSRS) tự động tính toán thời điểm vàng để ôn tập trước khi bạn quên.</p>
+                </div>
               </div>
               <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                 <button class="btn btn-primary" id="dashboard-start-due-btn">Kiểm tra từ đến hạn</button>
@@ -685,9 +947,15 @@
           <div id="dashboard-goal-widget" class="goal-dashboard-widget"></div>
 
           <!-- Section: Quick Actions / Weak Words Summary -->
-          <div class="glass-panel" style="margin-top: 2rem;">
+          <div class="glass-panel dash-section-panel">
             <div class="project-list-header">
-              <h2>Cần Ôn Tập Ngay (Từ chưa nhớ)</h2>
+              <div class="dash-section-header-title">
+                <div class="dash-section-icon-pill pill-rose">⚡</div>
+                <div>
+                  <h2>Cần Ôn Tập Ngay (Từ chưa nhớ)</h2>
+                  <p style="color: var(--text-muted); margin-top: 0.2rem;">Tập trung khắc phục các từ có tỷ lệ sai cao hoặc phản xạ còn chậm.</p>
+                </div>
+              </div>
               <button class="btn btn-primary" id="dashboard-start-weak-btn">Ôn tập ngay</button>
             </div>
             <div id="dashboard-weak-vocab-preview">
@@ -725,6 +993,13 @@
             <button class="btn btn-primary" id="open-create-goal-btn">Tạo mục tiêu</button>
           </div>
           <div id="learning-goals-root"></div>
+        </section>
+
+        <!-- ================= VIEW 13: ATTENDANCE & STREAK ================= -->
+        <section id="attendance-view" class="view-section">
+          <div id="attendance-root">
+            <!-- Giao diện điểm danh & chuỗi ngày học sẽ render tại đây -->
+          </div>
         </section>
 
         <!-- ================= VIEW 2: PROJECTS LIST ================= -->
