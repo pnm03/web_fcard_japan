@@ -1790,17 +1790,19 @@ export function updateRouteUrl(viewId) {
 export function restoreActiveView() {
   let activeView = null;
 
-  // 1. Kiểm tra Hash URL trước (ví dụ: #/grammar hoặc #grammar)
+  // 1. Kiểm tra Hash URL trước (ví dụ: #/grammar hoặc #/explore?room=xyz)
   if (typeof window !== "undefined" && window.location && window.location.hash) {
-    const cleanHash = window.location.hash.replace(/^#\/?/, "/").toLowerCase();
+    const rawHash = window.location.hash.replace(/^#\/?/, "/").toLowerCase();
+    const cleanHash = rawHash.split("?")[0].split("&")[0];
     if (ROUTE_VIEW_MAP[cleanHash]) {
       activeView = ROUTE_VIEW_MAP[cleanHash];
     }
   }
 
-  // 2. Kiểm tra Pathname URL (ví dụ: /grammar hoặc /games)
+  // 2. Kiểm tra Pathname URL (ví dụ: /grammar hoặc /explore?room=xyz)
   if (!activeView && typeof window !== "undefined" && window.location && window.location.pathname) {
-    const cleanPath = (window.location.pathname.replace(/\/$/, "") || "/").toLowerCase();
+    const rawPath = (window.location.pathname.replace(/\/$/, "") || "/").toLowerCase();
+    const cleanPath = rawPath.split("?")[0].split("&")[0];
     if (ROUTE_VIEW_MAP[cleanPath]) {
       activeView = ROUTE_VIEW_MAP[cleanPath];
     }

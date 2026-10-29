@@ -111,13 +111,17 @@ class OmeNihongoManager {
     this.myPeerId = `user_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 5)}`;
     this.currentRoom = "public_lobby";
     this.matchedPeerId = null;
+    this._myRoomCode = null;
 
-    // WebRTC connection
+    // WebRTC connection & Remote Media state
     this.peerConnection = null;
     this.localStream = null;
     this.remoteStream = null;
     this.isMicMuted = false;
     this.isCameraOff = false;
+    this.remoteCamOff = false;
+    this.remoteMicMuted = false;
+    this.layoutMode = "split"; // "split" (50:50 OmeTV) | "pip"
 
     // Signaling channels (BroadcastChannel cho cùng máy/2 tab + Supabase cho internet)
     this.broadcastChannel = null;
@@ -145,6 +149,7 @@ class OmeNihongoManager {
     this.bindTabEvents();
     this.bindModeEvents();
     this.bindControlEvents();
+    this.bindLayoutEvents();
     this.renderQuickPhrases();
     this.initLocalCameraPreview();
     this.setupRoomShareLink();
@@ -227,6 +232,8 @@ class OmeNihongoManager {
       this.handleRemoteIceCandidate(data.candidate);
     } else if (data.type === "peer_chat" && data.targetId === this.myPeerId) {
       this.receivePeerChatMessage(data.text, data.time);
+    } else if (data.type === "media_state" && (data.targetId === this.myPeerId || data.senderId === this.matchedPeerId)) {
+      this.handleRemoteMediaState(data);
     } else if (data.type === "peer_leave" && data.senderId === this.matchedPeerId) {
       this.handlePeerDisconnected();
     }
@@ -338,6 +345,9 @@ class OmeNihongoManager {
           timerEl.textContent = `${mins}:${secs}`;
         }
       }, 1000);
+      if (this.searchInterval && typeof this.searchInterval.unref === "function") {
+        this.searchInterval.unref();
+      }
 
       // Phát tín hiệu tìm người thật vào phòng
       this.sendSignal({
@@ -373,6 +383,7 @@ class OmeNihongoManager {
         sdp: offer
       });
       this.updateStatusUI();
+      this.broadcastMediaState();
       playSynthSound("chime");
       this.addSystemMessage(`🎉 Đã kết nối WebRTC P2P thành công với học viên trực tuyến! Hãy bật mic và chào nhau nhé.`);
     } catch (err) {
@@ -401,6 +412,7 @@ class OmeNihongoManager {
       });
 
       this.updateStatusUI();
+      this.broadcastMediaState();
       playSynthSound("chime");
       this.addSystemMessage(`🎉 Đã kết nối WebRTC P2P thành công với học viên trực tuyến! Cùng nhau luyện Kaiwa nhé.`);
     } catch (err) {
@@ -412,6 +424,7 @@ class OmeNihongoManager {
     try {
       if (this.peerConnection) {
         await this.peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+        this.broadcastMediaState();
       }
     } catch (err) {
       console.error("Lỗi setRemoteDescription answer:", err);
@@ -452,8 +465,34 @@ class OmeNihongoManager {
       if (remoteVideo && event.streams && event.streams[0]) {
         this.remoteStream = event.streams[0];
         remoteVideo.srcObject = event.streams[0];
-        remoteVideo.style.display = "block";
+
+        // Lắng nghe trạng thái track tắt/bật camera và mic đối phương
+        const videoTracks = this.remoteStream.getVideoTracks();
+        if (videoTracks.length > 0) {
+          videoTracks[0].onmute = () => {
+            this.remoteCamOff = true;
+            this.updateRemoteMediaUI();
+          };
+          videoTracks[0].onunmute = () => {
+            this.remoteCamOff = false;
+            this.updateRemoteMediaUI();
+          };
+        }
+
+        const audioTracks = this.remoteStream.getAudioTracks();
+        if (audioTracks.length > 0) {
+          audioTracks[0].onmute = () => {
+            this.remoteMicMuted = true;
+            this.updateRemoteMediaUI();
+          };
+          audioTracks[0].onunmute = () => {
+            this.remoteMicMuted = false;
+            this.updateRemoteMediaUI();
+          };
+        }
+
         if (remoteCanvas) remoteCanvas.style.display = "none";
+        this.updateRemoteMediaUI();
         remoteVideo.play().catch(() => {});
       }
     };
@@ -479,6 +518,9 @@ class OmeNihongoManager {
   handlePeerDisconnected() {
     this.closePeerConnection();
     this.status = "idle";
+    this.remoteCamOff = false;
+    this.remoteMicMuted = false;
+    this.updateRemoteMediaUI();
     this.updateStatusUI();
     this.addSystemMessage("Bạn học trực tuyến đã ngắt kết nối. Bấm 'Bắt đầu tìm kiếm' để ghép đôi tiếp nhé!");
     playSynthSound("bubble");
@@ -496,6 +538,9 @@ class OmeNihongoManager {
       remoteVideo.srcObject = null;
       remoteVideo.style.display = "none";
     }
+    this.remoteCamOff = false;
+    this.remoteMicMuted = false;
+    this.updateRemoteMediaUI();
   }
 
   // 7. Chuyển người khác (Next / Skip)
@@ -529,6 +574,9 @@ class OmeNihongoManager {
     this.stopAvatarAnimation();
     this.status = "idle";
     this.matchedPeerId = null;
+    this.remoteCamOff = false;
+    this.remoteMicMuted = false;
+    this.updateRemoteMediaUI();
     this.updateStatusUI();
     playSynthSound("bubble");
   }
@@ -964,56 +1012,180 @@ class OmeNihongoManager {
     });
   }
 
-  // 13. Phòng trực tiếp & Link mời bạn bè
+  // 13. Quản lý Mã Phòng & Link mời bạn bè trực tiếp
+  getMyRoomCode() {
+    if (!this._myRoomCode) {
+      this._myRoomCode = "KAIWA_" + Math.random().toString(36).substring(2, 6).toUpperCase();
+    }
+    return this._myRoomCode;
+  }
+
+  getRoomInviteUrl() {
+    if (typeof window === "undefined" || !window.location) return "";
+    const origin = window.location.origin || "";
+    return `${origin}/explore?room=${this.getMyRoomCode()}`;
+  }
+
   setupRoomShareLink() {
-    const linkEl = document.getElementById("ome-room-share-link");
-    const copyBtn = document.getElementById("ome-copy-room-btn");
+    const myCodeDisplay = document.getElementById("ome-my-room-code-display");
+    const copyCodeBtn = document.getElementById("ome-copy-code-only-btn");
+    const linkInput = document.getElementById("ome-room-share-link");
+    const copyLinkBtn = document.getElementById("ome-copy-room-btn");
     const joinBtn = document.getElementById("ome-join-room-btn");
     const inputEl = document.getElementById("ome-direct-room-input");
 
+    const myCode = this.getMyRoomCode();
     const inviteUrl = this.getRoomInviteUrl();
-    if (linkEl) linkEl.textContent = inviteUrl;
 
-    if (copyBtn) {
-      copyBtn.onclick = () => {
-        navigator.clipboard.writeText(this.getRoomInviteUrl());
-        copyBtn.textContent = "Đã chép link ✓";
-        setTimeout(() => { copyBtn.textContent = "📋 Sao chép link"; }, 2000);
+    if (myCodeDisplay) myCodeDisplay.textContent = myCode;
+    if (linkInput) {
+      if ("value" in linkInput) linkInput.value = inviteUrl;
+      else linkInput.textContent = inviteUrl;
+    }
+
+    if (copyCodeBtn) {
+      copyCodeBtn.onclick = () => {
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(myCode);
+        }
+        const originalText = copyCodeBtn.textContent;
+        copyCodeBtn.textContent = "Đã chép mã ✓";
+        playSynthSound("bubble");
+        setTimeout(() => { copyCodeBtn.textContent = originalText; }, 2000);
+      };
+    }
+
+    if (copyLinkBtn) {
+      copyLinkBtn.onclick = () => {
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(this.getRoomInviteUrl());
+        }
+        const originalText = copyLinkBtn.textContent;
+        copyLinkBtn.textContent = "Đã chép link ✓";
+        playSynthSound("bubble");
+        setTimeout(() => { copyLinkBtn.textContent = originalText; }, 2000);
       };
     }
 
     if (joinBtn && inputEl) {
       joinBtn.onclick = () => {
-        const roomName = inputEl.value.trim();
-        if (!roomName) return;
-        this.joinDirectRoom(roomName);
+        const val = inputEl.value.trim();
+        if (!val) return;
+        this.joinDirectRoom(val);
+      };
+      inputEl.onkeydown = (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          const val = inputEl.value.trim();
+          if (val) this.joinDirectRoom(val);
+        }
       };
     }
   }
 
-  getRoomInviteUrl() {
-    if (typeof window === "undefined" || !window.location) return "";
-    const base = `${window.location.origin}${window.location.pathname}`;
-    return `${base}#/explore?room=${this.myPeerId.substring(0, 8)}`;
-  }
-
-  joinDirectRoom(roomName) {
+  joinDirectRoom(inputStr) {
+    if (!inputStr) return;
+    let roomName = String(inputStr).trim();
+    // Tự động bóc tách mã phòng nếu người dùng dán cả đường link
+    const match = roomName.match(/[?&]room=([^&#]+)/);
+    if (match && match[1]) {
+      roomName = decodeURIComponent(match[1]);
+    }
     this.stopCall();
     this.currentRoom = roomName;
-    this.addSystemMessage(`Đã chuyển sang phòng gọi: '${roomName}'. Đang chờ bạn học tham gia...`);
+    const inputEl = document.getElementById("ome-direct-room-input");
+    if (inputEl) inputEl.value = roomName;
+    this.addSystemMessage(`Đã tham gia phòng gọi '${roomName}'. Đang chờ bạn học tham gia...`);
     this.startSearch();
   }
 
   checkDirectRoomUrl() {
     if (typeof window === "undefined" || !window.location) return;
-    const url = window.location.href;
-    const match = url.match(/[?&]room=([^&#]+)/);
-    if (match && match[1]) {
-      this.currentRoom = decodeURIComponent(match[1]);
+    let room = null;
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.has("room")) {
+        room = searchParams.get("room");
+      } else if (window.location.hash) {
+        const match = window.location.hash.match(/[?&]room=([^&#]+)/);
+        if (match && match[1]) {
+          room = decodeURIComponent(match[1]);
+        }
+      }
+    } catch (e) {}
+
+    if (room) {
       setTimeout(() => {
-        this.addSystemMessage(`Bạn vừa vào phòng gọi theo link mời: '${this.currentRoom}'!`);
-        this.startSearch();
+        this.joinDirectRoom(room);
       }, 500);
+    }
+  }
+
+  // 13b. Bố cục màn hình (50:50 Split OmeTV vs PiP Khung Lớn)
+  bindLayoutEvents() {
+    const splitBtn = document.getElementById("btn-layout-split");
+    const pipBtn = document.getElementById("btn-layout-pip");
+    const videoPanel = document.querySelector(".ome-video-panel");
+
+    const setLayout = (mode) => {
+      this.layoutMode = mode;
+      if (videoPanel) {
+        videoPanel.classList.toggle("is-split-layout", mode === "split");
+        videoPanel.classList.toggle("is-pip-layout", mode === "pip");
+      }
+      if (splitBtn) splitBtn.classList.toggle("active", mode === "split");
+      if (pipBtn) pipBtn.classList.toggle("active", mode === "pip");
+      playSynthSound("bubble");
+    };
+
+    if (splitBtn) splitBtn.onclick = () => setLayout("split");
+    if (pipBtn) pipBtn.onclick = () => setLayout("pip");
+    setLayout(this.layoutMode || "split");
+  }
+
+  // 13c. Trạng thái Media (Tắt/Bật Cam & Mic) đồng bộ qua WebRTC Signaling
+  broadcastMediaState() {
+    if (this.mode === "real") {
+      this.sendSignal({
+        type: "media_state",
+        targetId: this.matchedPeerId,
+        camOff: this.isCameraOff,
+        micMuted: this.isMicMuted
+      });
+    }
+  }
+
+  handleRemoteMediaState(data) {
+    if (data.camOff !== undefined) this.remoteCamOff = !!data.camOff;
+    if (data.micMuted !== undefined) this.remoteMicMuted = !!data.micMuted;
+    this.updateRemoteMediaUI();
+  }
+
+  updateLocalMediaUI() {
+    const localMicBadge = document.getElementById("ome-local-mic-badge");
+    if (localMicBadge) {
+      localMicBadge.style.display = this.isMicMuted ? "inline-flex" : "none";
+    }
+  }
+
+  updateRemoteMediaUI() {
+    const remoteMicBadge = document.getElementById("ome-remote-mic-badge");
+    if (remoteMicBadge) {
+      remoteMicBadge.style.display = this.remoteMicMuted ? "inline-flex" : "none";
+    }
+
+    const remoteCamOffCard = document.getElementById("ome-remote-cam-off-card");
+    const remoteVideo = document.getElementById("ome-remote-video");
+    if (this.status === "connected" && this.mode === "real") {
+      if (this.remoteCamOff) {
+        if (remoteCamOffCard) remoteCamOffCard.style.display = "flex";
+        if (remoteVideo) remoteVideo.style.display = "none";
+      } else {
+        if (remoteCamOffCard) remoteCamOffCard.style.display = "none";
+        if (remoteVideo) remoteVideo.style.display = "block";
+      }
+    } else if (remoteCamOffCard) {
+      remoteCamOffCard.style.display = "none";
     }
   }
 
@@ -1079,6 +1251,8 @@ class OmeNihongoManager {
           this.localStream.getAudioTracks().forEach(t => { t.enabled = !this.isMicMuted; });
         }
         this.updateMediaButtonsState();
+        this.updateLocalMediaUI();
+        this.broadcastMediaState();
         playSynthSound("bubble");
       };
     }
@@ -1103,6 +1277,8 @@ class OmeNihongoManager {
         }
 
         this.updateMediaButtonsState();
+        this.updateLocalMediaUI();
+        this.broadcastMediaState();
         playSynthSound("bubble");
       };
     }
@@ -1307,6 +1483,13 @@ class OmeNihongoManager {
 // Singleton Manager
 let omenihongoManagerInstance = null;
 
+export function getOmeNihongoInstance() {
+  if (!omenihongoManagerInstance) {
+    omenihongoManagerInstance = new OmeNihongoManager();
+  }
+  return omenihongoManagerInstance;
+}
+
 export function setupOmeNihongoUI(targetTab = "omenihongo") {
   if (!omenihongoManagerInstance) {
     omenihongoManagerInstance = new OmeNihongoManager();
@@ -1316,3 +1499,5 @@ export function setupOmeNihongoUI(targetTab = "omenihongo") {
     omenihongoManagerInstance.switchExploreTab(targetTab);
   }
 }
+
+export { OmeNihongoManager };

@@ -1907,16 +1907,44 @@
               </div>
             </div>
 
-            <!-- Toolbar dành cho Chế độ Người Thật: Link mời bạn & Mã phòng -->
+            <!-- Toolbar dành cho Chế độ Người Thật: Phòng Gọi & Link Bạn Bè -->
             <div class="ome-real-tools-bar glass-panel" id="ome-real-tools-bar">
-              <div class="room-share-col">
-                <span class="label">🔗 Link mời bạn bè call P2P:</span>
-                <code id="ome-room-share-link">Đang tải...</code>
-                <button type="button" class="btn btn-secondary btn-sm" id="ome-copy-room-btn">📋 Sao chép link</button>
+              <div class="ome-room-hub-card ome-my-room-card">
+                <div class="room-card-header">
+                  <span class="room-card-icon">🔑</span>
+                  <div class="room-card-info">
+                    <span class="room-card-title">Mã phòng của bạn:</span>
+                    <div class="room-code-badge-wrap">
+                      <strong class="ome-room-code-tag" id="ome-my-room-code-display">KAIWA_892</strong>
+                      <button type="button" class="btn-copy-chip" id="ome-copy-code-only-btn" title="Chỉ sao chép mã phòng">
+                        📋 Chép mã
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div class="room-card-link-row">
+                  <span class="room-link-label">🔗 Link mời:</span>
+                  <input type="text" readonly id="ome-room-share-link" class="ome-readonly-link" value="Đang tạo link..." />
+                  <button type="button" class="btn btn-secondary btn-sm" id="ome-copy-room-btn" title="Sao chép toàn bộ đường link">
+                    📋 Chép link
+                  </button>
+                </div>
               </div>
-              <div class="room-join-col">
-                <input type="text" id="ome-direct-room-input" placeholder="Nhập mã phòng riêng (VD: n5_call)" />
-                <button type="button" class="btn btn-primary btn-sm" id="ome-join-room-btn">Vào phòng</button>
+
+              <div class="ome-room-hub-card ome-join-room-card">
+                <div class="room-card-header">
+                  <span class="room-card-icon">🚪</span>
+                  <div class="room-card-info">
+                    <span class="room-card-title">Vào phòng bạn bè:</span>
+                    <span class="room-card-sub">Dán mã phòng hoặc link mời bạn bè gửi cho bạn</span>
+                  </div>
+                </div>
+                <div class="room-join-input-wrap">
+                  <input type="text" id="ome-direct-room-input" placeholder="Dán mã phòng hoặc link mời..." />
+                  <button type="button" class="btn btn-primary btn-sm" id="ome-join-room-btn">
+                    <span>🚀 Tham gia</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1969,48 +1997,103 @@
 
             <!-- Main OmeTV Video Stage -->
             <div class="ome-stage-grid">
-              <!-- Left: Video Panel (Remote Screen & Local Inset Camera) -->
-              <div class="ome-video-panel glass-panel">
-                <!-- Partner Info Header Overlay (khi connected) -->
-                <div class="ome-partner-info-bar" id="ome-partner-info-bar" style="display: none;">
-                  <div class="partner-meta-left">
-                    <strong id="ome-partner-name">Sakura Tanaka</strong>
-                    <span id="ome-partner-meta">📍 Tokyo • Sinh viên ĐH Waseda</span>
+              <!-- Left: Video Panel (Remote Screen & Local Camera) -->
+              <div class="ome-video-panel glass-panel is-split-layout">
+                <!-- Video Stage Top Header: Partner Info & Layout Switcher -->
+                <div class="ome-stage-header-bar">
+                  <div class="ome-partner-info-bar" id="ome-partner-info-bar" style="display: none;">
+                    <div class="partner-meta-left">
+                      <strong id="ome-partner-name">Sakura Tanaka</strong>
+                      <span id="ome-partner-meta">📍 Tokyo • Sinh viên ĐH Waseda</span>
+                    </div>
+                    <div class="partner-meta-right">
+                      <span class="partner-badge" id="ome-partner-badge">Native</span>
+                      <button type="button" class="btn-heart-reaction" id="ome-send-heart-btn" title="Gửi tim yêu thương đến bạn học">
+                        ❤️ Thả tim
+                      </button>
+                    </div>
                   </div>
-                  <div class="partner-meta-right">
-                    <span class="partner-badge" id="ome-partner-badge">Native</span>
-                    <button type="button" class="btn-heart-reaction" id="ome-send-heart-btn" title="Gửi tim yêu thương đến bạn học">
-                      ❤️ Thả tim
+
+                  <!-- Layout Switcher: 50:50 Split (OmeTV) vs PiP Focus -->
+                  <div class="ome-layout-switcher" id="ome-layout-switcher">
+                    <button type="button" class="btn-layout-pill active" id="btn-layout-split" title="Chế độ chia đôi 50:50 chuẩn OmeTV">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+                      <span>Chia đôi 50:50</span>
+                    </button>
+                    <button type="button" class="btn-layout-pill" id="btn-layout-pip" title="Chế độ khung lớn góc phụ (PiP)">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg>
+                      <span>Khung lớn (PiP)</span>
                     </button>
                   </div>
                 </div>
 
-                <!-- Remote Video / Canvas Area -->
-                <div class="ome-remote-container">
-                  <!-- Video cho Người Thật (WebRTC P2P) -->
-                  <video id="ome-remote-video" class="ome-remote-video" autoplay playsinline style="display: none;"></video>
-                  
-                  <!-- Canvas động cho Trợ Lý AI Sensei -->
-                  <canvas id="ome-remote-canvas" class="ome-remote-canvas" style="display: none;"></canvas>
-                  
-                  <!-- Overlay khi idle hoặc đang tìm kiếm -->
-                  <div class="ome-remote-overlay" id="ome-remote-overlay">
-                    <div class="ome-idle-hero">
-                      <div class="ome-radar-ring ring-static">📹</div>
-                      <h3>OmeNihongo - Ghép Đôi Kaiwa 1-1</h3>
-                      <p>Bấm nút bên dưới để ghép cặp ngẫu nhiên với bạn học Nhật Bản! Cùng nhau luyện phản xạ giao tiếp tự tin.</p>
-                      <div class="ome-keyboard-hint">💡 Nhấn <kbd>Space</kbd> hoặc <kbd>Enter</kbd> để tìm bạn mới nhanh</div>
+                <!-- Video Stage Dual Screen Canvas Area -->
+                <div class="ome-dual-screens-wrap">
+                  <!-- Remote Screen Container -->
+                  <div class="ome-remote-container">
+                    <!-- Floating Mic Muted Badge for Remote Peer -->
+                    <div class="ome-floating-mic-badge is-muted" id="ome-remote-mic-badge" style="display: none;">
+                      <span class="mic-badge-icon">🔇</span>
+                      <span class="mic-badge-text">Đối phương đang tắt mic</span>
                     </div>
+
+                    <!-- Video cho Người Thật (WebRTC P2P) -->
+                    <video id="ome-remote-video" class="ome-remote-video" autoplay playsinline style="display: none;"></video>
+                    
+                    <!-- Canvas động cho Trợ Lý AI Sensei -->
+                    <canvas id="ome-remote-canvas" class="ome-remote-canvas" style="display: none;"></canvas>
+                    
+                    <!-- Cam-Off App Logo Card: Hiển thị logo app và biểu thị người đối diện đang tắt cam -->
+                    <div class="ome-cam-off-card" id="ome-remote-cam-off-card" style="display: none;">
+                      <div class="cam-off-logo-pulse">
+                        <div class="app-logo-circle">
+                          <span class="app-logo-emoji">🦊</span>
+                        </div>
+                        <div class="pulse-wave-ring wave-1"></div>
+                        <div class="pulse-wave-ring wave-2"></div>
+                      </div>
+                      <h4 class="cam-off-title">MIW NIHONGO</h4>
+                      <div class="cam-off-status-tag">
+                        <span class="status-indicator"></span>
+                        <span>Đối phương đang tắt camera (Chế độ Thoại)</span>
+                      </div>
+                      <div class="sound-wave-bars">
+                        <span class="bar bar-1"></span>
+                        <span class="bar bar-2"></span>
+                        <span class="bar bar-3"></span>
+                        <span class="bar bar-4"></span>
+                        <span class="bar bar-5"></span>
+                      </div>
+                    </div>
+
+                    <!-- Overlay khi idle hoặc đang tìm kiếm -->
+                    <div class="ome-remote-overlay" id="ome-remote-overlay">
+                      <div class="ome-idle-hero">
+                        <div class="ome-radar-ring ring-static">📹</div>
+                        <h3>OmeNihongo - Ghép Đôi Kaiwa 1-1</h3>
+                        <p>Bấm nút bên dưới để ghép cặp ngẫu nhiên với bạn học Nhật Bản! Cùng nhau luyện phản xạ giao tiếp tự tin.</p>
+                        <div class="ome-keyboard-hint">💡 Nhấn <kbd>Space</kbd> hoặc <kbd>Enter</kbd> để tìm bạn mới nhanh</div>
+                      </div>
+                    </div>
+
+                    <div class="ome-screen-label">Đối phương (Partner)</div>
                   </div>
 
-                  <!-- Local Camera Inset (Góc phải dưới màn hình giống OmeTV) -->
-                  <div class="ome-local-inset">
+                  <!-- Local Camera Container (Split 50:50 hoặc Inset PiP) -->
+                  <div class="ome-local-inset" id="ome-local-inset">
                     <video id="ome-local-video" class="ome-local-video" autoplay playsinline muted></video>
+                    
+                    <!-- Local Avatar khi cam tắt -->
                     <div id="ome-local-avatar" class="ome-local-avatar" style="display: none;">
-                      <span class="local-avatar-emoji">🦊</span>
-                      <span class="local-avatar-label">Bạn (Audio Mode)</span>
+                      <div class="local-cam-off-circle">🦊</div>
+                      <span class="local-avatar-label">MIW Nihongo</span>
+                      <span class="local-cam-off-tag">Camera của bạn đang tắt</span>
                     </div>
+
                     <div class="ome-local-badge">Bạn (Me)</div>
+                    <div class="ome-local-mic-badge is-muted" id="ome-local-mic-badge" style="display: none;">
+                      <span>🔇 Mic tắt</span>
+                    </div>
                   </div>
                 </div>
 
