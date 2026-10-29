@@ -1893,6 +1893,49 @@
 
           <!-- TAB 1: OMENIHONGO (CALL RANDOM 1-1 NHƯ OMETV) -->
           <div id="explore-pane-omenihongo" class="explore-tab-pane active">
+            <!-- Mode Switcher: Người Thật 100% vs Trợ Lý AI Sensei -->
+            <div class="ome-mode-selector-wrap">
+              <div class="ome-mode-selector-bar">
+                <button type="button" class="ome-mode-pill active" id="ome-mode-btn-real" data-mode="real">
+                  <span class="mode-icon">👥</span>
+                  <span class="mode-text">Ghép Đôi Người Thật 100% (P2P OmeTV)</span>
+                </button>
+                <button type="button" class="ome-mode-pill" id="ome-mode-btn-ai" data-mode="ai">
+                  <span class="mode-icon">🤖</span>
+                  <span class="mode-text">Luyện Kaiwa Cùng Trợ Lý AI (AI Sensei)</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Toolbar dành cho Chế độ Người Thật: Link mời bạn & Mã phòng -->
+            <div class="ome-real-tools-bar glass-panel" id="ome-real-tools-bar">
+              <div class="room-share-col">
+                <span class="label">🔗 Link mời bạn bè call P2P:</span>
+                <code id="ome-room-share-link">Đang tải...</code>
+                <button type="button" class="btn btn-secondary btn-sm" id="ome-copy-room-btn">📋 Sao chép link</button>
+              </div>
+              <div class="room-join-col">
+                <input type="text" id="ome-direct-room-input" placeholder="Nhập mã phòng riêng (VD: n5_call)" />
+                <button type="button" class="btn btn-primary btn-sm" id="ome-join-room-btn">Vào phòng</button>
+              </div>
+            </div>
+
+            <!-- Toolbar dành cho Chế độ AI Sensei -->
+            <div class="ome-ai-tools-bar glass-panel" id="ome-ai-tools-bar" style="display: none;">
+              <div class="ai-sensei-select-group">
+                <label for="ome-sensei-select">Chọn Trợ lý Sensei:</label>
+                <select id="ome-sensei-select" class="form-select ome-select">
+                  <option value="sakura_tokyo">🌸 Tanaka Sakura Sensei (Tokyo • Sơ cấp N5)</option>
+                  <option value="kenji_kyoto">⛩️ Sato Kenji Sensei (Kyoto • Kaiwa N4)</option>
+                  <option value="yuto_osaka">🐙 Yamada Yuto Sensei (Osaka • Tự do hài hước)</option>
+                  <option value="aoi_yokohama">🌊 Suzuki Aoi Sensei (Yokohama • Văn hóa đời sống)</option>
+                </select>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm" id="ome-voice-speak-btn" title="Bấm để nói tiếng Nhật vào Micro, AI sẽ lắng nghe và trả lời">
+                <span>🎙️ Nhấn để nói tiếng Nhật vào Micro</span>
+              </button>
+            </div>
+
             <!-- Filter Bar: Cấp độ & Chủ đề hội thoại -->
             <div class="ome-filter-bar glass-panel">
               <div class="ome-filter-group">
@@ -1944,6 +1987,10 @@
 
                 <!-- Remote Video / Canvas Area -->
                 <div class="ome-remote-container">
+                  <!-- Video cho Người Thật (WebRTC P2P) -->
+                  <video id="ome-remote-video" class="ome-remote-video" autoplay playsinline style="display: none;"></video>
+                  
+                  <!-- Canvas động cho Trợ Lý AI Sensei -->
                   <canvas id="ome-remote-canvas" class="ome-remote-canvas" style="display: none;"></canvas>
                   
                   <!-- Overlay khi idle hoặc đang tìm kiếm -->

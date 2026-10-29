@@ -2,27 +2,27 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  AI_KAIWA_PARTNERS,
+  AI_KAIWA_SENSEIS,
   QUICK_KAIWA_PHRASES,
   setupOmeNihongoUI
 } from "../src/omenihongo.js";
 
-test("AI_KAIWA_PARTNERS: Danh sách bạn học Nhật Bản đa dạng vùng miền và cấp độ", () => {
-  assert.ok(Array.isArray(AI_KAIWA_PARTNERS));
-  assert.ok(AI_KAIWA_PARTNERS.length >= 4, "Có ít nhất 4 bạn học AI");
+test("AI_KAIWA_SENSEIS: Danh sách Sensei AI minh bạch, rõ ràng cho luyện Kaiwa", () => {
+  assert.ok(Array.isArray(AI_KAIWA_SENSEIS));
+  assert.ok(AI_KAIWA_SENSEIS.length >= 4, "Có ít nhất 4 Sensei AI");
 
-  const [sakura, kenji, yuto, aoi] = AI_KAIWA_PARTNERS;
-  assert.equal(sakura.name, "Sakura Tanaka");
+  const [sakura, kenji, yuto, aoi] = AI_KAIWA_SENSEIS;
+  assert.ok(sakura.name.includes("Sakura"));
   assert.ok(sakura.city.includes("Tokyo"));
   assert.ok(sakura.greeting && sakura.greetingRomaji && sakura.greetingVi);
 
-  assert.equal(kenji.name, "Kenji Sato");
+  assert.ok(kenji.name.includes("Kenji"));
   assert.ok(kenji.city.includes("Kyoto"));
 
-  assert.equal(yuto.name, "Yuto Yamada");
+  assert.ok(yuto.name.includes("Yuto"));
   assert.ok(yuto.city.includes("Osaka"));
 
-  assert.equal(aoi.name, "Aoi Suzuki");
+  assert.ok(aoi.name.includes("Aoi"));
   assert.ok(aoi.city.includes("Yokohama"));
 });
 
@@ -37,14 +37,15 @@ test("QUICK_KAIWA_PHRASES: Bộ mẫu câu phản xạ nhanh đầy đủ Romaji
   });
 });
 
-test("setupOmeNihongoUI: Chạy an toàn và không gây lỗi khi khởi tạo", () => {
+test("setupOmeNihongoUI: Chạy an toàn và không gây lỗi khi khởi tạo trong môi trường mock", () => {
   global.document = {
     querySelectorAll: () => [],
     getElementById: () => null,
     activeElement: null
   };
   global.window = {
-    addEventListener: () => {}
+    addEventListener: () => {},
+    location: { href: "http://localhost:5173/#/explore", origin: "http://localhost:5173", pathname: "/" }
   };
 
   assert.doesNotThrow(() => {

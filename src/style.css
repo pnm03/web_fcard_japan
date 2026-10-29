@@ -14052,6 +14052,147 @@ body.view-grammar-active .container,
   animation: aq-pulse 1.8s infinite;
 }
 
+/* OmeNihongo Mode Selector Bar */
+.ome-mode-selector-wrap {
+  margin-bottom: 1rem;
+}
+
+.ome-mode-selector-bar {
+  display: inline-flex;
+  background: rgba(226, 232, 240, 0.6);
+  padding: 4px;
+  border-radius: 14px;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.ome-mode-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: var(--ink-soft, #64748b);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ome-mode-pill:hover {
+  color: var(--ink, #0f172a);
+}
+
+.ome-mode-pill.active {
+  background: #ffffff;
+  color: #0284c7;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Toolbars for Real vs AI Mode */
+.ome-real-tools-bar,
+.ome-ai-tools-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.25rem;
+  border-radius: 14px;
+  margin-bottom: 1rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.room-share-col {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.room-share-col .label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ink, #0f172a);
+}
+
+.room-share-col code {
+  background: rgba(14, 165, 233, 0.1);
+  color: #0284c7;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-family: monospace;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-join-col {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.room-join-col input {
+  padding: 5px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  font-size: 0.82rem;
+  width: 200px;
+}
+
+.ai-sensei-select-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-sensei-select-group label {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--ink, #0f172a);
+}
+
+#ome-voice-speak-btn.is-listening {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  animation: aq-pulse 1.2s infinite;
+}
+
+/* Remote Video element for Real WebRTC */
+.ome-remote-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Waiting card when real peer is queueing */
+.ome-real-waiting-card {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  text-align: center;
+}
+
+.waiting-tip {
+  font-size: 0.82rem;
+  color: #e2e8f0;
+  margin-bottom: 0.75rem;
+}
+
+.waiting-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 /* OmeNihongo Stage Layout */
 .ome-stage-grid {
   display: grid;
