@@ -597,6 +597,44 @@
             <span>Trò chơi 🎮</span>
           </button>
 
+          <!-- 7. Khám phá (Dropdown: OmeNihongo Call Random, Bảng tin Facebook, Phòng học Lofi) -->
+          <div class="nav-dropdown" data-nav-group="explore">
+            <button class="nav-btn nav-dropdown-trigger" type="button" aria-haspopup="true" aria-expanded="false" id="nav-dropdown-explore" title="Khám phá & Giao lưu cộng đồng">
+              <span>Khám phá 🌟</span>
+              <svg class="dropdown-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            <div class="nav-dropdown-menu" role="menu">
+              <button class="nav-dropdown-item" data-target="explore-view" data-explore-tab="omenihongo" id="nav-explore-omenihongo" role="menuitem">
+                <span class="item-icon item-icon-badge badge-red">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="23 7 16 12 23 17 23 7"/>
+                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                  </svg>
+                </span>
+                <span class="item-text">OmeNihongo (Call Random 1-1)</span>
+              </button>
+              <button class="nav-dropdown-item" data-target="explore-view" data-explore-tab="feed" id="nav-explore-feed" role="menuitem">
+                <span class="item-icon item-icon-badge badge-blue">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+                  </svg>
+                </span>
+                <span class="item-text">Bảng tin Cộng đồng (Feed FB)</span>
+              </button>
+              <button class="nav-dropdown-item" data-target="explore-view" data-explore-tab="rooms" id="nav-explore-rooms" role="menuitem">
+                <span class="item-icon item-icon-badge badge-purple">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
+                    <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
+                  </svg>
+                </span>
+                <span class="item-text">Phòng học &amp; Lofi Nhóm</span>
+              </button>
+            </div>
+          </div>
+
           <!-- Mini Widget Action -->
           <button class="nav-btn" id="open-stealth-widget-btn" title="Mở Popup Mini ghim góc màn hình để học kín đáo" style="color: var(--accent, #b5482e); font-weight: 600;">
             <svg class="nav-btn-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -1815,6 +1853,207 @@
         <!-- 11. Đấu trường Trò chơi (Game Center: Tiêu diệt yêu quái, Giải cứu công chúa, Lật thẻ trí nhớ) -->
         <section id="game-center-view" class="view-section">
           <!-- Render tự động bởi renderGameCenterView() từ src/game-center.js -->
+        </section>
+
+        <!-- 12. Khám Phá: OmeNihongo (Call Random 1-1), Bảng Tin Facebook, Phòng Học Lofi -->
+        <section id="explore-view" class="view-section">
+          <!-- Explore Top Banner -->
+          <div class="explore-header-panel glass-panel">
+            <div class="explore-title-group">
+              <div class="explore-badge-strip">
+                <span class="explore-badge-pill">
+                  <span class="live-pulse"></span>
+                  Cộng Đồng Học Viên
+                </span>
+                <span class="explore-badge-tag">🌟 Kết nối • Luyện Kaiwa • Chia sẻ</span>
+              </div>
+              <h2>Khám Phá &amp; Đàm Thoại Trực Tuyến</h2>
+              <p class="explore-subtitle">
+                Ghép cặp gọi video/voice ngẫu nhiên cùng bạn học Nhật Bản (OmeNihongo), giao lưu bảng tin cộng đồng và cùng nhau học tập trong phòng Lofi!
+              </p>
+            </div>
+
+            <!-- Tab Switcher Header -->
+            <div class="explore-nav-tabs" role="tablist">
+              <button type="button" class="explore-nav-tab active" data-explore-tab="omenihongo" role="tab">
+                <span class="tab-icon">📹</span>
+                <span class="tab-title">OmeNihongo (Call Random 1-1)</span>
+                <span class="tab-hot-badge">HOT</span>
+              </button>
+              <button type="button" class="explore-nav-tab" data-explore-tab="feed" role="tab">
+                <span class="tab-icon">📰</span>
+                <span class="tab-title">Bảng Tin Facebook</span>
+              </button>
+              <button type="button" class="explore-nav-tab" data-explore-tab="rooms" role="tab">
+                <span class="tab-icon">🎧</span>
+                <span class="tab-title">Phòng Học &amp; Lofi</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- TAB 1: OMENIHONGO (CALL RANDOM 1-1 NHƯ OMETV) -->
+          <div id="explore-pane-omenihongo" class="explore-tab-pane active">
+            <!-- Filter Bar: Cấp độ & Chủ đề hội thoại -->
+            <div class="ome-filter-bar glass-panel">
+              <div class="ome-filter-group">
+                <label for="ome-level-filter">Trình độ hội thoại:</label>
+                <select id="ome-level-filter" class="form-select ome-select">
+                  <option value="all">Tất cả trình độ</option>
+                  <option value="n5">N5 - Sơ cấp Minna (Chào hỏi, giới thiệu)</option>
+                  <option value="n4">N4 - Giao tiếp hàng ngày</option>
+                  <option value="n3">N3 - Tự nhiên bản xứ</option>
+                  <option value="free">Free Kaiwa (Chém gió tự do)</option>
+                </select>
+              </div>
+
+              <div class="ome-filter-group">
+                <label for="ome-topic-filter">Chủ đề thảo luận:</label>
+                <select id="ome-topic-filter" class="form-select ome-select">
+                  <option value="free">Chủ đề tự do</option>
+                  <option value="intro">Giới thiệu bản thân (Jikoshoukai)</option>
+                  <option value="hobbies">Sở thích &amp; Anime Nhật Bản</option>
+                  <option value="travel">Du lịch Việt - Nhật</option>
+                  <option value="qa">Hỏi đáp mẹo học từ vựng</option>
+                </select>
+              </div>
+
+              <div class="ome-filter-status">
+                <span class="ome-status-pill" id="ome-status-pill">
+                  <span class="dot dot-idle"></span> Sẵn sàng
+                </span>
+              </div>
+            </div>
+
+            <!-- Main OmeTV Video Stage -->
+            <div class="ome-stage-grid">
+              <!-- Left: Video Panel (Remote Screen & Local Inset Camera) -->
+              <div class="ome-video-panel glass-panel">
+                <!-- Partner Info Header Overlay (khi connected) -->
+                <div class="ome-partner-info-bar" id="ome-partner-info-bar" style="display: none;">
+                  <div class="partner-meta-left">
+                    <strong id="ome-partner-name">Sakura Tanaka</strong>
+                    <span id="ome-partner-meta">📍 Tokyo • Sinh viên ĐH Waseda</span>
+                  </div>
+                  <div class="partner-meta-right">
+                    <span class="partner-badge" id="ome-partner-badge">Native</span>
+                    <button type="button" class="btn-heart-reaction" id="ome-send-heart-btn" title="Gửi tim yêu thương đến bạn học">
+                      ❤️ Thả tim
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Remote Video / Canvas Area -->
+                <div class="ome-remote-container">
+                  <canvas id="ome-remote-canvas" class="ome-remote-canvas" style="display: none;"></canvas>
+                  
+                  <!-- Overlay khi idle hoặc đang tìm kiếm -->
+                  <div class="ome-remote-overlay" id="ome-remote-overlay">
+                    <div class="ome-idle-hero">
+                      <div class="ome-radar-ring ring-static">📹</div>
+                      <h3>OmeNihongo - Ghép Đôi Kaiwa 1-1</h3>
+                      <p>Bấm nút bên dưới để ghép cặp ngẫu nhiên với bạn học Nhật Bản! Cùng nhau luyện phản xạ giao tiếp tự tin.</p>
+                      <div class="ome-keyboard-hint">💡 Nhấn <kbd>Space</kbd> hoặc <kbd>Enter</kbd> để tìm bạn mới nhanh</div>
+                    </div>
+                  </div>
+
+                  <!-- Local Camera Inset (Góc phải dưới màn hình giống OmeTV) -->
+                  <div class="ome-local-inset">
+                    <video id="ome-local-video" class="ome-local-video" autoplay playsinline muted></video>
+                    <div id="ome-local-avatar" class="ome-local-avatar" style="display: none;">
+                      <span class="local-avatar-emoji">🦊</span>
+                      <span class="local-avatar-label">Bạn (Audio Mode)</span>
+                    </div>
+                    <div class="ome-local-badge">Bạn (Me)</div>
+                  </div>
+                </div>
+
+                <!-- OmeTV Action Controls Bar -->
+                <div class="ome-controls-bar">
+                  <div class="ome-controls-left">
+                    <button type="button" class="btn btn-action-cam" id="ome-toggle-mic-btn" title="Bật/Tắt Micro">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                      <span>Mic: Bật</span>
+                    </button>
+                    <button type="button" class="btn btn-action-cam" id="ome-toggle-cam-btn" title="Bật/Tắt Camera">
+                      <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                      <span>Cam: Bật</span>
+                    </button>
+                  </div>
+
+                  <div class="ome-controls-center">
+                    <!-- Nút Bắt đầu tìm kiếm ban đầu -->
+                    <button type="button" class="btn btn-lg ome-btn-start" id="ome-start-btn">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                      <span>Bắt Đầu Ghép Đôi</span>
+                    </button>
+
+                    <!-- Nút Next (Tìm bạn khác) -->
+                    <button type="button" class="btn btn-lg ome-btn-next" id="ome-next-btn" style="display: none;">
+                      <span>Tìm bạn khác ➔</span>
+                      <span class="btn-kbd-hint">Space</span>
+                    </button>
+
+                    <!-- Nút Dừng lại -->
+                    <button type="button" class="btn btn-secondary btn-lg ome-btn-stop" id="ome-stop-btn" style="display: none;">
+                      ✕ Dừng lại
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right: Live Kaiwa Chat & Quick Phrases Cheat Sheet -->
+              <div class="ome-chat-panel glass-panel">
+                <div class="ome-chat-header">
+                  <div class="chat-header-title">
+                    <span class="chat-icon">💬</span>
+                    <div>
+                      <h4>Hội Thoại Trực Tiếp</h4>
+                      <p>Nhắn tin kèm phát âm tiếng Nhật và phiên âm Romaji</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Chat Messages Scroll Container -->
+                <div class="ome-chat-messages" id="ome-chat-messages">
+                  <div class="ome-msg-system">
+                    <span>👋 Chào mừng bạn đến với OmeNihongo! Hãy bấm 'Bắt Đầu Ghép Đôi' để kết nối với bạn học.</span>
+                  </div>
+                </div>
+
+                <!-- Quick Phrases Carousel -->
+                <div class="ome-quick-phrases-wrap">
+                  <div class="quick-phrases-label">
+                    <span>⚡ Mẫu câu Kaiwa phản xạ nhanh:</span>
+                  </div>
+                  <div class="ome-quick-phrases-list" id="ome-quick-phrases-list">
+                    <!-- Rendered by omenihongo.js -->
+                  </div>
+                </div>
+
+                <!-- Chat Input Form -->
+                <form id="ome-chat-form" class="ome-chat-form">
+                  <input type="text" id="ome-chat-input" class="ome-chat-input" placeholder="Nhập tin nhắn tiếng Nhật hoặc gõ Romaji..." autocomplete="off" />
+                  <button type="submit" class="btn btn-primary ome-send-btn" title="Gửi tin nhắn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 2: BẢNG TIN FACEBOOK (NIHONGO COMMUNITY FEED) -->
+          <div id="explore-pane-feed" class="explore-tab-pane">
+            <div id="explore-feed-container">
+              <!-- Rendered by omenihongo.js -->
+            </div>
+          </div>
+
+          <!-- TAB 3: PHÒNG HỌC & CHILL NHÓM (STUDY & CHILL ROOMS) -->
+          <div id="explore-pane-rooms" class="explore-tab-pane">
+            <div id="explore-rooms-container">
+              <!-- Rendered by omenihongo.js -->
+            </div>
+          </div>
         </section>
 
       </main>

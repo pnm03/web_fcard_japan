@@ -65,6 +65,7 @@ import { setupGrammarUI, renderGrammarView } from "./grammar.js";
 import { setupJlptExamUI, renderJlptExamView } from "./jlpt-exam.js";
 import { setupGameCenterUI, renderGameCenterView } from "./game-center.js";
 import { setupAquariumUI, addAquariumCoins } from "./aquarium.js";
+import { setupOmeNihongoUI } from "./omenihongo.js";
 
 
 // Khai báo các biến trạng thái giao diện toàn cục
@@ -1549,7 +1550,9 @@ function setupNavigation() {
       if (targetView) {
         // Đóng dropdown nếu đang mở
         document.querySelectorAll(".nav-dropdown.is-open").forEach(d => d.classList.remove("is-open"));
-        switchView(targetView);
+        const extraTab = btn.getAttribute("data-explore-tab");
+        if (extraTab) window.__targetExploreTab = extraTab;
+        switchView(targetView, extraTab);
       }
     });
   });
@@ -1738,7 +1741,9 @@ export const ROUTE_VIEW_MAP = {
   "/goals": "learning-goals-view",
   "/spoken-notes": "spoken-notes-view",
   "/weak-vocab": "weak-vocab-view",
-  "/dictionary": "dictionary-view"
+  "/dictionary": "dictionary-view",
+  "/explore": "explore-view",
+  "/omenihongo": "explore-view"
 };
 
 export const VIEW_ROUTE_MAP = {
@@ -1754,7 +1759,8 @@ export const VIEW_ROUTE_MAP = {
   "learning-goals-view": "/goals",
   "spoken-notes-view": "/spoken-notes",
   "weak-vocab-view": "/weak-vocab",
-  "dictionary-view": "/dictionary"
+  "dictionary-view": "/dictionary",
+  "explore-view": "/explore"
 };
 
 export function updateRouteUrl(viewId) {
@@ -1864,6 +1870,8 @@ export function switchView(viewId, { updateUrl = true } = {}) {
       isGroupActive = viewId === "quiz-setup-view" || viewId === "quiz-active-view" || viewId === "quiz-report-view" || viewId === "kana-setup-view" || viewId === "kana-practice-view";
     } else if (group === "learn") {
       isGroupActive = viewId === "grammar-view" || viewId === "spoken-notes-view" || viewId === "jlpt-exam-view";
+    } else if (group === "explore") {
+      isGroupActive = viewId === "explore-view";
     }
 
     if (trigger) {
@@ -1933,6 +1941,12 @@ export function switchView(viewId, { updateUrl = true } = {}) {
       document.body.classList.remove("view-grammar-active");
     }
     renderAttendanceView();
+  } else if (viewId === "explore-view") {
+    if (typeof document !== "undefined" && document.body) {
+      document.body.classList.remove("view-grammar-active");
+    }
+    const targetTab = (typeof extraData === "string" ? extraData : null) || window.__targetExploreTab || "omenihongo";
+    setupOmeNihongoUI(targetTab);
   } else {
     if (typeof document !== "undefined" && document.body) {
       document.body.classList.remove("view-grammar-active");
