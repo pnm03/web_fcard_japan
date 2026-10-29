@@ -65,7 +65,7 @@ import { setupGrammarUI, renderGrammarView } from "./grammar.js";
 import { setupJlptExamUI, renderJlptExamView } from "./jlpt-exam.js";
 import { setupGameCenterUI, renderGameCenterView } from "./game-center.js";
 import { setupAquariumUI, addAquariumCoins } from "./aquarium.js";
-import { setupOmeNihongoUI } from "./omenihongo.js";
+import { setupOmeNihongoUI, stopOmeNihongoMedia } from "./omenihongo.js";
 
 
 // Khai báo các biến trạng thái giao diện toàn cục
@@ -320,6 +320,24 @@ export function isLocalMode() {
   }
 }
 
+export function hasStoredAuthToken() {
+  const storage = (typeof window !== "undefined" && window.localStorage) || (typeof localStorage !== "undefined" && localStorage);
+  if (!storage) return false;
+  try {
+    const len = storage.length || 0;
+    for (let i = 0; i < len; i++) {
+      const key = typeof storage.key === "function" ? storage.key(i) : null;
+      if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
+        const val = storage.getItem(key);
+        if (val && (val.includes("access_token") || val.includes("user"))) {
+          return true;
+        }
+      }
+    }
+  } catch (e) {}
+  return false;
+}
+
 export function openAuthModal(mode = "login") {
   setAuthMode(mode);
   document.body.classList.add("auth-modal-open");
@@ -331,12 +349,18 @@ export function closeAuthModal() {
 
 // Khởi tạo các sự kiện giao diện
 export function initUI() {
-  if (isLocalMode()) {
+  // 1. Khôi phục ngay view mục tiêu từ URL hoặc lưu trữ để kích hoạt đúng DOM view trước khi render
+  restoreActiveView();
+
+  // 2. Kiểm tra nếu đã có phiên đăng nhập lưu trong trình duyệt hoặc đang ở chế độ Local
+  if (isLocalMode() || hasStoredAuthToken()) {
     document.body.classList.remove("auth-loading");
     document.body.classList.remove("auth-required");
     document.body.classList.add("auth-ready");
-    setAttendanceUser({ id: "local-user", email: "local@device" });
-    updateAuthShell(null);
+    if (isLocalMode()) {
+      setAttendanceUser({ id: "local-user", email: "local@device" });
+      updateAuthShell(null);
+    }
   } else {
     document.body.classList.add("auth-loading");
   }
@@ -1306,6 +1330,15 @@ async function applyAuthSession(session, { restore = false } = {}) {
   }
 
   const shouldCheckOverdueAfterSync = !hasRestoredAfterAuth;
+
+  // Khôi phục ngay lập tức view mục tiêu trước khi chờ các tác vụ đồng bộ đám mây
+  if (restore || !hasRestoredAfterAuth) {
+    restoreActiveView();
+    hasRestoredAfterAuth = true;
+  } else {
+    rerenderActiveViewAfterSync();
+  }
+
   if (currentAuthSession?.user) {
     await fetchAndSyncFromSupabase({ manual: false });
     await syncLearningGoalsFromCloud();
@@ -1313,12 +1346,6 @@ async function applyAuthSession(session, { restore = false } = {}) {
     updateSyncStatusForLocal();
   }
 
-  if (restore || !hasRestoredAfterAuth) {
-    restoreActiveView();
-    hasRestoredAfterAuth = true;
-  } else {
-    rerenderActiveViewAfterSync();
-  }
   if (shouldCheckOverdueAfterSync) {
     window.setTimeout(checkOverdueReviewOnReload, 250);
   }
@@ -1833,6 +1860,13 @@ export function switchView(viewId, { updateUrl = true } = {}) {
   // Dừng timer của quiz nếu đang chạy mà người dùng thoát ra ngoài
   if (viewId !== "quiz-active-view" && quizTimerInterval) {
     clearInterval(quizTimerInterval);
+  }
+
+  // Tắt camera và microphone phần cứng của OmeNihongo khi chuyển sang view khác
+  if (viewId !== "explore-view") {
+    try {
+      stopOmeNihongoMedia();
+    } catch (e) {}
   }
 
   // Cập nhật URL trên thanh địa chỉ trình duyệt

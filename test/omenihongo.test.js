@@ -93,5 +93,24 @@ test("OmeNihongoManager: Quản lý mã phòng, link mời và trạng thái med
   assert.equal(mgr.remoteCamOff, false, "Ghi nhận đối phương bật lại camera");
   assert.equal(mgr.remoteMicMuted, false, "Ghi nhận đối phương bật lại mic");
 
+  // 5. Tắt mở triệt để camera phần cứng (stop tracks để tắt hẳn đèn LED camera)
+  let stoppedTrack = false;
+  const mockTrack = {
+    kind: "video",
+    stop: () => { stoppedTrack = true; }
+  };
+  mgr.localStream = {
+    getVideoTracks: () => [mockTrack],
+    removeTrack: () => {},
+    getTracks: () => [mockTrack]
+  };
+
+  mgr.stopCameraHardware();
+  assert.equal(mgr.isCameraOff, true, "Camera chuyển sang trạng thái tắt");
+  assert.equal(stoppedTrack, true, "Track video được gọi .stop() để tắt hẳn đèn LED phần cứng");
+
+  mgr.stopAllMedia();
+  assert.equal(mgr.localStream, null, "Dọn sạch toàn bộ media stream khi rời trang");
+
   mgr.stopCall();
 });

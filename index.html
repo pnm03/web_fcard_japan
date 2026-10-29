@@ -15,6 +15,32 @@
       try {
         const savedTheme = localStorage.getItem("nihongo_account_theme");
         if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+
+        // 1. Kiểm tra sớm token đăng nhập hoặc chế độ local để không bao giờ chớp nháy form login
+        let hasAuth = localStorage.getItem("nihongo_local_mode") === "true";
+        if (!hasAuth) {
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && k.startsWith("sb-") && k.endsWith("-auth-token")) {
+              const val = localStorage.getItem(k);
+              if (val && (val.includes("access_token") || val.includes("user"))) {
+                hasAuth = true;
+                break;
+              }
+            }
+          }
+        }
+        if (hasAuth) {
+          document.documentElement.classList.add("auth-presumed");
+        }
+
+        // 2. Kiểm tra sớm URL để kích hoạt ngay view đích (ví dụ /explore) tránh chớp nháy qua trang chủ (dashboard)
+        const path = (window.location.pathname.replace(/\/$/, "") || "").toLowerCase();
+        const hash = (window.location.hash || "").replace(/^#\/?/, "/").toLowerCase();
+        const rawRoute = hash.split("?")[0] || path.split("?")[0];
+        if (rawRoute === "/explore" || rawRoute === "/omenihongo") {
+          document.documentElement.classList.add("view-explore-initial");
+        }
       } catch (error) {
         // Theme mặc định vẫn hoạt động nếu trình duyệt chặn localStorage.
       }
@@ -22,6 +48,23 @@
     <style>
       html {
         background: #f4f1ea;
+      }
+
+      /* Khi người dùng đã có phiên đăng nhập từ trước: hiển thị container ngay lập tức, triệt tiêu chớp nháy login */
+      html.auth-presumed body.auth-loading .main-header,
+      html.auth-presumed body.auth-loading .container {
+        display: block !important;
+      }
+      html.auth-presumed body.auth-loading .auth-shell {
+        display: none !important;
+      }
+
+      /* Khi truy cập trực tiếp bằng link /explore: ẩn ngay dashboard và kích hoạt explore-view */
+      html.view-explore-initial #dashboard-view {
+        display: none !important;
+      }
+      html.view-explore-initial #explore-view {
+        display: block !important;
       }
 
       body.auth-loading,
@@ -42,7 +85,10 @@
         display: none !important;
       }
 
-      body.auth-loading .auth-shell,
+      body.auth-loading .auth-shell {
+        display: none;
+      }
+
       body.auth-required .auth-shell {
         min-height: 100vh;
         display: flex;
@@ -68,7 +114,6 @@
         display: none;
       }
 
-      body.auth-loading .auth-panel.active,
       body.auth-required .auth-panel.active {
         display: block;
       }

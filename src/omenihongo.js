@@ -156,6 +156,7 @@ class OmeNihongoManager {
     this.initSpeechRecognition();
     this.renderSampleFeed();
     this.renderSampleRooms();
+    this.bindWindowLifecycleEvents();
 
     // Kiểm tra query URL xem có link phòng trực tiếp không (vd: #/explore?room=xyz)
     this.checkDirectRoomUrl();
@@ -297,30 +298,173 @@ class OmeNihongoManager {
     playSynthSound("bubble");
   }
 
-  // 3. Quản lý Camera Local
+  // 3. Quản lý Camera & Microphone Phần Cứng (Tắt mở triệt để track phần cứng để tắt đèn LED)
   async initLocalCameraPreview() {
     const localVideo = document.getElementById("ome-local-video");
     const localAvatar = document.getElementById("ome-local-avatar");
     if (!localVideo) return;
 
+    // 1. Khởi tạo microphone nếu có
     try {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 640 }, height: { ideal: 480 } },
-          audio: true
-        });
-        this.localStream = stream;
-        localVideo.srcObject = stream;
-        localVideo.play().catch(() => {});
-        if (localAvatar) localAvatar.style.display = "none";
-        localVideo.style.display = "block";
+      if (typeof navigator !== "undefined" && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const audioTrack = audioStream.getAudioTracks()[0];
+        if (audioTrack) {
+          if (!this.localStream) {
+            this.localStream = new MediaStream();
+          }
+          this.localStream.addTrack(audioTrack);
+        }
       }
     } catch (err) {
-      console.warn("Không thể truy cập camera thực:", err);
+      console.warn("Không thể truy cập microphone:", err);
+    }
+
+    // 2. Kiểm tra tùy chọn camera của người dùng (nếu trước đó đã tắt cam thì không kích hoạt phần cứng)
+    const isCameraSavedOff = typeof window !== "undefined" && localStorage.getItem("omenihongo_camera_off") === "true";
+    if (isCameraSavedOff) {
+      this.isCameraOff = true;
       if (localVideo) localVideo.style.display = "none";
       if (localAvatar) localAvatar.style.display = "flex";
-      this.isCameraOff = true;
       this.updateMediaButtonsState();
+      this.updateLocalMediaUI();
+      return;
+    }
+
+    // 3. Kích hoạt camera thực
+    await this.startCameraHardware();
+  }
+
+  async startCameraHardware() {
+    this.isCameraOff = false;
+    const localVideo = document.getElementById("ome-local-video");
+    const localAvatar = document.getElementById("ome-local-avatar");
+
+    try {
+      if (typeof navigator !== "undefined" && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 } }
+        });
+        const newTrack = stream.getVideoTracks()[0];
+        if (newTrack) {
+          if (!this.localStream) {
+            this.localStream = new MediaStream();
+          }
+          // Xóa track video cũ nếu có
+          this.localStream.getVideoTracks().forEach(t => {
+            try { t.stop(); } catch (e) {}
+            this.localStream.removeTrack(t);
+          });
+          this.localStream.addTrack(newTrack);
+
+          if (localVideo) {
+            localVideo.srcObject = this.localStream;
+            localVideo.play().catch(() => {});
+            localVideo.style.display = "block";
+          }
+          if (localAvatar) localAvatar.style.display = "none";
+
+          // Cập nhật track mới vào WebRTC connection nếu đang kết nối
+          if (this.peerConnection) {
+            const senders = this.peerConnection.getSenders();
+            const videoSender = senders.find(s => s.track && s.track.kind === "video") ||
+                                senders.find(s => !s.track || s.track?.kind === "video");
+            if (videoSender) {
+              videoSender.replaceTrack(newTrack);
+            } else {
+              this.peerConnection.addTrack(newTrack, this.localStream);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Không thể bật camera thực:", err);
+      this.isCameraOff = true;
+      if (localVideo) localVideo.style.display = "none";
+      if (localAvatar) localAvatar.style.display = "flex";
+    }
+
+    this.updateMediaButtonsState();
+    this.updateLocalMediaUI();
+    this.broadcastMediaState();
+  }
+
+  stopCameraHardware() {
+    this.isCameraOff = true;
+    if (this.localStream) {
+      const videoTracks = this.localStream.getVideoTracks();
+      videoTracks.forEach(track => {
+        try { track.stop(); } catch (e) {}
+        this.localStream.removeTrack(track);
+      });
+    }
+    const localVideo = document.getElementById("ome-local-video");
+    const localAvatar = document.getElementById("ome-local-avatar");
+    if (localVideo) localVideo.style.display = "none";
+    if (localAvatar) localAvatar.style.display = "flex";
+
+    // Bỏ track trong WebRTC sender
+    if (this.peerConnection) {
+      const senders = this.peerConnection.getSenders();
+      const videoSender = senders.find(s => s.track && s.track.kind === "video") ||
+                          senders.find(s => !s.track || s.track?.kind === "video");
+      if (videoSender) {
+        try { videoSender.replaceTrack(null); } catch (e) {}
+      }
+    }
+
+    this.updateMediaButtonsState();
+    this.updateLocalMediaUI();
+    this.broadcastMediaState();
+  }
+
+  stopAllMedia() {
+    if (this.localStream) {
+      this.localStream.getTracks().forEach(track => {
+        try { track.stop(); } catch (e) {}
+      });
+      this.localStream = null;
+    }
+    const localVideo = document.getElementById("ome-local-video");
+    if (localVideo) {
+      localVideo.srcObject = null;
+      localVideo.style.display = "none";
+    }
+    const localAvatar = document.getElementById("ome-local-avatar");
+    if (localAvatar) localAvatar.style.display = "flex";
+    this.isCameraOff = true;
+    this.updateMediaButtonsState();
+    this.updateLocalMediaUI();
+  }
+
+  bindWindowLifecycleEvents() {
+    if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+      // Dọn dẹp camera và mic khi đóng hoặc reload trang
+      window.addEventListener("beforeunload", () => this.stopAllMedia());
+      window.addEventListener("pagehide", () => this.stopAllMedia());
+    }
+
+    // Tạm dừng camera khi người dùng chuyển sang tab khác trong trình duyệt
+    if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+          // Khi tab bị ẩn và người dùng chưa kết nối cuộc gọi, tắt camera phần cứng để đèn LED không nhấp nháy
+          if (this.status !== "connected" && !this.isCameraOff) {
+            this.stopCameraHardware();
+            this._wasAutoPausedByTabSwitch = true;
+          }
+        } else {
+          // Khi quay lại tab, nếu trước đó bị auto-pause và người dùng không chủ động tắt cam
+          if (this._wasAutoPausedByTabSwitch) {
+            this._wasAutoPausedByTabSwitch = false;
+            const isExploreActive = document.getElementById("explore-view")?.classList.contains("active");
+            const isSavedOff = typeof localStorage !== "undefined" && localStorage.getItem("omenihongo_camera_off") === "true";
+            if (isExploreActive && !isSavedOff) {
+              this.startCameraHardware();
+            }
+          }
+        }
+      });
     }
   }
 
@@ -1259,26 +1403,16 @@ class OmeNihongoManager {
 
     const toggleCamBtn = document.getElementById("ome-toggle-cam-btn");
     if (toggleCamBtn) {
-      toggleCamBtn.onclick = () => {
-        this.isCameraOff = !this.isCameraOff;
-        const localVideo = document.getElementById("ome-local-video");
-        const localAvatar = document.getElementById("ome-local-avatar");
-
-        if (this.localStream) {
-          this.localStream.getVideoTracks().forEach(t => { t.enabled = !this.isCameraOff; });
-        }
-
-        if (this.isCameraOff) {
-          if (localVideo) localVideo.style.display = "none";
-          if (localAvatar) localAvatar.style.display = "flex";
+      toggleCamBtn.onclick = async () => {
+        if (!this.isCameraOff) {
+          // Người dùng muốn TẮT camera: Dừng hẳn track phần cứng để tắt đèn LED camera
+          this.stopCameraHardware();
+          try { localStorage.setItem("omenihongo_camera_off", "true"); } catch (e) {}
         } else {
-          if (localVideo) localVideo.style.display = "block";
-          if (localAvatar) localAvatar.style.display = "none";
+          // Người dùng muốn BẬT camera: Bật lại camera phần cứng
+          await this.startCameraHardware();
+          try { localStorage.removeItem("omenihongo_camera_off"); } catch (e) {}
         }
-
-        this.updateMediaButtonsState();
-        this.updateLocalMediaUI();
-        this.broadcastMediaState();
         playSynthSound("bubble");
       };
     }
@@ -1497,6 +1631,12 @@ export function setupOmeNihongoUI(targetTab = "omenihongo") {
   }
   if (targetTab) {
     omenihongoManagerInstance.switchExploreTab(targetTab);
+  }
+}
+
+export function stopOmeNihongoMedia() {
+  if (omenihongoManagerInstance) {
+    omenihongoManagerInstance.stopAllMedia();
   }
 }
 
