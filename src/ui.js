@@ -1579,7 +1579,7 @@ function setupNavigation() {
         document.querySelectorAll(".nav-dropdown.is-open").forEach(d => d.classList.remove("is-open"));
         const extraTab = btn.getAttribute("data-explore-tab");
         if (extraTab) window.__targetExploreTab = extraTab;
-        switchView(targetView, extraTab);
+        switchView(targetView, { updateUrl: true, extraTab: extraTab || null });
       }
     });
   });
@@ -1856,7 +1856,25 @@ export function restoreActiveView() {
   }
 }
 
-export function switchView(viewId, { updateUrl = true } = {}) {
+export function switchView(viewId, options = {}) {
+  let updateUrl = true;
+  let extraTab = null;
+
+  if (typeof options === "boolean") {
+    updateUrl = options;
+  } else if (typeof options === "string") {
+    extraTab = options;
+  } else if (options && typeof options === "object") {
+    if (options.updateUrl !== undefined) updateUrl = !!options.updateUrl;
+    if (options.extraTab !== undefined) extraTab = options.extraTab;
+    if (options.extraData !== undefined) extraTab = options.extraData;
+  }
+
+  // Luôn gỡ bỏ class view-explore-initial trên <html> ngay khi switchView được gọi
+  if (typeof document !== "undefined" && document.documentElement) {
+    document.documentElement.classList.remove("view-explore-initial");
+  }
+
   // Dừng timer của quiz nếu đang chạy mà người dùng thoát ra ngoài
   if (viewId !== "quiz-active-view" && quizTimerInterval) {
     clearInterval(quizTimerInterval);
@@ -1981,7 +1999,7 @@ export function switchView(viewId, { updateUrl = true } = {}) {
     if (typeof document !== "undefined" && document.body) {
       document.body.classList.remove("view-grammar-active");
     }
-    const targetTab = (typeof extraData === "string" ? extraData : null) || window.__targetExploreTab || "omenihongo";
+    const targetTab = (typeof extraTab === "string" ? extraTab : null) || window.__targetExploreTab || "omenihongo";
     setupOmeNihongoUI(targetTab);
   } else {
     if (typeof document !== "undefined" && document.body) {
@@ -4780,13 +4798,18 @@ function setupQuizConfig(preselectedProjectId = null) {
   updateMultiplierButtonsUI();
 
   const countInput = document.getElementById("quiz-setup-count");
-  if (restoredQuestionCount !== null) {
-    countInput.value = restoredQuestionCount;
-  } else {
-    countInput.value = quizSelectedVocabIds.length;
+  if (countInput) {
+    if (restoredQuestionCount !== null) {
+      countInput.value = restoredQuestionCount;
+    } else {
+      countInput.value = quizSelectedVocabIds.length;
+    }
   }
 
-  document.getElementById("quiz-setup-retry").checked = restoredAllowRetry;
+  const retryCb = document.getElementById("quiz-setup-retry");
+  if (retryCb) {
+    retryCb.checked = restoredAllowRetry;
+  }
   const repeatWrongPracticeCb = document.getElementById("quiz-setup-repeat-wrong");
   if (repeatWrongPracticeCb) {
     repeatWrongPracticeCb.checked = restoredRepeatWrongPractice;

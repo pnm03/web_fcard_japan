@@ -86,3 +86,80 @@ test("index.html & style.css: Thay thế emoji bằng badge vector SVG chuyên n
   assert.ok(css.includes(".item-icon-badge.badge-blue"), "CSS phải có màu badge-blue");
 });
 
+test("switchView: Chuyển view an toàn khi tham số thứ 2 là null, undefined, string hoặc object", async () => {
+  const { switchView } = await import("../src/ui.js");
+
+  const views = [
+    { id: "dashboard-view", classList: new Set(["active"]) },
+    { id: "quiz-setup-view", classList: new Set() },
+    { id: "explore-view", classList: new Set() }
+  ];
+
+  const domElements = {
+    "quiz-setup-projects-select": { value: "all" },
+    "quiz-selected-summary": { textContent: "" },
+    "quiz-question-count": { value: "10" }
+  };
+
+  global.document = {
+    documentElement: {
+      classList: {
+        remove: () => {},
+        add: () => {},
+        contains: () => false
+      }
+    },
+    body: {
+      classList: {
+        remove: () => {},
+        add: () => {},
+        contains: () => false
+      }
+    },
+    querySelector: () => null,
+    querySelectorAll: (selector) => {
+      if (selector === ".view-section") {
+        return views.map(v => ({
+          id: v.id,
+          classList: {
+            add: (c) => v.classList.add(c),
+            remove: (c) => v.classList.delete(c),
+            contains: (c) => v.classList.has(c)
+          }
+        }));
+      }
+      return [];
+    },
+    getElementById: (id) => domElements[id] || null
+  };
+
+  global.window = {
+    location: { pathname: "/", hash: "", origin: "http://localhost:5173", href: "http://localhost:5173/" },
+    history: { pushState: () => {} },
+    addEventListener: () => {},
+    removeEventListener: () => {}
+  };
+
+  global.localStorage = {
+    getItem: () => null,
+    setItem: () => {},
+    removeItem: () => {}
+  };
+
+  // 1. Kiểm tra gọi với null (bug trước đây gây lỗi TypeError)
+  assert.doesNotThrow(() => {
+    switchView("quiz-setup-view", null);
+  }, "Không được throw lỗi khi options là null");
+
+  // 2. Kiểm tra gọi với object đầy đủ
+  assert.doesNotThrow(() => {
+    switchView("dashboard-view", { updateUrl: true, extraTab: null });
+  }, "Không được throw lỗi khi options là object");
+
+  // 3. Kiểm tra gọi với string (extraTab)
+  assert.doesNotThrow(() => {
+    switchView("explore-view", "omenihongo");
+  }, "Không được throw lỗi khi options là string");
+});
+
+
