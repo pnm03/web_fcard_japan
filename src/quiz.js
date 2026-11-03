@@ -14,21 +14,34 @@ export function getAcceptedMeaningAnswers(meaning) {
   const original = String(meaning || "").trim();
   if (!original) return [];
 
-  const withoutNotes = original
+  const cleanOriginal = (text) => text
     .replace(/\([^()]*\)/g, " ")
     .replace(/（[^（）]*）/g, " ")
     .replace(/\s*[;；]\s*ví dụ.*$/i, "")
     .replace(/\s+/g, " ")
     .trim();
 
-  const isExplanatoryDefinition = /^(?:hậu tố|đây là lời chào)|(?:thêm vào sau tên|không dùng khi|dùng kèm theo tên)/i.test(withoutNotes);
-  const commaGroups = isExplanatoryDefinition
-    ? [withoutNotes]
-    : withoutNotes.split(/\s*(?:,|，|;|；)\s*|\s+(?:hoặc|hay)\s+/i);
+  const withoutNotes = cleanOriginal(original.replace(/\[[^[\]]*\]/g, " ").replace(/［[^［］]*］/g, " "));
+  const unbracketedNotes = cleanOriginal(original.replace(/[[\]［］]/g, ""));
 
-  const conciseGroups = commaGroups.length > 1 && /cách nói|cách gọi|mang nghĩa/i.test(commaGroups[0])
-    ? commaGroups.filter(group => !/cách nói|cách gọi|mang nghĩa/i.test(group))
-    : commaGroups;
+  const targetTexts = [withoutNotes];
+  if (unbracketedNotes && unbracketedNotes !== withoutNotes) {
+    targetTexts.push(unbracketedNotes);
+  }
+
+  const allCommaGroups = [];
+  targetTexts.forEach(txt => {
+    if (!txt) return;
+    const isExplanatoryDefinition = /^(?:hậu tố|đây là lời chào)|(?:thêm vào sau tên|không dùng khi|dùng kèm theo tên)/i.test(txt);
+    const groups = isExplanatoryDefinition
+      ? [txt]
+      : txt.split(/\s*(?:,|，|;|；)\s*|\s+(?:hoặc|hay)\s+/i);
+    allCommaGroups.push(...groups);
+  });
+
+  const conciseGroups = allCommaGroups.length > 1 && /cách nói|cách gọi|mang nghĩa/i.test(allCommaGroups[0])
+    ? allCommaGroups.filter(group => !/cách nói|cách gọi|mang nghĩa/i.test(group))
+    : allCommaGroups;
 
   const expandSlashGroup = (group) => {
     if (!group.includes("/")) return [group];
@@ -384,13 +397,19 @@ function getJapaneseAnswerMatch(userAnswer, vocab) {
 function getJapaneseAnswerCandidates(vocab) {
   const raw = vocab?.japanese || "";
   const display = getJapaneseDisplayText(raw);
-  const withoutAnnotation = raw.replace(/\([^)]+\)/g, "").replace(/（[^）]+）/g, "").trim();
+  const withoutAnnotation = raw
+    .replace(/\([^)]+\)/g, "")
+    .replace(/（[^）]+）/g, "")
+    .replace(/\[[^\]]+\]/g, "")
+    .replace(/［[^］]+］/g, "")
+    .trim();
+  const unbracketed = raw.replace(/[[\]［］]/g, "").trim();
   const annotationMatch = raw.match(/\(([^)]+)\)/) || raw.match(/（([^）]+)）/);
   const annotation = annotationMatch ? annotationMatch[1].trim() : "";
   const hiraganaFromRomaji = vocab?.romaji ? romajiToHiragana(vocab.romaji) : "";
   const rawRomaji = vocab?.romaji || "";
 
-  return [...new Set([display, withoutAnnotation, annotation, hiraganaFromRomaji, rawRomaji, raw].filter(Boolean))];
+  return [...new Set([display, withoutAnnotation, unbracketed, annotation, hiraganaFromRomaji, rawRomaji, raw].filter(Boolean))];
 }
 
 function isJapaneseAnswerMatch(userAnswer, vocab) {

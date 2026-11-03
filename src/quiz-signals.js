@@ -42,11 +42,27 @@ function canonicalRomaji(value) {
 
 export function getRomajiAnswerMatch(userAnswer, correctAnswer) {
   const user = normalizeRomajiAnswer(userAnswer);
-  const correct = normalizeRomajiAnswer(correctAnswer);
-  if (!user || !correct) return "wrong";
-  if (user === correct) return "correct";
-  if (canonicalRomaji(user) === canonicalRomaji(correct)) return "variant";
-  return correct.length >= 5 && getLevenshteinDistance(user, correct) <= 1 ? "near" : "wrong";
+  if (!user) return "wrong";
+
+  const rawCorrect = String(correctAnswer || "");
+  const candidates = [
+    rawCorrect,
+    rawCorrect.replace(/\[[^\]]*\]/g, "").replace(/［[^］]*］/g, ""),
+    rawCorrect.replace(/[[\]［］]/g, "")
+  ].map(normalizeRomajiAnswer).filter(Boolean);
+
+  for (const candidate of candidates) {
+    if (user === candidate) return "correct";
+    if (canonicalRomaji(user) === canonicalRomaji(candidate)) return "variant";
+  }
+
+  for (const candidate of candidates) {
+    if (candidate.length >= 5 && getLevenshteinDistance(user, candidate) <= 1) {
+      return "near";
+    }
+  }
+
+  return "wrong";
 }
 
 function seedVocab(seed) {
