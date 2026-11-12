@@ -83,6 +83,19 @@ test("Dự án Từ vựng bài 2: Chứa đầy đủ 47 từ vựng Minna no N
   assert.ok(findVocab("[どうも] ありがとうございます"), "Có từ [どうも] ありがとうございます");
   assert.ok(findVocab("これからおせわになります"), "Có từ これからおせわになります");
   assert.ok(findVocab("こちらこそよろしく"), "Có từ こちらこそよろしく");
+
+  // Kiểm tra sắp xếp theo cặp liên quan (Ko-So-A-Do đi theo cặp, nhóm âm Ka-)
+  assert.deepEqual(
+    lesson2.vocab.slice(0, 7).map(v => v.japanese),
+    ["これ", "この～", "それ", "その～", "あれ", "あの～", "なに"],
+    "7 từ đầu phải xếp theo cặp Ko-So-A-Do và từ hỏi なに"
+  );
+  const kaStartIdx = lesson2.vocab.findIndex(v => v.japanese === "かぎ");
+  assert.deepEqual(
+    lesson2.vocab.slice(kaStartIdx, kaStartIdx + 4).map(v => v.japanese),
+    ["かぎ", "かさ", "かばん", "カメラ"],
+    "Nhóm đồ cá nhân đầu âm Ka- phải đứng cạnh nhau"
+  );
 });
 
 test("initializeStorage: Tự động seed dự án Từ vựng bài 2 vào kho localStorage đã tồn tại", () => {
@@ -252,8 +265,8 @@ test("Ordering Stability: Từ đã học không bị tụt xuống cuối khi �
   assert.equal(needsOrderRepair, true);
   assert.deepEqual(
     orderedVocab.map(v => v.id),
-    ["v2-1", "v2-2", "v2-3", "v2-4", "v2-5", "v2-6", "v2-7", "v2-8"],
-    "Phải khôi phục đúng thứ tự gốc của Từ vựng bài 2 dù DB bị xáo trộn"
+    ["v2-1", "v2-4", "v2-2", "v2-5", "v2-3", "v2-6", "v2-7", "v2-8"],
+    "Phải khôi phục đúng thứ tự chuẩn theo cặp của Từ vựng bài 2 dù DB bị xáo trộn"
   );
 
   // 2. Giả lập dự án tùy chỉnh của người dùng khi bảng vocab chưa có cột order_index

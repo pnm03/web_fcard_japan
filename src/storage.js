@@ -41,14 +41,18 @@ const DEFAULT_PROJECTS = [
   {
     id: "proj-lesson-2",
     name: "Từ vựng bài 2",
-    description: "Từ vựng Minna no Nihongo Bài 2: Đồ vật, đồ dùng học tập, đại từ chỉ thị và giao tiếp cơ bản.",
+    description: "Từ vựng Minna no Nihongo Bài 2: Sắp xếp theo cặp liên quan (Ko-So-A-Do, đồ dùng học tập, đồ Ka-, điện tử, hội thoại).",
     vocab: [
+      // 1. Bộ chỉ thị Ko-So-A-Do & Từ để hỏi (ghép cặp để học 1 thể)
       { id: "v2-1", japanese: "これ", romaji: "kore", meaning: "Cái này, đây (vật ở gần người nói)", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
-      { id: "v2-2", japanese: "それ", romaji: "sore", meaning: "Cái đó, đó (vật ở gần người nghe)", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
-      { id: "v2-3", japanese: "あれ", romaji: "are", meaning: "Cái kia, kia (vật ở xa cả người nói lẫn người nghe)", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
       { id: "v2-4", japanese: "この～", romaji: "kono", meaning: "~ này", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
+      { id: "v2-2", japanese: "それ", romaji: "sore", meaning: "Cái đó, đó (vật ở gần người nghe)", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
       { id: "v2-5", japanese: "その～", romaji: "sono", meaning: "~ đó", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
+      { id: "v2-3", japanese: "あれ", romaji: "are", meaning: "Cái kia, kia (vật ở xa cả người nói lẫn người nghe)", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
       { id: "v2-6", japanese: "あの～", romaji: "ano", meaning: "~ kia", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
+      { id: "v2-37", japanese: "なに", romaji: "nani", meaning: "Cái gì, gì", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
+
+      // 2. Sách báo, Vở, Giấy tờ & Thẻ
       { id: "v2-7", japanese: "ほん", romaji: "hon", meaning: "Sách", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
       { id: "v2-8", japanese: "じしょ", romaji: "jisho", meaning: "Từ điển", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
       { id: "v2-9", japanese: "ざっし", romaji: "zasshi", meaning: "Tạp chí", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
@@ -58,32 +62,47 @@ const DEFAULT_PROJECTS = [
       { id: "v2-13", japanese: "めいし", romaji: "meishi", meaning: "Danh thiếp", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
       { id: "v2-14", japanese: "カード", romaji: "kaado", meaning: "Thẻ, card", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
       { id: "v2-15", japanese: "テレホンカード", romaji: "terehonkaado", meaning: "Thẻ điện thoại", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
+
+      // 3. Các loại Bút
       { id: "v2-16", japanese: "えんぴつ", romaji: "enpitsu", meaning: "Bút chì", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
-      { id: "v2-17", japanese: "ボールペン", romaji: "boorupen", meaning: "Bút bi", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
       { id: "v2-18", japanese: "シャープペンシル", romaji: "shaapupenshiru", meaning: "Bút chì kim", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
+      { id: "v2-17", japanese: "ボールペン", romaji: "boorupen", meaning: "Bút bi", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
+
+      // 4. Đồ cá nhân mang theo (nhóm đầu âm Ka-: kagi, kasa, kaban, kamera + tokei)
       { id: "v2-19", japanese: "かぎ", romaji: "kagi", meaning: "Chìa khóa", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
-      { id: "v2-20", japanese: "とけい", romaji: "tokei", meaning: "Đồng hồ", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
       { id: "v2-21", japanese: "かさ", romaji: "kasa", meaning: "Ô, dù", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
       { id: "v2-22", japanese: "かばん", romaji: "kaban", meaning: "Cặp sách, túi", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
+      { id: "v2-27", japanese: "カメラ", romaji: "kamera", meaning: "Máy ảnh", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
+      { id: "v2-20", japanese: "とけい", romaji: "tokei", meaning: "Đồng hồ", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
+
+      // 5. Thiết bị điện tử & Băng đài (cụm te- liên quan + đài, máy tính)
       { id: "v2-23", japanese: "[カセット] テープ", romaji: "[kasetto] teepu", meaning: "Băng (cat-xet)", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
       { id: "v2-24", japanese: "テープレコーダー", romaji: "teepurekoodaa", meaning: "Máy ghi âm", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
       { id: "v2-25", japanese: "テレビ", romaji: "terebi", meaning: "Tivi", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
       { id: "v2-26", japanese: "ラジオ", romaji: "rajio", meaning: "Radio", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
-      { id: "v2-27", japanese: "カメラ", romaji: "kamera", meaning: "Máy ảnh", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
       { id: "v2-28", japanese: "コンピューター", romaji: "konpyuutaa", meaning: "Máy tính", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
-      { id: "v2-29", japanese: "じどうしゃ", romaji: "jidousha", meaning: "Xe oto", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
+
+      // 6. Bàn ghế & Xe cộ
       { id: "v2-30", japanese: "つくえ", romaji: "tsukue", meaning: "Bàn", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
       { id: "v2-31", japanese: "いす", romaji: "isu", meaning: "Ghế", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
-      { id: "v2-32", japanese: "チョコレート", romaji: "chokoreeto", meaning: "Socola", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
+      { id: "v2-29", japanese: "じどうしゃ", romaji: "jidousha", meaning: "Xe oto", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
+
+      // 7. Đồ ăn & Thức uống
       { id: "v2-33", japanese: "コーヒー", romaji: "koohii", meaning: "Cafe", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
-      { id: "v2-34", japanese: "えいご", romaji: "eigo", meaning: "Tiếng Anh", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
-      { id: "v2-35", japanese: "にほんご", romaji: "nihongo", meaning: "Tiếng Nhật", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
+      { id: "v2-32", japanese: "チョコレート", romaji: "chokoreeto", meaning: "Socola", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
+
+      // 8. Ngôn ngữ (nhóm ～ご)
       { id: "v2-36", japanese: "～ご", romaji: "go", meaning: "Tiếng ~", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
-      { id: "v2-37", japanese: "なに", romaji: "nani", meaning: "Cái gì, gì", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
+      { id: "v2-35", japanese: "にほんご", romaji: "nihongo", meaning: "Tiếng Nhật", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
+      { id: "v2-34", japanese: "えいご", romaji: "eigo", meaning: "Tiếng Anh", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
+
+      // 9. Phản hồi hội thoại (Đúng / Vậy à / Sai rồi / Ngập ngừng)
       { id: "v2-38", japanese: "そう", romaji: "sou", meaning: "Đúng, phải, đúng vậy", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
-      { id: "v2-39", japanese: "ちがいます", romaji: "chigaimasu", meaning: "Không phải, không đúng, sai rồi", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
       { id: "v2-40", japanese: "そうですか", romaji: "sou desu ka", meaning: "Vậy à", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
+      { id: "v2-39", japanese: "ちがいます", romaji: "chigaimasu", meaning: "Không phải, không đúng, sai rồi", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
       { id: "v2-41", japanese: "あのう", romaji: "anou", meaning: "À, ờ... (dùng để biểu thị sự ngập ngừng, do dự)", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
+
+      // 10. Mẫu câu giao tiếp tặng quà & chào hỏi nhờ giúp đỡ
       { id: "v2-42", japanese: "ほんのきもちです", romaji: "hon no kimochi desu", meaning: "Đây là một chút lòng thành", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
       { id: "v2-43", japanese: "どうぞ", romaji: "douzo", meaning: "Xin mời (dùng khi mời ai đó cái gì)", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
       { id: "v2-44", japanese: "どうも", romaji: "doumo", meaning: "Cảm ơn", correctCount: 0, wrongCount: 0, historyTimes: [], difficultyScore: 0 },
@@ -809,7 +828,7 @@ export function initializeStorage() {
         localStorage.setItem(seedKey, "1");
       }
 
-      const repairKey = `nihongo_repaired_lesson_2_order_v1_${storageKey}`;
+      const repairKey = `nihongo_repaired_lesson_2_order_v2_${storageKey}`;
       if (!localStorage.getItem(repairKey) && !isProjectManuallyReordered("proj-lesson-2")) {
         const lesson2Index = existing.findIndex(p => p.id === "proj-lesson-2");
         if (lesson2Index !== -1 && Array.isArray(existing[lesson2Index].vocab)) {
