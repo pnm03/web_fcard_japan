@@ -9022,9 +9022,10 @@ body.view-grammar-active .container,
 }
 
 .acc-step-item.active-step {
-  border-color: var(--accent);
-  background: var(--accent);
+  border-color: var(--accent) !important;
+  background: var(--accent) !important;
   color: #fff !important;
+  opacity: 1 !important;
   box-shadow: var(--shadow-sm);
 }
 
@@ -9043,7 +9044,7 @@ body.view-grammar-active .container,
   font-weight: 800;
 }
 
-.acc-step-item.locked-step {
+.acc-step-item.locked-step:not(.active-step) {
   opacity: 0.55;
   cursor: not-allowed;
   background: var(--field);
@@ -9574,9 +9575,9 @@ body.view-grammar-active .container,
 /* Tab Kiểm Tra */
 .test-banner {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
   background: var(--field);
   border: 1px solid var(--line-strong);
   border-radius: 10px;
@@ -9584,9 +9585,22 @@ body.view-grammar-active .container,
   margin-bottom: 20px;
 }
 
+.test-banner-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
 .test-banner.banner-passed {
   border-color: #10b981;
   background: rgba(16, 185, 129, 0.08);
+}
+
+.test-banner.banner-failed {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.06);
 }
 
 .test-banner h3 {
@@ -9621,6 +9635,66 @@ body.view-grammar-active .container,
   color: #10b981;
 }
 
+.test-score-badge.badge-not-passed .score-number,
+.test-score-badge.badge-not-passed .score-label {
+  color: #ef4444;
+}
+
+.test-review-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line-strong);
+}
+
+.review-summary-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.review-summary-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.test-q-pill {
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 0.12s ease;
+}
+
+.test-q-pill:hover {
+  transform: translateY(-1px);
+}
+
+.test-q-pill.pill-correct {
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(16, 185, 129, 0.45);
+  color: #059669;
+}
+
+.test-q-pill.pill-wrong {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #dc2626;
+}
+
+.test-legacy-note {
+  font-size: 12px;
+  color: var(--ink-soft);
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+}
+
 .test-questions-stack {
   display: flex;
   flex-direction: column;
@@ -9634,11 +9708,27 @@ body.view-grammar-active .container,
   background: var(--paper);
 }
 
+.test-question-card.tq-reviewed.tq-correct {
+  border-color: #10b981;
+  border-left-width: 4px;
+}
+
+.test-question-card.tq-reviewed.tq-wrong {
+  border-color: #ef4444;
+  border-left-width: 4px;
+}
+
 .tq-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 6px;
+}
+
+.tq-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .tq-index {
@@ -9676,6 +9766,80 @@ body.view-grammar-active .container,
 
 .tq-option-label:hover {
   border-color: var(--accent);
+}
+
+.tq-option-label.tq-opt-correct {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  color: #065f46;
+  font-weight: 600;
+}
+
+.tq-option-label.tq-opt-wrong {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  color: #991b1b;
+  font-weight: 600;
+}
+
+.tq-opt-letter {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.tq-option-text {
+  flex: 1;
+}
+
+.tq-opt-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.tq-opt-tag.tag-correct {
+  background: #10b981;
+  color: #fff;
+}
+
+.tq-opt-tag.tag-wrong {
+  background: #ef4444;
+  color: #fff;
+}
+
+.tq-explanation-box {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tq-explanation-box.exp-correct {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: var(--ink);
+}
+
+.tq-explanation-box.exp-wrong {
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  color: var(--ink);
+}
+
+.tq-why-wrong {
+  color: #b91c1c;
+}
+
+.tq-why-right {
+  color: var(--ink);
 }
 
 .test-submit-box {

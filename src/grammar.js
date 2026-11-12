@@ -218,7 +218,12 @@ export const GRAMMAR_CHAPTERS = [
             q: "Trong câu 'わたし は マイ です', trợ từ 'は' được phát âm là gì?",
             options: ["ha", "wa", "ba", "ya"],
             correct: 1,
-            explanation: "Trợ từ は trong ngữ pháp tiếng Nhật bắt buộc phát âm là 'wa'."
+            explanation: "Trợ từ は đánh dấu chủ đề câu trong tiếng Nhật bắt buộc phải phát âm là 'wa' (dù viết bằng chữ は).",
+            wrongReasons: {
+              0: "Chữ 'は' đứng trong từ vựng (như はな = hoa) mới đọc là 'ha'; khi làm trợ từ nối sau chủ ngữ ('わたし は ...') thì bắt buộc đọc là 'wa'.",
+              2: "'ba' là âm đục của chữ ば (có dấu tenten), không phải trợ từ は.",
+              3: "'ya' là cách đọc của chữ や, không phải trợ từ は."
+            }
           },
           {
             id: "tq-2",
@@ -230,7 +235,12 @@ export const GRAMMAR_CHAPTERS = [
               "Vị kia cũng là giáo viên."
             ],
             correct: 2,
-            explanation: "じゃありません là thể phủ định của です: 'không phải là'."
+            explanation: "Cấu trúc 'A は B じゃありません' là thể phủ định của 'です', mang nghĩa 'A không phải là B'. 'あのかた' là cách nói lịch sự của 'vị kia'.",
+            wrongReasons: {
+              0: "Câu kết thúc bằng thể phủ định 'じゃありません' (không phải là), không phải thể khẳng định 'です'.",
+              1: "Câu không có trợ từ nghi vấn 'か' ở cuối (câu hỏi phải kết thúc bằng 'ですか').",
+              3: "Câu dùng trợ từ 'は' kết hợp phủ định 'じゃありません', không dùng trợ từ 'も' (cũng)."
+            }
           },
           {
             id: "tq-3",
@@ -242,14 +252,24 @@ export const GRAMMAR_CHAPTERS = [
               "いいえ、エンジニア も です。"
             ],
             correct: 2,
-            explanation: "Trả lời khẳng định: はい + danh từ + です."
+            explanation: "Khi đồng ý với câu hỏi dạng 'ですか', trả lời khẳng định bằng mẫu: 'はい、+ [Danh từ] + です。' (Vâng, đúng là kỹ sư).",
+            wrongReasons: {
+              0: "Mâu thuẫn ngữ nghĩa: 'はい' (vâng/đúng) phải đi với đuôi khẳng định 'です', không đi với phủ định 'じゃありません'.",
+              1: "Đề bài hỏi trường hợp 'đồng ý' nên phải dùng 'はい' (không dùng 'いいえ'); ngoài ra 'いいえ' cũng không đi cùng 'です'.",
+              3: "Sai cả từ mở đầu ('いいえ' cho câu đồng ý) lẫn cách dùng trợ từ 'も' đứng sai vị trí trước 'です'."
+            }
           },
           {
             id: "tq-4",
             q: "Điền trợ từ: 'A: わたしはかいしゃいんです。 B: わたし [ ? ] かいしゃいんです。'",
             options: ["は", "も", "か", "に"],
             correct: 1,
-            explanation: "B cũng là nhân viên công ty giống A nên dùng trợ từ 'も' (cũng)."
+            explanation: "Vì B có cùng nghề nghiệp 'かいしゃいん' (nhân viên công ty) giống A nên dùng trợ từ 'も' (cũng) thay cho 'は': 'わたし も かいしゃいんです'.",
+            wrongReasons: {
+              0: "Dùng 'は' chỉ nêu thông tin độc lập, không thể hiện ý 'cũng giống người trước' như ngữ cảnh hội thoại A–B này.",
+              2: "'か' là trợ từ nghi vấn đặt ở cuối câu (ですか), không đứng sau chủ ngữ 'わたし'.",
+              3: "'に' dùng chỉ thời gian/địa điểm/mục tiêu, không dùng trong mẫu câu danh từ 'A も B です'."
+            }
           },
           {
             id: "tq-5",
@@ -261,7 +281,12 @@ export const GRAMMAR_CHAPTERS = [
               "じゃなかった"
             ],
             correct: 0,
-            explanation: "ではありません mang sắc thái trang trọng, lịch sự chuẩn mực trong văn viết."
+            explanation: "'ではありません' là dạng đầy đủ và trang trọng hơn của 'じゃありません', thường dùng trong văn viết, thư từ, thuyết trình.",
+            wrongReasons: {
+              1: "Thêm 'か' ở cuối biến câu thành câu hỏi nghi vấn ('chẳng phải là ... sao?'), không phải thể phủ định đơn thuần.",
+              2: "'でした' là quá khứ khẳng định ('đã là'), không phải dạng phủ định hiện tại.",
+              3: "'じゃなかった' là thể suồng sã (thông thường) ở thì quá khứ phủ định, không phải văn viết lịch sự."
+            }
           },
           {
             id: "tq-6",
@@ -274,7 +299,12 @@ export const GRAMMAR_CHAPTERS = [
               "Anh Wang cũng là bác sĩ."
             ],
             correct: 2,
-            explanation: "Câu kết thúc bằng 'ですか' là câu hỏi nghi vấn."
+            explanation: "Câu 'ワンさん は いしゃ です か' kết thúc bằng 'ですか' (có trợ từ nghi vấn か) nên là câu hỏi xác nhận thông tin: 'Anh Wang có phải là bác sĩ không?'.",
+            wrongReasons: {
+              0: "Audio kết thúc bằng 'ですか' (câu hỏi), không phải câu khẳng định 'です'.",
+              1: "Audio không có dạng phủ định 'じゃありません', mà là câu nghi vấn 'ですか'.",
+              3: "Audio dùng trợ từ 'は' ('ワンさん は ...'), không dùng 'も' (cũng)."
+            }
           },
           {
             id: "tq-7",
@@ -286,7 +316,12 @@ export const GRAMMAR_CHAPTERS = [
               "わたし は ベトナムじん も です。"
             ],
             correct: 1,
-            explanation: "Trợ từ 'も' đứng ngay sau danh từ và thay thế cho 'は', tuyệt đối không được viết ghép 'はも'."
+            explanation: "Trợ từ 'も' đứng ngay sau danh từ chủ ngữ và thay thế hoàn toàn trợ từ 'は', tạo thành 'わたし も ベトナムじん です。' (Tôi cũng là người Việt Nam).",
+            wrongReasons: {
+              0: "Lỗi CẤM KỴ: 'も' thay thế 'は', tuyệt đối không được viết ghép thành 'はも'.",
+              2: "Sai vị trí & chức năng: 'か' đặt ở cuối câu để hỏi ('ですか'), không đứng sau chủ ngữ 'わたし'.",
+              3: "Sai vị trí trợ từ 'も': 'も' phải gắn trực tiếp sau chủ ngữ được đồng nhất ('わたし も'), không đứng sau vị ngữ ngay trước 'です'."
+            }
           },
           {
             id: "tq-8",
@@ -298,7 +333,12 @@ export const GRAMMAR_CHAPTERS = [
               "ミラーさん は IMC も しゃいん です。"
             ],
             correct: 0,
-            explanation: "Quy tắc trợ từ の: [Tổ chức lớn] + の + [Người / Bộ phận trực thuộc] ➔ ミラーさん は IMC の しゃいん です."
+            explanation: "Quy tắc sở hữu / trực thuộc với 'の': [Tổ chức lớn] + の + [Người / Bộ phận trực thuộc] ➔ 'ミラーさん は IMC の しゃいん です。'.",
+            wrongReasons: {
+              1: "Ngược trật tự 'の': Trong tiếng Nhật tổ chức/sở hữu lớn ('IMC') phải đứng TRƯỚC 'の', thành phần trực thuộc ('しゃいん') đứng SAU 'の'.",
+              2: "Sai chủ ngữ câu: Người được nói tới là 'ミラーさん は ...', còn 'IMC の しゃいん' là cụm danh từ vị ngữ.",
+              3: "Sai trợ từ nối: 'IMC' và 'しゃいん' là quan hệ sở hữu/trực thuộc ('nhân viên CỦA IMC') nên bắt buộc dùng 'の', không dùng 'も'."
+            }
           }
         ]
       },
@@ -364,24 +404,30 @@ export function saveAllGrammarProgress(data) {
   }
 }
 
+function createEmptyLessonProgress() {
+  return {
+    theoryDone: false,
+    exercisesDone: false,
+    exerciseScores: {},
+    testPassed: false,
+    testScore: 0,
+    testTotal: 8,
+    testAnswers: {},
+    testSubmitted: false,
+    notesList: [],
+    bookmarked: false,
+    reviewDone: false,
+    reviewQuizResult: null
+  };
+}
+
 function getDefaultProgressState() {
   return {
     activeLessonId: "n5-lesson-1",
     activeSubStep: "theory", // theory | exercises | test | review
     unlockedAll: false,
     lessons: {
-      "n5-lesson-1": {
-        theoryDone: false,
-        exercisesDone: false,
-        exerciseScores: {},
-        testPassed: false,
-        testScore: 0,
-        testTotal: 8,
-        notesList: [],
-        bookmarked: false,
-        reviewDone: false,
-        reviewQuizResult: null
-      }
+      "n5-lesson-1": createEmptyLessonProgress()
     }
   };
 }
@@ -390,18 +436,7 @@ function getDefaultProgressState() {
 export function getLessonProgress(lessonId) {
   const all = loadAllGrammarProgress();
   if (!all.lessons[lessonId]) {
-    all.lessons[lessonId] = {
-      theoryDone: false,
-      exercisesDone: false,
-      exerciseScores: {},
-      testPassed: false,
-      testScore: 0,
-      testTotal: 8,
-      notesList: [],
-      bookmarked: false,
-      reviewDone: false,
-      reviewQuizResult: null
-    };
+    all.lessons[lessonId] = createEmptyLessonProgress();
   }
   return all.lessons[lessonId];
 }
@@ -410,22 +445,51 @@ export function getLessonProgress(lessonId) {
 export function updateLessonProgress(lessonId, partial) {
   const all = loadAllGrammarProgress();
   if (!all.lessons[lessonId]) {
-    all.lessons[lessonId] = {
-      theoryDone: false,
-      exercisesDone: false,
-      exerciseScores: {},
-      testPassed: false,
-      testScore: 0,
-      testTotal: 8,
-      notesList: [],
-      bookmarked: false,
-      reviewDone: false,
-      reviewQuizResult: null
-    };
+    all.lessons[lessonId] = createEmptyLessonProgress();
   }
   all.lessons[lessonId] = { ...all.lessons[lessonId], ...partial };
   saveAllGrammarProgress(all);
   return all.lessons[lessonId];
+}
+
+// Chấm điểm & phân tích chi tiết đúng/sai cho từng câu của Bài kiểm tra
+export function gradeGrammarTest(lesson, answersMap = {}) {
+  const questions = lesson?.testQuestions || [];
+  let correctCount = 0;
+
+  const details = questions.map((q, index) => {
+    const rawChoice = answersMap[q.id];
+    const hasChoice = rawChoice !== undefined && rawChoice !== null && rawChoice !== "";
+    const userChoice = hasChoice ? parseInt(rawChoice, 10) : null;
+    const isCorrect = userChoice !== null && userChoice === q.correct;
+    if (isCorrect) correctCount++;
+
+    const wrongReason = !isCorrect && userChoice !== null
+      ? (q.wrongReasons?.[userChoice] || `Lựa chọn ${String.fromCharCode(65 + userChoice)} chưa đúng với quy tắc ngữ pháp của câu hỏi này.`)
+      : "";
+
+    return {
+      questionId: q.id,
+      index,
+      userChoice,
+      correctIndex: q.correct,
+      isCorrect,
+      wrongReason,
+      explanation: q.explanation || ""
+    };
+  });
+
+  const total = questions.length;
+  const percent = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+  const passed = total > 0 && (correctCount / total) >= 0.8;
+
+  return {
+    correctCount,
+    total,
+    percent,
+    passed,
+    details
+  };
 }
 
 // Tính % hoàn thành của 1 bài học (Lý thuyết: 30%, Bài tập: 30%, Kiểm tra: 40%)
@@ -1138,26 +1202,26 @@ function renderLeftCourseMenu(lesson) {
           </div>
 
           <!-- Bước 2: Bài tập (phải xong lý thuyết mới đi tiếp) -->
-          <div class="acc-step-item ${currentSubStep === 'exercises' ? 'active-step' : ''} ${progress.exercisesDone ? 'completed-step' : ''} ${!progress.theoryDone && !allState.unlockedAll ? 'locked-step' : ''}" data-step="exercises">
-            <span class="step-indicator-icon">${progress.exercisesDone ? '✓' : (!progress.theoryDone && !allState.unlockedAll ? '🔒' : '✍️')}</span>
+          <div class="acc-step-item ${currentSubStep === 'exercises' ? 'active-step' : ''} ${progress.exercisesDone ? 'completed-step' : ''} ${!progress.theoryDone && !progress.exercisesDone && !allState.unlockedAll ? 'locked-step' : ''}" data-step="exercises">
+            <span class="step-indicator-icon">${progress.exercisesDone ? '✓' : (!progress.theoryDone && !progress.exercisesDone && !allState.unlockedAll ? '🔒' : '✍️')}</span>
             <div class="step-info">
               <span class="step-label">2. Luyện tập thực hành</span>
-              <small>${progress.exercisesDone ? 'Đã làm xong' : (!progress.theoryDone && !allState.unlockedAll ? 'Khóa (cần xong bước 1)' : '5 bài tập đa dạng')}</small>
+              <small>${progress.exercisesDone ? 'Đã làm xong' : (!progress.theoryDone && !progress.exercisesDone && !allState.unlockedAll ? 'Khóa (cần xong bước 1)' : '5 bài tập đa dạng')}</small>
             </div>
           </div>
 
           <!-- Bước 3: Bài kiểm tra (phải xong bài tập mới mở) -->
-          <div class="acc-step-item ${currentSubStep === 'test' ? 'active-step' : ''} ${progress.testPassed ? 'completed-step' : ''} ${!progress.exercisesDone && !allState.unlockedAll ? 'locked-step' : ''}" data-step="test">
-            <span class="step-indicator-icon">${progress.testPassed ? '🏆' : (!progress.exercisesDone && !allState.unlockedAll ? '🔒' : '🎯')}</span>
+          <div class="acc-step-item ${currentSubStep === 'test' ? 'active-step' : ''} ${progress.testPassed ? 'completed-step' : ''} ${!progress.exercisesDone && !progress.testPassed && !progress.testSubmitted && !allState.unlockedAll ? 'locked-step' : ''}" data-step="test">
+            <span class="step-indicator-icon">${progress.testPassed ? '🏆' : (!progress.exercisesDone && !progress.testPassed && !progress.testSubmitted && !allState.unlockedAll ? '🔒' : '🎯')}</span>
             <div class="step-info">
               <span class="step-label">3. Kiểm tra đánh giá</span>
-              <small>${progress.testPassed ? `Đạt ${progress.testScore}/${progress.testTotal} điểm` : (!progress.exercisesDone && !allState.unlockedAll ? 'Khóa (cần làm bài tập)' : 'Đạt ≥ 80% để qua bài')}</small>
+              <small>${progress.testSubmitted || progress.testPassed ? `Đạt ${progress.testScore}/${progress.testTotal} điểm` : (!progress.exercisesDone && !allState.unlockedAll ? 'Khóa (cần làm bài tập)' : 'Đạt ≥ 80% để qua bài')}</small>
             </div>
           </div>
 
           <!-- Bước 4: Ôn tập & Sinh đề luyện tập (mở sau khi vượt qua bài kiểm tra) -->
-          <div class="acc-step-item ${currentSubStep === 'review' ? 'active-step' : ''} ${progress.reviewDone ? 'completed-step' : ''} ${!progress.testPassed && !allState.unlockedAll ? 'locked-step' : ''}" data-step="review">
-            <span class="step-indicator-icon">${progress.reviewDone ? '🌟' : (!progress.testPassed && !allState.unlockedAll ? '🔒' : '🔥')}</span>
+          <div class="acc-step-item ${currentSubStep === 'review' ? 'active-step' : ''} ${progress.reviewDone ? 'completed-step' : ''} ${!progress.testPassed && !progress.reviewDone && !allState.unlockedAll ? 'locked-step' : ''}" data-step="review">
+            <span class="step-indicator-icon">${progress.reviewDone ? '🌟' : (!progress.testPassed && !progress.reviewDone && !allState.unlockedAll ? '🔒' : '🔥')}</span>
             <div class="step-info">
               <span class="step-label">4. Ôn tập & Sinh đề luyện tập</span>
               <small>${progress.reviewDone ? 'Đã hoàn thành ôn tập' : (!progress.testPassed && !allState.unlockedAll ? 'Khóa (cần xong Bài kiểm tra)' : 'Tự tạo ví dụ & Đề JLPT N5')}</small>
@@ -1516,56 +1580,126 @@ function renderExercisesTabHtml(lesson, progress) {
 // 3. Render Tab Bài Kiểm Tra
 function renderTestTabHtml(lesson, progress) {
   const questions = lesson.testQuestions || [];
-  const hasPassed = progress.testPassed;
+  const hasPassed = !!progress.testPassed;
+  const savedAnswers = progress.testAnswers || {};
+  const hasReviewAnswers = !!progress.testSubmitted && Object.keys(savedAnswers).length > 0;
+  const grading = hasReviewAnswers ? gradeGrammarTest(lesson, savedAnswers) : null;
+  const displayScore = grading ? grading.correctCount : (progress.testScore || 0);
+  const displayTotal = grading ? grading.total : (progress.testTotal || questions.length || 8);
+  const displayPercent = displayTotal > 0 ? Math.round((displayScore / displayTotal) * 100) : 0;
+  const isCurrentPass = grading ? grading.passed : hasPassed;
 
   return `
     <div class="test-view-wrapper">
-      <div class="test-banner ${hasPassed ? 'banner-passed' : ''}">
-        <div>
-          <h3>🎯 Bài Kiểm Tra Đánh Giá Năng Lực (8 câu hỏi)</h3>
-          <p>Đạt từ <strong>80% (7/8 câu)</strong> trở lên để được chứng nhận hoàn thành bài học và mở khóa bài tiếp theo!</p>
-        </div>
-        ${hasPassed ? `
-          <div class="test-score-badge">
-            <span class="score-number">${progress.testScore} / ${progress.testTotal}</span>
-            <span class="score-label">⭐⭐⭐ ĐÃ ĐẠT CHUẨN</span>
+      <div class="test-banner ${isCurrentPass ? 'banner-passed' : (hasReviewAnswers ? 'banner-failed' : '')}" id="grammar-test-banner">
+        <div class="test-banner-main">
+          <div>
+            <h3>🎯 Bài Kiểm Tra Đánh Giá Năng Lực (${questions.length} câu hỏi)</h3>
+            <p>Đạt từ <strong>80% (${Math.ceil(questions.length * 0.8)}/${questions.length} câu)</strong> trở lên để được chứng nhận hoàn thành bài học và mở khóa bài tiếp theo!</p>
           </div>
-        ` : ''}
+          ${(hasReviewAnswers || hasPassed) ? `
+            <div class="test-score-badge ${isCurrentPass ? '' : 'badge-not-passed'}">
+              <span class="score-number">${displayScore} / ${displayTotal} (${displayPercent}%)</span>
+              <span class="score-label">${isCurrentPass ? '⭐⭐⭐ ĐÃ ĐẠT CHUẨN' : '⚠️ CHƯA ĐẠT (CẦN ≥ 80%)'}</span>
+            </div>
+          ` : ''}
+        </div>
+
+        ${hasReviewAnswers && grading ? `
+          <div class="test-review-summary">
+            <span class="review-summary-label">Chi tiết từng câu (bấm để xem):</span>
+            <div class="review-summary-pills">
+              ${grading.details.map(d => `
+                <button type="button" class="test-q-pill ${d.isCorrect ? 'pill-correct' : 'pill-wrong'}" data-jump-card="tq-card-${d.questionId}">
+                  Câu ${d.index + 1} ${d.isCorrect ? '✓' : '✗'}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        ` : (hasPassed ? `
+          <div class="test-legacy-note">
+            ℹ️ Kết quả lần trước được lưu trước bản cập nhật chi tiết. Hãy nộp lại bài bên dưới để xem giải thích đúng/sai từng câu!
+          </div>
+        ` : '')}
       </div>
 
       <form id="grammar-test-form" class="grammar-test-form">
         <div class="test-questions-stack">
-          ${questions.map((q, qIdx) => `
-            <div class="test-question-card" id="tq-card-${q.id}">
-              <div class="tq-header">
-                <span class="tq-index">Câu ${qIdx + 1}</span>
-                ${q.audioText ? `
-                  <button type="button" class="btn btn-secondary btn-sm g-speak-btn" data-audio="${q.audioText}">
-                    🔊 Nghe phát âm
-                  </button>
+          ${questions.map((q, qIdx) => {
+            const detail = grading ? grading.details[qIdx] : null;
+            const cardStateClass = detail ? (detail.isCorrect ? 'tq-reviewed tq-correct' : 'tq-reviewed tq-wrong') : '';
+            const correctLetter = String.fromCharCode(65 + q.correct);
+            const userLetter = detail && detail.userChoice !== null ? String.fromCharCode(65 + detail.userChoice) : '';
+
+            return `
+              <div class="test-question-card ${cardStateClass}" id="tq-card-${q.id}">
+                <div class="tq-header">
+                  <div class="tq-header-left">
+                    <span class="tq-index">Câu ${qIdx + 1}</span>
+                    ${detail ? (
+                      detail.isCorrect
+                        ? '<span class="status-badge badge-pass">✓ Chính xác</span>'
+                        : '<span class="status-badge badge-fail">✗ Chưa đúng</span>'
+                    ) : ''}
+                  </div>
+                  ${q.audioText ? `
+                    <button type="button" class="btn btn-secondary btn-sm g-speak-btn" data-audio="${q.audioText}">
+                      🔊 Nghe phát âm
+                    </button>
+                  ` : ''}
+                </div>
+                <div class="tq-text">${q.q}</div>
+                <div class="tq-options">
+                  ${q.options.map((opt, optIdx) => {
+                    const isChecked = detail && detail.userChoice === optIdx;
+                    const isRightOpt = detail && optIdx === q.correct;
+                    const isWrongChosen = detail && isChecked && !isRightOpt;
+                    const optClass = isRightOpt ? 'tq-opt-correct' : (isWrongChosen ? 'tq-opt-wrong' : '');
+                    const letter = String.fromCharCode(65 + optIdx);
+
+                    return `
+                      <label class="tq-option-label ${optClass}">
+                        <input type="radio" name="tq-${q.id}" value="${optIdx}" ${isChecked ? 'checked' : ''} ${hasReviewAnswers ? 'disabled' : 'required'}>
+                        <span class="tq-radio-custom"></span>
+                        <span class="tq-opt-letter">${letter}.</span>
+                        <span class="tq-option-text">${opt}</span>
+                        ${isRightOpt ? '<span class="tq-opt-tag tag-correct">✓ Đáp án đúng</span>' : ''}
+                        ${isWrongChosen ? '<span class="tq-opt-tag tag-wrong">✗ Bạn chọn</span>' : ''}
+                      </label>
+                    `;
+                  }).join('')}
+                </div>
+
+                ${detail ? `
+                  <div class="tq-explanation-box ${detail.isCorrect ? 'exp-correct' : 'exp-wrong'}">
+                    ${(!detail.isCorrect && detail.wrongReason) ? `
+                      <div class="tq-why-wrong">
+                        <strong>❌ Vì sao đáp án ${userLetter} chưa đúng:</strong> ${escapeHtml(detail.wrongReason)}
+                      </div>
+                    ` : ''}
+                    <div class="tq-why-right">
+                      <strong>💡 ${detail.isCorrect ? `Vì sao đáp án ${correctLetter} đúng:` : `Vì sao đáp án ${correctLetter} mới đúng:`}</strong> ${escapeHtml(detail.explanation)}
+                    </div>
+                  </div>
                 ` : ''}
               </div>
-              <div class="tq-text">${q.q}</div>
-              <div class="tq-options">
-                ${q.options.map((opt, optIdx) => `
-                  <label class="tq-option-label">
-                    <input type="radio" name="tq-${q.id}" value="${optIdx}" required>
-                    <span class="tq-radio-custom"></span>
-                    <span class="tq-option-text">${opt}</span>
-                  </label>
-                `).join('')}
-              </div>
-            </div>
-          `).join('')}
+            `;
+          }).join('')}
         </div>
 
         <div class="test-submit-box" style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-          <button type="submit" class="btn btn-primary btn-lg" id="g-submit-test-btn">
-            ${hasPassed ? 'Nộp bài & Chấm điểm lại 📝' : 'Nộp bài & Chấm điểm tức thì 📝'}
-          </button>
+          ${hasReviewAnswers ? `
+            <button type="button" class="btn btn-secondary btn-lg" id="g-retake-test-btn">
+              🔄 Làm lại bài kiểm tra
+            </button>
+          ` : `
+            <button type="submit" class="btn btn-primary btn-lg" id="g-submit-test-btn">
+              Nộp bài &amp; Chấm điểm tức thì 📝
+            </button>
+          `}
           ${hasPassed ? `
             <button type="button" class="btn btn-primary btn-lg" id="g-go-to-review-btn" style="background: linear-gradient(135deg, #b5482e, #e05b38); border: none;">
-              🔥 Tiến vào Bước 4: Ôn tập & Sinh đề luyện tập ➔
+              🔥 Tiến vào Bước 4: Ôn tập &amp; Sinh đề luyện tập ➔
             </button>
           ` : ''}
         </div>
@@ -2019,34 +2153,64 @@ function attachWorkspaceEventListeners(lesson) {
     testForm.addEventListener("submit", (e) => {
       e.preventDefault();
       const questions = lesson.testQuestions || [];
-      let correctCount = 0;
+      const answersMap = {};
 
       questions.forEach(q => {
         const selected = testForm.querySelector(`input[name="tq-${q.id}"]:checked`);
-        if (selected && parseInt(selected.value, 10) === q.correct) {
-          correctCount++;
+        if (selected) {
+          answersMap[q.id] = parseInt(selected.value, 10);
         }
       });
 
-      const total = questions.length;
-      const passed = (correctCount / total) >= 0.8;
+      const grading = gradeGrammarTest(lesson, answersMap);
+      const existingProgress = getLessonProgress(lesson.id);
 
       updateLessonProgress(lesson.id, {
-        testScore: correctCount,
-        testTotal: total,
-        testPassed: passed
+        testScore: grading.correctCount,
+        testTotal: grading.total,
+        testPassed: !!existingProgress.testPassed || grading.passed,
+        testAnswers: answersMap,
+        testSubmitted: true
       });
 
-      if (passed) {
+      if (grading.passed) {
         try { triggerConfetti(); } catch (err) {}
-        alert(`🎉 XUẤT SẮC! Bạn đạt ${correctCount}/${total} điểm (${Math.round(correctCount / total * 100)}%).\nBạn đã xuất sắc hoàn thành Bài 1! Hãy tiến vào Bước 4: Ôn tập & Sinh đề luyện tập.`);
-      } else {
-        alert(`Bạn đạt ${correctCount}/${total} điểm (${Math.round(correctCount / total * 100)}%).\nCần đạt từ 80% (7/8 câu) trở lên để qua bài. Hãy thử lại nhé!`);
       }
 
       renderGrammarView();
+      const bannerEl = document.getElementById("grammar-test-banner");
+      if (bannerEl && typeof bannerEl.scrollIntoView === "function") {
+        bannerEl.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
     });
   }
+
+  // Làm lại bài kiểm tra (mở khóa radio để làm lượt mới mà vẫn giữ quyền truy cập Bước 4 nếu đã đạt)
+  const retakeTestBtn = document.getElementById("g-retake-test-btn");
+  if (retakeTestBtn) {
+    retakeTestBtn.addEventListener("click", () => {
+      updateLessonProgress(lesson.id, {
+        testAnswers: {},
+        testSubmitted: false
+      });
+      renderGrammarView();
+      const bannerEl = document.getElementById("grammar-test-banner");
+      if (bannerEl && typeof bannerEl.scrollIntoView === "function") {
+        bannerEl.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  }
+
+  // Click vào pill từng câu trên thanh tổng kết để cuộn nhanh tới câu đó
+  document.querySelectorAll(".test-q-pill[data-jump-card]").forEach(pill => {
+    pill.addEventListener("click", () => {
+      const targetId = pill.getAttribute("data-jump-card");
+      const card = targetId ? document.getElementById(targetId) : null;
+      if (card && typeof card.scrollIntoView === "function") {
+        card.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    });
+  });
 
   // Chuyển sang Bước 4: Ôn tập & Sinh đề
   const goToReviewBtn = document.getElementById("g-go-to-review-btn");

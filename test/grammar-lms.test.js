@@ -9,7 +9,8 @@ import {
   saveAllGrammarProgress, 
   getLessonProgress, 
   updateLessonProgress, 
-  calculateLessonPercent 
+  calculateLessonPercent,
+  gradeGrammarTest
 } from "../src/grammar.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -383,5 +384,64 @@ test("Mẫu câu 5: Trợ từ の (Sở hữu & liên kết danh từ N1 の N2
   // Đoạn văn đọc hiểu mẫu có áp dụng trợ từ の
   assert.ok(lesson1.readingArticle.passageJp.includes('gp-no">の</span>'), "Đoạn văn đọc hiểu mẫu phải có sử dụng trợ từ の");
 });
+
+test("Bài kiểm tra Bước 3: Chấm điểm chi tiết từng câu, lưu đáp án đã chọn & giải thích rõ vì sao đúng/sai", () => {
+  localStorage.clear();
+  const lesson1 = GRAMMAR_CHAPTERS[0].lessons[0];
+
+  // Mọi câu hỏi kiểm tra đều phải có explanation và wrongReasons cho đủ các lựa chọn sai
+  lesson1.testQuestions.forEach(q => {
+    assert.ok(q.explanation && q.explanation.length > 10, `${q.id} phải có explanation chi tiết`);
+    assert.ok(q.wrongReasons && typeof q.wrongReasons === "object", `${q.id} phải có wrongReasons`);
+    q.options.forEach((_, optIdx) => {
+      if (optIdx !== q.correct) {
+        assert.ok(q.wrongReasons[optIdx], `${q.id} lựa chọn sai #${optIdx} phải có giải thích lý do sai`);
+      }
+    });
+  });
+
+  // Giả lập học viên trả lời 7/8 câu (sai câu tq-7 chọn nhầm 'はも')
+  const sampleAnswers = {
+    "tq-1": 1,
+    "tq-2": 2,
+    "tq-3": 2,
+    "tq-4": 1,
+    "tq-5": 0,
+    "tq-6": 2,
+    "tq-7": 0, // Sai: はも
+    "tq-8": 0
+  };
+
+  const graded = gradeGrammarTest(lesson1, sampleAnswers);
+  assert.equal(graded.correctCount, 7);
+  assert.equal(graded.total, 8);
+  assert.equal(graded.percent, 88);
+  assert.equal(graded.passed, true);
+
+  const q1Detail = graded.details.find(d => d.questionId === "tq-1");
+  assert.equal(q1Detail.isCorrect, true);
+  assert.equal(q1Detail.wrongReason, "");
+  assert.ok(q1Detail.explanation.includes("wa"), "Câu đúng vẫn phải có giải thích tại sao đúng");
+
+  const q7Detail = graded.details.find(d => d.questionId === "tq-7");
+  assert.equal(q7Detail.isCorrect, false);
+  assert.equal(q7Detail.userChoice, 0);
+  assert.equal(q7Detail.correctIndex, 1);
+  assert.ok(q7Detail.wrongReason.includes("はも"), "Câu sai phải giải thích cụ thể vì sao phương án vừa chọn bị sai");
+  assert.ok(q7Detail.explanation.includes("も"), "Câu sai phải giải thích vì sao đáp án đúng là đúng");
+
+  // Kiểm tra lưu testAnswers & testSubmitted vào progress
+  updateLessonProgress("n5-lesson-1", {
+    testScore: graded.correctCount,
+    testTotal: graded.total,
+    testPassed: graded.passed,
+    testAnswers: sampleAnswers,
+    testSubmitted: true
+  });
+  const saved = getLessonProgress("n5-lesson-1");
+  assert.equal(saved.testSubmitted, true);
+  assert.equal(saved.testAnswers["tq-7"], 0);
+});
+
 
 
