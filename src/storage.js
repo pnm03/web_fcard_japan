@@ -703,6 +703,93 @@ async function safeSync(actionFn) {
   }
 }
 
+function getManualReorderStorageKey(projectId) {
+  return `nihongo_manual_reorder_${getCloudUserId() || "local"}_${projectId}`;
+}
+
+function isProjectManuallyReordered(projectId) {
+  try {
+    return localStorage.getItem(getManualReorderStorageKey(projectId)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markProjectManuallyReordered(projectId) {
+  try {
+    localStorage.setItem(getManualReorderStorageKey(projectId), "1");
+  } catch {}
+}
+
+function extractVocabIdSortKey(vocabId) {
+  const id = String(vocabId || "");
+  const lessonMatch = id.match(/^(?:v2-|v|n)(\d+)$/);
+  if (lessonMatch) return Number(lessonMatch[1]);
+  const tsMatch = id.match(/^v-(\d{10,})-/);
+  if (tsMatch) return Number(tsMatch[1]);
+  return Number.POSITIVE_INFINITY;
+}
+
+export function resolveCloudProjectVocabOrder(
+  projectId,
+  rawCloudVocab = [],
+  { localVocab = [], manualReordered = false } = {}
+) {
+  const defaultProj = DEFAULT_PROJECTS.find(p => p.id === projectId);
+  const defaultOrderMap = new Map(
+    (defaultProj?.vocab || []).map((v, idx) => [v.id, idx])
+  );
+  const localOrderMap = new Map(
+    (localVocab || []).map((v, idx) => [v.id, idx])
+  );
+
+  const explicitOrders = rawCloudVocab
+    .map(v => v.order_index)
+    .filter(val => val !== undefined && val !== null && Number.isFinite(Number(val)))
+    .map(Number);
+  const hasCompleteDistinctCloudOrder = rawCloudVocab.length <= 1
+    || (explicitOrders.length === rawCloudVocab.length && new Set(explicitOrders).size === rawCloudVocab.length);
+
+  const defaultMatchingRows = defaultOrderMap.size > 0
+    ? rawCloudVocab.filter(v => defaultOrderMap.has(v.id))
+    : [];
+  const isDefaultProjectOrderBroken = defaultMatchingRows.length >= 2 && !manualReordered && (
+    !hasCompleteDistinctCloudOrder
+    || defaultMatchingRows.some(v => Number(v.order_index) !== defaultOrderMap.get(v.id))
+  );
+
+  if (!hasCompleteDistinctCloudOrder || isDefaultProjectOrderBroken) {
+    const sorted = [...rawCloudVocab].sort((a, b) => {
+      if (defaultOrderMap.size > 0 && !manualReordered) {
+        const aDef = defaultOrderMap.has(a.id) ? defaultOrderMap.get(a.id) : Number.POSITIVE_INFINITY;
+        const bDef = defaultOrderMap.has(b.id) ? defaultOrderMap.get(b.id) : Number.POSITIVE_INFINITY;
+        if (aDef !== bDef) return aDef - bDef;
+      }
+
+      const aLocal = localOrderMap.has(a.id) ? localOrderMap.get(a.id) : Number.POSITIVE_INFINITY;
+      const bLocal = localOrderMap.has(b.id) ? localOrderMap.get(b.id) : Number.POSITIVE_INFINITY;
+      if (aLocal !== bLocal) return aLocal - bLocal;
+
+      const aCreated = a.created_at ? Date.parse(a.created_at) : Number.NaN;
+      const bCreated = b.created_at ? Date.parse(b.created_at) : Number.NaN;
+      if (Number.isFinite(aCreated) && Number.isFinite(bCreated) && aCreated !== bCreated) {
+        return aCreated - bCreated;
+      }
+
+      const aKey = extractVocabIdSortKey(a.id);
+      const bKey = extractVocabIdSortKey(b.id);
+      if (aKey !== bKey) return aKey - bKey;
+
+      return 0;
+    });
+
+    return { orderedVocab: sorted, needsOrderRepair: true };
+  }
+
+  const sorted = [...rawCloudVocab].sort((a, b) => Number(a.order_index) - Number(b.order_index));
+  return { orderedVocab: sorted, needsOrderRepair: false };
+}
+
 export function initializeStorage() {
   const storageKey = getProjectsStorageKey();
   if (!localStorage.getItem(storageKey)) {
@@ -710,14 +797,38 @@ export function initializeStorage() {
   } else {
     try {
       const existing = JSON.parse(localStorage.getItem(storageKey)) || [];
+      let changed = false;
+
       const seedKey = `nihongo_seeded_proj_lesson_2_${storageKey}`;
       if (!localStorage.getItem(seedKey)) {
         const lesson2Proj = DEFAULT_PROJECTS.find(p => p.id === "proj-lesson-2");
         if (lesson2Proj && !existing.some(p => p.id === "proj-lesson-2" || p.name === "Từ vựng bài 2")) {
           existing.push(lesson2Proj);
-          localStorage.setItem(storageKey, JSON.stringify(existing));
+          changed = true;
         }
         localStorage.setItem(seedKey, "1");
+      }
+
+      const repairKey = `nihongo_repaired_lesson_2_order_v1_${storageKey}`;
+      if (!localStorage.getItem(repairKey) && !isProjectManuallyReordered("proj-lesson-2")) {
+        const lesson2Index = existing.findIndex(p => p.id === "proj-lesson-2");
+        if (lesson2Index !== -1 && Array.isArray(existing[lesson2Index].vocab)) {
+          const defaultLesson2 = DEFAULT_PROJECTS.find(p => p.id === "proj-lesson-2");
+          const defaultOrderMap = new Map((defaultLesson2?.vocab || []).map((v, idx) => [v.id, idx]));
+          const repairedVocab = [...existing[lesson2Index].vocab].sort((a, b) => {
+            const aIdx = defaultOrderMap.has(a.id) ? defaultOrderMap.get(a.id) : Number.POSITIVE_INFINITY;
+            const bIdx = defaultOrderMap.has(b.id) ? defaultOrderMap.get(b.id) : Number.POSITIVE_INFINITY;
+            if (aIdx !== bIdx) return aIdx - bIdx;
+            return (a.orderIndex ?? 0) - (b.orderIndex ?? 0);
+          }).map((v, idx) => ({ ...v, orderIndex: idx }));
+          existing[lesson2Index] = { ...existing[lesson2Index], vocab: repairedVocab };
+          changed = true;
+        }
+        localStorage.setItem(repairKey, "1");
+      }
+
+      if (changed) {
+        localStorage.setItem(storageKey, JSON.stringify(existing));
       }
     } catch (e) {
       console.error("Lỗi khi kiểm tra dự án mẫu:", e);
@@ -1089,6 +1200,7 @@ export function reorderVocabInProject(projectId, orderedVocabIds) {
     orderIndex: index
   }));
 
+  markProjectManuallyReordered(projectId);
   saveProjects(projects);
 
   safeSync(async () => {
@@ -1358,48 +1470,64 @@ export async function fetchAndSyncFromSupabase(options = {}) {
       return { changed: false };
     }
 
-    // Nếu có dữ liệu trên mây, ghi đè LocalStorage
+    // Nếu có dữ liệu trên mây, khôi phục thứ tự từ vựng ổn định rồi đồng bộ vào LocalStorage
+    const currentLocalProjects = getProjects();
+    const localProjectsById = new Map(currentLocalProjects.map(p => [p.id, p]));
+    const repairedCloudVocabPayloads = [];
+
     const mergedProjects = cloudProjects.map(p => {
-      const projectVocab = cloudVocab
-        .filter(v => v.project_id === p.id)
-        .map(v => normalizeVocab({
-          id: v.id,
-          japanese: v.japanese,
-          romaji: v.romaji,
-          meaning: v.meaning,
-          order_index: v.order_index,
-          correct_count: v.correct_count,
-          wrong_count: v.wrong_count,
-          difficulty_score: v.difficulty_score,
-          history_times: v.history_times,
-          answer_history: v.answer_history,
-          last_tested_at: v.last_tested_at,
-          last_time_spent_sec: v.last_time_spent_sec,
-          last_answer_state: v.last_answer_state,
-          times_seen: v.times_seen,
-          streak_correct: v.streak_correct,
-          mastery_score: v.mastery_score,
-          next_review_at: v.next_review_at,
-          review_interval_hours: v.review_interval_hours,
-          review_stage: v.review_stage,
-          lapse_count: v.lapse_count,
-          review_reason: v.review_reason,
-          ease_factor: v.ease_factor,
-          memory_stability: v.memory_stability,
-          memory_difficulty: v.memory_difficulty,
-          fsrs_state: v.fsrs_state,
-          fsrs_due_at: v.fsrs_due_at,
-          fsrs_last_review_at: v.fsrs_last_review_at,
-          fsrs_reps: v.fsrs_reps,
-          fsrs_lapses: v.fsrs_lapses,
-          fsrs_scheduled_days: v.fsrs_scheduled_days,
-          fsrs_elapsed_days: v.fsrs_elapsed_days,
-          fsrs_learning_steps: v.fsrs_learning_steps,
-           fsrs_stability: v.fsrs_stability,
-           fsrs_difficulty: v.fsrs_difficulty,
-           mode_memory_states: v.mode_memory_states,
-           rescue_card: v.rescue_card
-        }));
+      const rawProjectVocab = cloudVocab.filter(v => v.project_id === p.id);
+      const localProject = localProjectsById.get(p.id);
+      const { orderedVocab, needsOrderRepair } = resolveCloudProjectVocabOrder(p.id, rawProjectVocab, {
+        localVocab: localProject?.vocab || [],
+        manualReordered: isProjectManuallyReordered(p.id)
+      });
+
+      const projectVocab = orderedVocab.map((v, index) => normalizeVocab({
+        id: v.id,
+        japanese: v.japanese,
+        romaji: v.romaji,
+        meaning: v.meaning,
+        order_index: index,
+        correct_count: v.correct_count,
+        wrong_count: v.wrong_count,
+        difficulty_score: v.difficulty_score,
+        history_times: v.history_times,
+        answer_history: v.answer_history,
+        last_tested_at: v.last_tested_at,
+        last_time_spent_sec: v.last_time_spent_sec,
+        last_answer_state: v.last_answer_state,
+        times_seen: v.times_seen,
+        streak_correct: v.streak_correct,
+        mastery_score: v.mastery_score,
+        next_review_at: v.next_review_at,
+        review_interval_hours: v.review_interval_hours,
+        review_stage: v.review_stage,
+        lapse_count: v.lapse_count,
+        review_reason: v.review_reason,
+        ease_factor: v.ease_factor,
+        memory_stability: v.memory_stability,
+        memory_difficulty: v.memory_difficulty,
+        fsrs_state: v.fsrs_state,
+        fsrs_due_at: v.fsrs_due_at,
+        fsrs_last_review_at: v.fsrs_last_review_at,
+        fsrs_reps: v.fsrs_reps,
+        fsrs_lapses: v.fsrs_lapses,
+        fsrs_scheduled_days: v.fsrs_scheduled_days,
+        fsrs_elapsed_days: v.fsrs_elapsed_days,
+        fsrs_learning_steps: v.fsrs_learning_steps,
+        fsrs_stability: v.fsrs_stability,
+        fsrs_difficulty: v.fsrs_difficulty,
+        mode_memory_states: v.mode_memory_states,
+        rescue_card: v.rescue_card
+      }, index));
+
+      if (needsOrderRepair && supportsVocabColumn("order_index")) {
+        projectVocab.forEach(vocab => {
+          repairedCloudVocabPayloads.push(buildVocabUpsertPayload(vocab, p.id));
+        });
+      }
+
       return {
         id: p.id,
         name: p.name,
@@ -1409,16 +1537,27 @@ export async function fetchAndSyncFromSupabase(options = {}) {
       };
     });
 
+    if (repairedCloudVocabPayloads.length > 0) {
+      safeSync(async () => {
+        const { error } = await supabase.from("vocab").upsert(repairedCloudVocabPayloads);
+        if (error) throw error;
+      });
+    }
+
     const hasLesson2 = mergedProjects.some(p => p.id === "proj-lesson-2" || p.name === "Từ vựng bài 2");
     const cloudSeedKey = `nihongo_cloud_seed_proj_lesson_2_${userId || "user"}`;
     if (!hasLesson2 && !localStorage.getItem(cloudSeedKey)) {
       const lesson2Proj = DEFAULT_PROJECTS.find(p => p.id === "proj-lesson-2");
       if (lesson2Proj) {
-        mergedProjects.push(lesson2Proj);
+        const normalizedLesson2 = {
+          ...lesson2Proj,
+          vocab: normalizeVocabList(lesson2Proj.vocab || [])
+        };
+        mergedProjects.push(normalizedLesson2);
         localStorage.setItem(cloudSeedKey, "1");
         safeSync(async () => {
-          await supabase.from("projects").upsert(buildProjectUpsertPayload(lesson2Proj));
-          const vocabToUpload = (lesson2Proj.vocab || []).map(v => buildVocabUpsertPayload(v, lesson2Proj.id));
+          await supabase.from("projects").upsert(buildProjectUpsertPayload(normalizedLesson2));
+          const vocabToUpload = normalizedLesson2.vocab.map(v => buildVocabUpsertPayload(v, normalizedLesson2.id));
           if (vocabToUpload.length > 0) {
             await supabase.from("vocab").upsert(vocabToUpload);
           }
@@ -1426,7 +1565,6 @@ export async function fetchAndSyncFromSupabase(options = {}) {
       }
     }
 
-    const currentLocalProjects = getProjects();
     const hasDataChanged = JSON.stringify(currentLocalProjects) !== JSON.stringify(mergedProjects);
 
     if (hasDataChanged) {

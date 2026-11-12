@@ -5762,7 +5762,15 @@ function focusQuizAnswerInput(inputEl, { delayed = true } = {}) {
   });
 }
 
-function updateQuizImeBadge(mode, isControllerActive) {
+function prefersKatakanaInput(vocab) {
+  const display = cleanToKanaOnly(vocab?.japanese || "").trim();
+  if (!display) return false;
+  const hasKatakana = /[\u30A1-\u30F6ー]/.test(display);
+  const hasHiragana = /[\u3041-\u3096]/.test(display);
+  return hasKatakana && !hasHiragana;
+}
+
+function updateQuizImeBadge(mode, imeState) {
   const badge = document.getElementById("quiz-ime-badge");
   const icon = document.getElementById("quiz-ime-badge-icon");
   const text = document.getElementById("quiz-ime-badge-text");
@@ -5771,11 +5779,17 @@ function updateQuizImeBadge(mode, isControllerActive) {
   badge.className = "quiz-ime-badge";
 
   if (mode === "meaning_to_japanese") {
-    if (isControllerActive) {
+    const resolvedState = imeState === true ? "kana" : (imeState === false ? "raw" : imeState);
+    if (resolvedState === "katakana") {
+      badge.classList.add("mode-kana", "mode-katakana");
+      icon.textContent = "ア";
+      text.textContent = "Kata";
+      badge.title = "Bộ gõ tự động Katakana (gõ no-to → ノート). Nhấp để đổi Hiragana / Trực tiếp, hoặc F2/F6/F7";
+    } else if (resolvedState === "kana") {
       badge.classList.add("mode-kana");
       icon.textContent = "あ";
       text.textContent = "Kana";
-      badge.title = "Bộ gõ tự động tiếng Nhật (Romaji → Kana). Nhấp hoặc ấn F2 để gõ trực tiếp";
+      badge.title = "Bộ gõ tự động Hiragana (Romaji → Hiragana). Nhấp để đổi Katakana / Trực tiếp, hoặc F2/F6/F7";
     } else {
       badge.classList.add("mode-raw");
       icon.textContent = "A";
@@ -5840,26 +5854,29 @@ function renderCurrentQuestion() {
   inputEl.disabled = false;
   const isMeaning = isQuizMeaningAnswerMode(question.mode);
   const isKana = question.mode === "meaning_to_japanese";
+  const isKatakana = isKana && prefersKatakanaInput(question.vocab);
   inputEl.lang = isKana ? "ja" : (isMeaning ? "vi" : "en");
   inputEl.placeholder = isKana
-    ? "Nhập chữ Nhật (gõ kasa tự ra かさ)..."
+    ? (isKatakana
+        ? "Nhập Katakana (gõ no-to tự ra ノート, - cho trường âm ー)..."
+        : "Nhập chữ Nhật (gõ kasa tự ra かさ)...")
     : (isMeaning ? "Nhập nghĩa tiếng Việt (có dấu hoặc không dấu)..." : "Nhập cách đọc bằng Romaji (không dấu)...");
 
-  const targetImeMode = isKana ? "kana" : (isMeaning ? "raw" : "romaji");
+  const targetImeMode = isKana ? (isKatakana ? "katakana" : "kana") : (isMeaning ? "raw" : "romaji");
 
   if (!quizKanaImeController && inputEl) {
     quizKanaImeController = bindKanaInput(inputEl, {
       mode: targetImeMode,
       onStateChange: ({ isEnabled, mode }) => {
         const q = activeQuizSession?.getCurrentQuestion();
-        updateQuizImeBadge(q?.mode, isEnabled && mode === "kana");
+        updateQuizImeBadge(q?.mode, isEnabled ? mode : "raw");
       }
     });
   }
 
   if (quizKanaImeController) {
     quizKanaImeController.setMode(targetImeMode);
-    updateQuizImeBadge(question.mode, isKana);
+    updateQuizImeBadge(question.mode, targetImeMode);
   }
   
   setTimeout(() => {
@@ -6080,7 +6097,22 @@ function handleQuizAnswerSubmit() {
     }
 
     const activeHintContainer = document.getElementById("quiz-hint-container");
-    if (activeHintContainer) activeHintContainer.style.display = "none";
+    const activeHintLabel = document.getElementById("quiz-hint-label-text");
+    const activeHintText = document.getElementById("quiz-hint-text");
+    if (result.fullAnswerNote && activeHintContainer) {
+      if (activeHintLabel) activeHintLabel.textContent = "Đáp án đúng đầy đủ: ";
+      if (activeHintText) {
+        activeHintText.textContent = result.fullAnswerNote;
+        activeHintText.style.fontWeight = "700";
+        activeHintText.style.color = "var(--good)";
+      }
+      activeHintContainer.style.background = "var(--good-soft)";
+      activeHintContainer.style.borderColor = "var(--good)";
+      activeHintContainer.style.color = "var(--good)";
+      activeHintContainer.style.display = "flex";
+    } else if (activeHintContainer) {
+      activeHintContainer.style.display = "none";
+    }
 
     if (quizTimerInterval) clearInterval(quizTimerInterval);
 
@@ -6100,7 +6132,8 @@ function handleQuizAnswerSubmit() {
     nextBtn.focus();
 
     if (quizActiveSettings.autoNext) {
-      const delayMs = (quizActiveSettings.autoNextDelay !== undefined ? quizActiveSettings.autoNextDelay : 1.0) * 1000;
+      const baseDelayMs = (quizActiveSettings.autoNextDelay !== undefined ? quizActiveSettings.autoNextDelay : 1.0) * 1000;
+      const delayMs = result.fullAnswerNote ? Math.max(baseDelayMs, 2200) : baseDelayMs;
       const currentQ = question;
       setTimeout(() => {
         if (activeQuizSession.getCurrentQuestion() === currentQ && currentQ.answerState !== "unanswered") {
@@ -6311,7 +6344,11 @@ function setupQuizActiveEvents() {
       e.stopPropagation();
       const question = activeQuizSession?.getCurrentQuestion();
       if (question?.mode === "meaning_to_japanese" && quizKanaImeController) {
-        quizKanaImeController.toggleMode();
+        if (typeof quizKanaImeController.cycleKanaMode === "function") {
+          quizKanaImeController.cycleKanaMode();
+        } else {
+          quizKanaImeController.toggleMode();
+        }
       }
       if (inputEl) inputEl.focus();
     };

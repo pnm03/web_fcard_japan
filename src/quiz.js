@@ -1,7 +1,14 @@
 import { getProjectById, getProjects, updateVocabRescueCard, updateVocabStats, removeVietnameseTones } from "./storage.js";
 import { getRomajiAnswerMatch, interleaveQuestionSeeds } from "./quiz-signals.js";
-import { romajiToHiragana } from "./kana-ime.js";
+import { katakanaToHiragana, romajiToHiragana, romajiToKatakana } from "./kana-ime.js";
 export { getRomajiAnswerMatch, interleaveQuestionSeeds } from "./quiz-signals.js";
+
+function stripPlaceholderTildes(str) {
+  return String(str || "")
+    .replace(/[~～〜]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 export function normalizeString(str) {
   return str
@@ -23,25 +30,17 @@ export function getAcceptedMeaningAnswers(meaning) {
 
   const withoutNotes = cleanOriginal(original.replace(/\[[^[\]]*\]/g, " ").replace(/［[^［］]*］/g, " "));
   const unbracketedNotes = cleanOriginal(original.replace(/[[\]［］]/g, ""));
+  const primaryText = withoutNotes || unbracketedNotes;
+  if (!primaryText) return [];
 
-  const targetTexts = [withoutNotes];
-  if (unbracketedNotes && unbracketedNotes !== withoutNotes) {
-    targetTexts.push(unbracketedNotes);
-  }
+  const isExplanatoryDefinition = /^(?:hậu tố|đây là lời chào)|(?:thêm vào sau tên|không dùng khi|dùng kèm theo tên)/i.test(primaryText);
+  const commaGroups = isExplanatoryDefinition
+    ? [primaryText]
+    : primaryText.split(/\s*(?:,|，|;|；)\s*|\s+(?:hoặc|hay)\s+/i);
 
-  const allCommaGroups = [];
-  targetTexts.forEach(txt => {
-    if (!txt) return;
-    const isExplanatoryDefinition = /^(?:hậu tố|đây là lời chào)|(?:thêm vào sau tên|không dùng khi|dùng kèm theo tên)/i.test(txt);
-    const groups = isExplanatoryDefinition
-      ? [txt]
-      : txt.split(/\s*(?:,|，|;|；)\s*|\s+(?:hoặc|hay)\s+/i);
-    allCommaGroups.push(...groups);
-  });
-
-  const conciseGroups = allCommaGroups.length > 1 && /cách nói|cách gọi|mang nghĩa/i.test(allCommaGroups[0])
-    ? allCommaGroups.filter(group => !/cách nói|cách gọi|mang nghĩa/i.test(group))
-    : allCommaGroups;
+  const conciseGroups = commaGroups.length > 1 && /cách nói|cách gọi|mang nghĩa/i.test(commaGroups[0])
+    ? commaGroups.filter(group => !/cách nói|cách gọi|mang nghĩa/i.test(group))
+    : commaGroups;
 
   const expandSlashGroup = (group) => {
     if (!group.includes("/")) return [group];
@@ -236,6 +235,12 @@ export function isSmartVietnameseMatch(userAnswer, correctAnswer) {
   const normCorrectNoTone = removeVietnameseTones(normCorrect);
   if (normUserNoTone === normCorrectNoTone) return true;
 
+  const normUserNoTilde = stripPlaceholderTildes(normUserNoTone);
+  const normCorrectNoTilde = stripPlaceholderTildes(normCorrectNoTone);
+  if (normUserNoTilde && normCorrectNoTilde && normUserNoTilde === normCorrectNoTilde) {
+    return true;
+  }
+
   const userNumber = parseVietnameseNumberAnswer(normUser);
   const correctNumber = parseVietnameseNumberAnswer(normCorrect);
   if (userNumber !== null && correctNumber !== null && userNumber === correctNumber) {
@@ -275,8 +280,8 @@ export function isSmartVietnameseMatch(userAnswer, correctAnswer) {
     return result;
   };
 
-  const userTokens = normUserNoTone.split(/\s+/).filter(Boolean);
-  const correctTokens = normCorrectNoTone.split(/\s+/).filter(Boolean);
+  const userTokens = (normUserNoTilde || normUserNoTone).split(/\s+/).filter(Boolean);
+  const correctTokens = (normCorrectNoTilde || normCorrectNoTone).split(/\s+/).filter(Boolean);
 
   if (userTokens.length === 0 || correctTokens.length === 0) return false;
 
@@ -378,15 +383,27 @@ function normalizeJapaneseAnswer(str) {
     .normalize("NFKC")
     .trim()
     .replace(/\s+/g, "")
-    .replace(/[、。，．・]/g, "");
+    .replace(/[~～〜、。，．・]/g, "");
 }
 
+function expandLongVowelDashes(hira, useOuVariant = false) {
+  const oSuffix = useOuVariant ? "う" : "お";
+  return String(hira || "")
+    .replace(/([あかさたなはまやらわがざだばぱぁゃ])ー/g, "$1あ")
+    .replace(/([いきしちにひみりぎじぢびぴぃ])ー/g, "$1い")
+    .replace(/([うくすつぬふむゆるぐずづぶぷぅゅ])ー/g, "$1う")
+    .replace(/([えけせてねへめれげぜでべぺぇ])ー/g, "$1え")
+    .replace(/([おこそとのほもよろをごぞどぼぽぉょ])ー/g, `$1${oSuffix}`);
+}
 
 function getJapaneseAnswerMatch(userAnswer, vocab) {
   const normalizedUser = normalizeJapaneseAnswer(userAnswer);
   if (!normalizedUser) return "wrong";
+  const userHira = normalizeJapaneseAnswer(katakanaToHiragana(userAnswer));
+  const userExpanded = normalizeJapaneseAnswer(expandLongVowelDashes(katakanaToHiragana(userAnswer), false));
+  const userVariants = [...new Set([normalizedUser, userHira, userExpanded].filter(Boolean))];
   const candidates = getJapaneseAnswerCandidates(vocab).map(normalizeJapaneseAnswer).filter(Boolean);
-  if (candidates.includes(normalizedUser)) return "correct";
+  if (userVariants.some(variant => candidates.includes(variant))) return "correct";
   const closest = candidates.reduce((best, candidate) => Math.min(
     best,
     getLevenshteinDistance(normalizedUser, candidate)
@@ -406,10 +423,40 @@ function getJapaneseAnswerCandidates(vocab) {
   const unbracketed = raw.replace(/[[\]［］]/g, "").trim();
   const annotationMatch = raw.match(/\(([^)]+)\)/) || raw.match(/（([^）]+)）/);
   const annotation = annotationMatch ? annotationMatch[1].trim() : "";
-  const hiraganaFromRomaji = vocab?.romaji ? romajiToHiragana(vocab.romaji) : "";
-  const rawRomaji = vocab?.romaji || "";
 
-  return [...new Set([display, withoutAnnotation, unbracketed, annotation, hiraganaFromRomaji, rawRomaji, raw].filter(Boolean))];
+  const rawRomaji = vocab?.romaji || "";
+  const cleanRomaji = rawRomaji.replace(/\[[^\]]*\]/g, "").replace(/［[^］]*］/g, "").trim();
+  const unbracketedRomaji = rawRomaji.replace(/[[\]［］]/g, "").trim();
+  const kanaFromRomaji = [rawRomaji, cleanRomaji, unbracketedRomaji]
+    .filter(Boolean)
+    .flatMap(r => [romajiToHiragana(r), romajiToKatakana(r)]);
+
+  const baseCandidates = [
+    display,
+    withoutAnnotation,
+    unbracketed,
+    annotation,
+    raw,
+    ...kanaFromRomaji,
+    rawRomaji,
+    cleanRomaji,
+    unbracketedRomaji
+  ].filter(Boolean);
+
+  const expandedCandidates = [];
+  baseCandidates.forEach(c => {
+    expandedCandidates.push(c);
+    if (/[\u3041-\u3096\u30A1-\u30F6ー]/.test(c)) {
+      const hira = katakanaToHiragana(c);
+      expandedCandidates.push(hira);
+      expandedCandidates.push(expandLongVowelDashes(hira, false));
+      if (/[ー]/.test(c)) {
+        expandedCandidates.push(expandLongVowelDashes(hira, true));
+      }
+    }
+  });
+
+  return [...new Set(expandedCandidates.filter(Boolean))];
 }
 
 function isJapaneseAnswerMatch(userAnswer, vocab) {
@@ -1081,10 +1128,17 @@ export class QuizSession {
 
     correctAnswer = this.getCorrectAnswerForQuestion(question);
     if (isMeaningAnswerMode(question.mode)) {
+      const unbracketedMeaning = String(question.vocab.meaning || "")
+        .replace(/[[\]［］]/g, "")
+        .replace(/\([^()]*\)/g, " ")
+        .replace(/（[^（）]*）/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
       const meaningCandidates = [
         question.vocab.meaning,
+        unbracketedMeaning,
         ...getAcceptedMeaningAnswers(question.vocab.meaning)
-      ];
+      ].filter(Boolean);
       const meaningMatches = meaningCandidates.map(candidate => (
         getVietnameseAnswerMatch(userAnswer, candidate)
       ));
@@ -1129,6 +1183,17 @@ export class QuizSession {
       else if (wasRetry) question.answerSignal = "wrong_knowledge";
       else if (question.typoCount > 0) question.answerSignal = "typo";
       else if (question.timeSpent > 8) question.answerSignal = "slow";
+
+      let fullAnswerNote = "";
+      if (/[~～〜]/.test(correctAnswer)) {
+        const normUserTilde = normalizeString(String(userAnswer || "").replace(/[～〜]/g, "~"));
+        const normCorrectTilde = normalizeString(String(correctAnswer || "").replace(/[～〜]/g, "~"));
+        const normUserNoToneTilde = removeVietnameseTones(normUserTilde);
+        const normCorrectNoToneTilde = removeVietnameseTones(normCorrectTilde);
+        if (normUserTilde !== normCorrectTilde && normUserNoToneTilde !== normCorrectNoToneTilde) {
+          fullAnswerNote = correctAnswer;
+        }
+      }
       
       // Cập nhật thống kê vào localStorage
       const updatedVocab = updateVocabStats(
@@ -1150,6 +1215,7 @@ export class QuizSession {
         wasRetry: wasRetry,
         attempts: question.attempts,
         correctAnswer: correctAnswer,
+        fullAnswerNote,
         timeSpent: question.timeSpent
       };
     } else {

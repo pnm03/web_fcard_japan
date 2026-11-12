@@ -6127,6 +6127,13 @@ html[data-desktop-app="true"] .desktop-only {
   box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
 }
 
+.quiz-ime-badge.mode-kana.mode-katakana {
+  background: rgba(245, 158, 11, 0.16);
+  border-color: #f59e0b;
+  color: #f59e0b;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+}
+
 .quiz-ime-badge.mode-vietnamese {
   background: rgba(168, 85, 247, 0.14);
   border-color: rgba(168, 85, 247, 0.4);

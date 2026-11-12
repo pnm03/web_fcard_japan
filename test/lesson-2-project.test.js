@@ -1,18 +1,28 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getProjects, initializeStorage } from "../src/storage.js";
+import {
+  getProjects,
+  initializeStorage,
+  resolveCloudProjectVocabOrder,
+  saveProjects
+} from "../src/storage.js";
 import { getRomajiAnswerMatch } from "../src/quiz-signals.js";
-import { getAcceptedMeaningAnswers } from "../src/quiz.js";
+import { QuizSession, getAcceptedMeaningAnswers } from "../src/quiz.js";
+import { bindKanaInput, romajiToKatakana } from "../src/kana-ime.js";
 
-test("Dự án Từ vựng bài 2: Chứa đầy đủ 47 từ vựng Minna no Nihongo Bài 2 theo yêu cầu", () => {
-  // Mock localStorage
-  const store = {};
+function setupMockLocalStorage(initial = {}) {
+  const store = { ...initial };
   global.localStorage = {
-    getItem: (key) => store[key] || null,
+    getItem: (key) => (Object.prototype.hasOwnProperty.call(store, key) ? store[key] : null),
     setItem: (key, val) => { store[key] = String(val); },
     removeItem: (key) => { delete store[key]; },
     clear: () => { Object.keys(store).forEach(k => delete store[k]); }
   };
+  return store;
+}
+
+test("Dự án Từ vựng bài 2: Chứa đầy đủ 47 từ vựng Minna no Nihongo Bài 2 theo yêu cầu", () => {
+  setupMockLocalStorage();
 
   const projects = getProjects();
   const lesson2 = projects.find(p => p.id === "proj-lesson-2" || p.name === "Từ vựng bài 2");
@@ -21,7 +31,6 @@ test("Dự án Từ vựng bài 2: Chứa đầy đủ 47 từ vựng Minna no N
   assert.equal(lesson2.name, "Từ vựng bài 2");
   assert.equal(lesson2.vocab.length, 47, "Phải có chính xác 47 từ vựng bài 2");
 
-  // Kiểm tra các từ cốt lõi
   const findVocab = (jp) => lesson2.vocab.find(v => v.japanese === jp);
 
   assert.ok(findVocab("これ"), "Có từ これ");
@@ -77,17 +86,11 @@ test("Dự án Từ vựng bài 2: Chứa đầy đủ 47 từ vựng Minna no N
 });
 
 test("initializeStorage: Tự động seed dự án Từ vựng bài 2 vào kho localStorage đã tồn tại", () => {
-  const store = {
+  const store = setupMockLocalStorage({
     nihongo_flashcard_projects: JSON.stringify([
       { id: "proj-custom", name: "Dự án riêng của tôi", vocab: [] }
     ])
-  };
-
-  global.localStorage = {
-    getItem: (key) => store[key] || null,
-    setItem: (key, val) => { store[key] = String(val); },
-    removeItem: (key) => { delete store[key]; }
-  };
+  });
 
   initializeStorage();
 
@@ -100,17 +103,200 @@ test("initializeStorage: Tự động seed dự án Từ vựng bài 2 vào kho 
 });
 
 test("Quiz Matching: Xử lý thông minh từ vựng bài 2 có phần đóng mở ngoặc [ ]", () => {
-  // 1. Romaji matching
   assert.equal(getRomajiAnswerMatch("teepu", "[kasetto] teepu"), "correct", "Chấp nhận 'teepu'");
   assert.equal(getRomajiAnswerMatch("kasetto teepu", "[kasetto] teepu"), "correct", "Chấp nhận 'kasetto teepu'");
   assert.equal(getRomajiAnswerMatch("arigatou gozaimasu", "[doumo] arigatou gozaimasu"), "correct", "Chấp nhận 'arigatou gozaimasu'");
   assert.equal(getRomajiAnswerMatch("doumo arigatou gozaimasu", "[doumo] arigatou gozaimasu"), "correct", "Chấp nhận 'doumo arigatou gozaimasu'");
 
-  // 2. Meaning matching
   const thanksMeanings = getAcceptedMeaningAnswers("[Xin] [chân thành] cảm ơn");
-  assert.ok(thanksMeanings.some(m => m.toLowerCase().includes("cảm ơn")), "Chấp nhận 'cảm ơn'");
-  assert.ok(thanksMeanings.some(m => m.toLowerCase().includes("chân thành cảm ơn") || m.toLowerCase().includes("xin chân thành cảm ơn")), "Chấp nhận dạng đầy đủ");
+  assert.equal(thanksMeanings.length, 1, "Không tách sai nghĩa có ngoặc vuông thành 2 nghĩa bắt buộc");
+  assert.equal(thanksMeanings[0].toLowerCase(), "cảm ơn");
+
+  setupMockLocalStorage();
+  const projects = getProjects();
+  const lesson2 = projects.find(p => p.id === "proj-lesson-2");
+  const thanksVocab = lesson2.vocab.find(v => v.id === "v2-45");
+
+  const sessionFull = new QuizSession({
+    quizMode: "jp_to_meaning",
+    vocabIds: [thanksVocab.id],
+    questionCount: 1
+  });
+  const resFull = sessionFull.submitAnswer("Xin chân thành cảm ơn");
+  assert.equal(resFull.status, "correct", "Chấp nhận dạng đầy đủ 1 lần cho [Xin] [chân thành] cảm ơn");
 
   const tapeMeanings = getAcceptedMeaningAnswers("Băng (cat-xet)");
   assert.ok(tapeMeanings.some(m => m.toLowerCase().includes("băng")), "Chấp nhận 'Băng'");
+});
+
+test("Quiz Matching: Tự động bỏ qua dấu ~ khi nhập đáp án nhưng trả về fullAnswerNote đầy đủ", () => {
+  setupMockLocalStorage();
+
+  // ano ~ : ~ kia
+  const sessionMeaning = new QuizSession({
+    quizMode: "romaji_to_meaning",
+    vocabIds: ["v2-6"],
+    questionCount: 1
+  });
+  const resMeaning = sessionMeaning.submitAnswer("kia");
+  assert.equal(resMeaning.status, "correct", "Nhập 'kia' cho '~ kia' phải cho qua");
+  assert.equal(resMeaning.fullAnswerNote, "~ kia", "Phải trả về thông báo đáp án đầy đủ '~ kia'");
+
+  // ~ご : Tiếng ~
+  const sessionGo = new QuizSession({
+    quizMode: "jp_to_meaning",
+    vocabIds: ["v2-36"],
+    questionCount: 1
+  });
+  const resGo = sessionGo.submitAnswer("tieng");
+  assert.equal(resGo.status, "correct", "Nhập 'tieng' cho 'Tiếng ~' phải cho qua");
+  assert.equal(resGo.fullAnswerNote, "Tiếng ~", "Phải trả về thông báo đáp án đầy đủ 'Tiếng ~'");
+
+  // meaning_to_japanese cho あの～: nhập あの vẫn qua và hiện あの～
+  const sessionJp = new QuizSession({
+    quizMode: "meaning_to_japanese",
+    vocabIds: ["v2-6"],
+    questionCount: 1
+  });
+  const resJp = sessionJp.submitAnswer("あの");
+  assert.equal(resJp.status, "correct", "Nhập 'あの' cho 'あの～' phải cho qua");
+  assert.equal(resJp.fullAnswerNote, "あの～", "Phải trả về thông báo đáp án đầy đủ 'あの～'");
+
+  // Nhập chính xác luôn '~ kia' thì không cần notice dư thừa
+  const sessionExact = new QuizSession({
+    quizMode: "romaji_to_meaning",
+    vocabIds: ["v2-6"],
+    questionCount: 1
+  });
+  const resExact = sessionExact.submitAnswer("~ kia");
+  assert.equal(resExact.status, "correct");
+  assert.equal(resExact.fullAnswerNote, "", "Đã gõ đúng ~ kia thì không cần hiện note nhắc lại");
+});
+
+test("Katakana IME & Quiz: Gõ trực tiếp ra Katakana (ノート) và chấp nhận mọi biến thể Kana", () => {
+  setupMockLocalStorage();
+
+  // Kiểm tra romajiToKatakana
+  assert.equal(romajiToKatakana("no-to"), "ノート");
+  assert.equal(romajiToKatakana("ko-hi-"), "コーヒー");
+  assert.equal(romajiToKatakana("ka-do"), "カード");
+
+  // Giả lập gõ từng phím trong chế độ katakana của bindKanaInput (n -> o -> - -> t -> o)
+  const listeners = {};
+  const inputEl = {
+    value: "",
+    selectionStart: 0,
+    selectionEnd: 0,
+    setSelectionRange(s, e) {
+      this.selectionStart = s;
+      this.selectionEnd = e;
+    },
+    addEventListener(evt, fn) { listeners[evt] = fn; },
+    removeEventListener(evt) { delete listeners[evt]; }
+  };
+
+  const controller = bindKanaInput(inputEl, { mode: "katakana" });
+  const type = (ch) => {
+    const before = inputEl.value.slice(0, inputEl.selectionStart);
+    const after = inputEl.value.slice(inputEl.selectionEnd);
+    inputEl.value = before + ch + after;
+    inputEl.selectionStart = before.length + ch.length;
+    inputEl.selectionEnd = inputEl.selectionStart;
+    listeners.input();
+  };
+
+  type("n");
+  assert.equal(inputEl.value, "ン");
+  type("o");
+  assert.equal(inputEl.value, "ノ");
+  type("-");
+  assert.equal(inputEl.value, "ノー");
+  type("t");
+  assert.equal(inputEl.value, "ノーt");
+  type("o");
+  assert.equal(inputEl.value, "ノート");
+
+  controller.cycleKanaMode(); // katakana -> raw
+  assert.equal(controller.getMode(), "raw");
+  controller.cycleKanaMode(); // raw -> kana
+  assert.equal(controller.getMode(), "kana");
+  controller.cycleKanaMode(); // kana -> katakana
+  assert.equal(controller.getMode(), "katakana");
+
+  // Kiểm tra QuizSession cho từ Katakana Vở (ノート, romaji: nooto)
+  ["ノート", "ノオト", "のーと", "のおと", "nooto"].forEach(ans => {
+    const session = new QuizSession({
+      quizMode: "meaning_to_japanese",
+      vocabIds: ["v2-11"],
+      questionCount: 1
+    });
+    const res = session.submitAnswer(ans);
+    assert.equal(res.status, "correct", `Đáp án "${ans}" cho "ノート" phải được chấp nhận`);
+  });
+});
+
+test("Ordering Stability: Từ đã học không bị tụt xuống cuối khi đồng bộ Supabase hoặc reload", () => {
+  // 1. Giả lập dữ liệu cloud bị PostgreSQL đẩy 5 từ vừa học (v2-1..v2-5) xuống cuối với order_index lỗi
+  const rawCloudShuffled = [
+    { id: "v2-6", japanese: "あの～", order_index: 0 },
+    { id: "v2-7", japanese: "ほん", order_index: 0 },
+    { id: "v2-8", japanese: "じしょ", order_index: 0 },
+    { id: "v2-1", japanese: "これ", order_index: 0 },
+    { id: "v2-2", japanese: "それ", order_index: 1 },
+    { id: "v2-3", japanese: "あれ", order_index: 2 },
+    { id: "v2-4", japanese: "この～", order_index: 3 },
+    { id: "v2-5", japanese: "その～", order_index: 4 }
+  ];
+
+  const { orderedVocab, needsOrderRepair } = resolveCloudProjectVocabOrder("proj-lesson-2", rawCloudShuffled);
+  assert.equal(needsOrderRepair, true);
+  assert.deepEqual(
+    orderedVocab.map(v => v.id),
+    ["v2-1", "v2-2", "v2-3", "v2-4", "v2-5", "v2-6", "v2-7", "v2-8"],
+    "Phải khôi phục đúng thứ tự gốc của Từ vựng bài 2 dù DB bị xáo trộn"
+  );
+
+  // 2. Giả lập dự án tùy chỉnh của người dùng khi bảng vocab chưa có cột order_index
+  const customCloudRows = [
+    { id: "v-103", japanese: "単語3" },
+    { id: "v-101", japanese: "単語1" },
+    { id: "v-102", japanese: "単語2" }
+  ];
+  const localCustomVocab = [
+    { id: "v-101", japanese: "単語1", orderIndex: 0 },
+    { id: "v-102", japanese: "単語2", orderIndex: 1 },
+    { id: "v-103", japanese: "単語3", orderIndex: 2 }
+  ];
+
+  const customResolved = resolveCloudProjectVocabOrder("proj-user-1", customCloudRows, {
+    localVocab: localCustomVocab
+  });
+  assert.deepEqual(
+    customResolved.orderedVocab.map(v => v.id),
+    ["v-101", "v-102", "v-103"],
+    "Dự án cá nhân phải giữ nguyên thứ tự local khi cloud thiếu order_index"
+  );
+
+  // 3. Giả lập localStorage của người dùng đã bị trót lưu sai thứ tự trước đây -> initializeStorage phải tự sửa lại
+  const store = setupMockLocalStorage();
+  saveProjects([
+    {
+      id: "proj-lesson-2",
+      name: "Từ vựng bài 2",
+      vocab: [
+        { id: "v2-7", japanese: "ほん", romaji: "hon", meaning: "Sách", orderIndex: 0 },
+        { id: "v2-1", japanese: "これ", romaji: "kore", meaning: "Cái này", orderIndex: 1 },
+        { id: "v2-4", japanese: "この～", romaji: "kono", meaning: "~ này", orderIndex: 2 }
+      ]
+    }
+  ]);
+
+  initializeStorage();
+  const repairedProjects = JSON.parse(store.nihongo_flashcard_projects);
+  const repairedLesson2 = repairedProjects.find(p => p.id === "proj-lesson-2");
+  assert.deepEqual(
+    repairedLesson2.vocab.map(v => v.id),
+    ["v2-1", "v2-4", "v2-7"],
+    "initializeStorage phải tự sửa lại thứ tự Từ vựng bài 2 đã bị tụt xuống cuối"
+  );
 });

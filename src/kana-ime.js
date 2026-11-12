@@ -132,7 +132,7 @@ export function removeVietnameseAccents(str) {
  * @param {string} text - Chuỗi romaji hoặc hỗn hợp cần chuyển
  * @param {Object} options - Tùy chọn (finalize: true khi hoàn tất câu hoặc gõ phím space/enter)
  */
-export function romajiToHiragana(text, { finalize = true } = {}) {
+export function romajiToHiragana(text, { finalize = true, handleKatakanaN = false } = {}) {
   if (!text) return "";
   const cleaned = normalizeTelexAccents(text).toLowerCase();
   let result = "";
@@ -141,8 +141,8 @@ export function romajiToHiragana(text, { finalize = true } = {}) {
   while (i < cleaned.length) {
     const char = cleaned[i];
 
-    // Xử lý khi có 'ん' đứng trước một nguyên âm hoặc 'y': ví dụ 'んa' -> 'な', 'んi' -> 'に', 'んya' -> 'にゃ'
-    if (char === 'ん' && i + 1 < cleaned.length) {
+    // Xử lý khi có 'ん' (hoặc 'ン' trong chế độ Katakana) đứng trước một nguyên âm hoặc 'y'
+    if ((char === 'ん' || (handleKatakanaN && char === 'ン')) && i + 1 < cleaned.length) {
       const nextChar = cleaned[i + 1];
       if ("aeiou".includes(nextChar)) {
         const naMap = { "a": "な", "i": "に", "u": "ぬ", "e": "ね", "o": "の" };
@@ -246,6 +246,16 @@ export function katakanaToHiragana(katakanaText) {
 }
 
 /**
+ * Chuyển chuỗi Romaji sang Katakana trong thời gian thực.
+ */
+export function romajiToKatakana(text, options = {}) {
+  if (!text) return "";
+  return hiraganaToKatakana(
+    romajiToHiragana(text, { ...options, handleKatakanaN: true })
+  );
+}
+
+/**
  * Gắn bộ gõ Kana tự động vào một phần tử <input>
  * @param {HTMLInputElement} inputEl
  * @param {Object} options
@@ -255,7 +265,8 @@ export function bindKanaInput(inputEl, options = {}) {
   if (!inputEl) return null;
 
   let isEnabled = options.enabled !== false;
-  let mode = options.mode || "kana"; // "kana" | "romaji" | "raw"
+  let mode = options.mode || "kana"; // "kana" | "katakana" | "romaji" | "raw"
+  let lastKanaMode = mode === "katakana" ? "katakana" : "kana";
 
   function update() {
     if (!isEnabled) return;
@@ -278,11 +289,12 @@ export function bindKanaInput(inputEl, options = {}) {
       return;
     }
 
-    if (mode === "kana") {
-      const converted = romajiToHiragana(original);
+    if (mode === "kana" || mode === "katakana") {
+      const converter = mode === "katakana" ? romajiToKatakana : romajiToHiragana;
+      const converted = converter(original);
       if (converted !== original) {
         const textBeforeCursor = original.slice(0, cursorPos);
-        const convertedBefore = romajiToHiragana(textBeforeCursor);
+        const convertedBefore = converter(textBeforeCursor);
         inputEl.value = converted;
         const newPos = convertedBefore.length;
         try {
@@ -309,26 +321,32 @@ export function bindKanaInput(inputEl, options = {}) {
     }
 
     // Phím F7: Chuyển Hiragana sang Katakana
-    if (e.key === "F7" && isEnabled && mode === "kana") {
+    if (e.key === "F7" && isEnabled && (mode === "kana" || mode === "katakana")) {
       e.preventDefault();
       const val = inputEl.value;
       const converted = hiraganaToKatakana(val);
       if (converted !== val) {
         inputEl.value = converted;
-        inputEl.setSelectionRange(converted.length, converted.length);
+        try {
+          inputEl.setSelectionRange(converted.length, converted.length);
+        } catch (err) {}
       }
+      controller.setMode("katakana");
       return;
     }
 
     // Phím F6: Chuyển Katakana về Hiragana
-    if (e.key === "F6" && isEnabled && mode === "kana") {
+    if (e.key === "F6" && isEnabled && (mode === "kana" || mode === "katakana")) {
       e.preventDefault();
       const val = inputEl.value;
       const converted = katakanaToHiragana(val);
       if (converted !== val) {
         inputEl.value = converted;
-        inputEl.setSelectionRange(converted.length, converted.length);
+        try {
+          inputEl.setSelectionRange(converted.length, converted.length);
+        } catch (err) {}
       }
+      controller.setMode("kana");
       return;
     }
   };
@@ -351,10 +369,13 @@ export function bindKanaInput(inputEl, options = {}) {
       }
     },
     setMode(newMode) {
-      if (newMode === "raw" || newMode === "romaji" || newMode === "kana") {
+      if (newMode === "raw" || newMode === "romaji" || newMode === "kana" || newMode === "katakana") {
         mode = newMode;
       } else {
         mode = "kana";
+      }
+      if (mode === "kana" || mode === "katakana") {
+        lastKanaMode = mode;
       }
       if (mode !== "raw") isEnabled = true;
       if (typeof options.onStateChange === "function") {
@@ -366,16 +387,27 @@ export function bindKanaInput(inputEl, options = {}) {
       return isEnabled ? mode : "raw";
     },
     toggleMode() {
+      if (mode === "kana" || mode === "katakana") {
+        this.setMode("raw");
+      } else {
+        this.setMode(lastKanaMode);
+      }
+    },
+    cycleKanaMode() {
       if (mode === "kana") {
+        inputEl.value = hiraganaToKatakana(inputEl.value);
+        this.setMode("katakana");
+      } else if (mode === "katakana") {
         this.setMode("raw");
       } else {
         this.setMode("kana");
       }
     },
     finalize() {
-      if (isEnabled && mode === "kana") {
+      if (isEnabled && (mode === "kana" || mode === "katakana")) {
         const val = inputEl.value;
-        const finalized = romajiToHiragana(val, { finalize: true });
+        const converter = mode === "katakana" ? romajiToKatakana : romajiToHiragana;
+        const finalized = converter(val, { finalize: true });
         if (finalized !== val) {
           inputEl.value = finalized;
         }
