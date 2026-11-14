@@ -127,12 +127,61 @@ export function cleanToKanaOnly(japaneseText) {
   return japaneseText.trim();
 }
 
-// Hàm phát âm tiếng Nhật dùng Text-to-Speech của trình duyệt
-// Cache giọng nói tiếng Nhật để phản hồi nhanh hơn khi bấm nút đọc
+// Chuẩn hóa và làm sạch văn bản tiếng Nhật trước khi đọc (TTS)
+// - Bỏ ngoặc vuông [ ], tilde ～, các ký tự không được đọc to
+// - Tự động phát hiện phiên âm Romaji để đổi thành Kana phát âm
+// - Giữ nguyên trường âm Katakana ー và khử lỗi đọc dấu gạch ngang
+export function cleanJapaneseForSpeech(japaneseText) {
+  if (!japaneseText) return "";
+
+  let text = String(japaneseText).trim();
+
+  // 1. Xử lý ngoặc đơn: nếu bên trong là Furigana (chữ Kana) cho chữ Hán bên ngoài
+  const parenMatch = text.match(/\(([^)]+)\)/) || text.match(/（([^）]+)）/);
+  if (parenMatch) {
+    const inside = parenMatch[1].trim();
+    const hasKanjiInside = /[\u4E00-\u9FAF]/.test(inside);
+    const hasKanaInside = /[\u3040-\u309F\u30A0-\u30FF]/.test(inside);
+    if (hasKanaInside && !hasKanjiInside) {
+      const outside = text.replace(/\([^)]+\)/g, "").replace(/（[^）]+）/g, "").trim();
+      text = /[\u4E00-\u9FAF]/.test(outside) ? inside : outside;
+    } else {
+      text = text.replace(/\([^)]+\)/g, "").replace(/（[^）]+）/g, "").trim();
+    }
+  }
+
+  // 2. Xóa các dấu ngoặc vuông nhưng GIỮ chữ bên trong: "[カセット] テープ" -> "カセット テープ"
+  text = text.replace(/[[\]［］]/g, " ").trim();
+
+  // 3. Xóa dấu sóng / tilde biểu thị từ nối: "この～" -> "この", "～ご" -> "ご"
+  text = text.replace(/[~～〜]/g, " ").trim();
+
+  // 4. Chuẩn hóa dấu gạch ngang ASCII '-' ở giữa hoặc sau chữ Kana thành trường âm 'ー'
+  text = text.replace(/([\u3040-\u30FF])-([\u3040-\u30FF])/g, "$1ー$2");
+  text = text.replace(/([\u3040-\u30FF])-(?=\s|$)/g, "$1ー");
+
+  // 5. Nếu chuỗi hoàn toàn không có Kana hay Kanji (chỉ có Romaji / Latin):
+  // Chuyển sang Hiragana để TTS tiếng Nhật phát âm chuẩn
+  if (!/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(text) && /[a-zA-Z]/.test(text)) {
+    try {
+      text = romajiToHiragana(text);
+    } catch {}
+  }
+
+  // 6. Chuẩn hóa khoảng trắng
+  text = text.replace(/\s+/g, " ").trim();
+
+  return text;
+}
+
+// Quản lý phát âm tiếng Nhật:
+// Kết hợp Google Translate TTS (giọng bản xứ chuẩn 100%, rõ trường âm, không bị ảnh hưởng bởi OS)
+// cùng SpeechSynthesis làm fallback offline.
 let cachedJaVoice = null;
 let voicesCached = false;
 let speechRequestId = 0;
 let speechRetryTimer = null;
+let currentTtsAudio = null;
 
 function findBestJapaneseVoice(voices = []) {
   const jaVoices = voices.filter(voice => {
@@ -147,7 +196,7 @@ function findBestJapaneseVoice(voices = []) {
 }
 
 function ensureJaVoiceCached(forceRefresh = false) {
-  if (!('speechSynthesis' in window)) return [];
+  if (typeof window === "undefined" || !('speechSynthesis' in window)) return [];
 
   const voices = window.speechSynthesis.getVoices();
   if (voices.length === 0) {
@@ -160,76 +209,117 @@ function ensureJaVoiceCached(forceRefresh = false) {
     cachedJaVoice = bestVoice;
   }
 
-  // Chỉ coi cache là thật sự sẵn sàng khi đã bắt được voice tiếng Nhật.
   voicesCached = Boolean(cachedJaVoice);
   return voices;
 }
 
 function warmSpeechVoices() {
-  if (!('speechSynthesis' in window)) return;
+  if (typeof window === "undefined" || !('speechSynthesis' in window)) return;
   ensureJaVoiceCached(true);
   [80, 300, 900].forEach(delay => {
     setTimeout(() => ensureJaVoiceCached(true), delay);
   });
 }
 
+function speakJapaneseViaSpeechSynthesis(cleanText, isManual = false, retryCount = 0) {
+  if (typeof window === "undefined" || !('speechSynthesis' in window) || !cleanText) return;
+  const synth = window.speechSynthesis;
+
+  const voices = ensureJaVoiceCached(retryCount > 0);
+  if (!voicesCached && voices.length === 0 && retryCount < 2) {
+    clearTimeout(speechRetryTimer);
+    speechRetryTimer = setTimeout(() => {
+      speakJapaneseViaSpeechSynthesis(cleanText, isManual, retryCount + 1);
+    }, retryCount === 0 ? 160 : 420);
+    return;
+  }
+
+  const requestId = ++speechRequestId;
+  synth.cancel();
+  synth.resume?.();
+
+  const utterance = new SpeechSynthesisUtterance(cleanText);
+  utterance.lang = 'ja-JP';
+  utterance.rate = 0.88;
+
+  if (cachedJaVoice) {
+    utterance.voice = cachedJaVoice;
+  }
+
+  utterance.onerror = (event) => {
+    const errorCode = String(event.error || "");
+    const shouldRetry = retryCount < 2 && (
+      errorCode === "not-allowed"
+      || errorCode === "synthesis-failed"
+      || errorCode === "audio-busy"
+      || errorCode === "language-unavailable"
+      || errorCode === "voice-unavailable"
+    );
+
+    if (shouldRetry) {
+      setTimeout(() => speakJapaneseViaSpeechSynthesis(cleanText, isManual, retryCount + 1), 280);
+    }
+  };
+
+  setTimeout(() => {
+    if (requestId !== speechRequestId) return;
+    synth.resume?.();
+    synth.speak(utterance);
+    setTimeout(() => synth.resume?.(), 80);
+  }, retryCount > 0 ? 80 : 20);
+}
+
 export function speakJapanese(text, isManual = false, retryCount = 0) {
-  const isQuizActive = document.getElementById("quiz-active-view")?.classList.contains("active");
+  const isQuizActive = typeof document !== "undefined" && document.getElementById("quiz-active-view")?.classList.contains("active");
   if (!isManual && isQuizActive && typeof quizActiveSettings !== "undefined" && quizActiveSettings.disableTts) {
     return;
   }
 
-  if ('speechSynthesis' in window) {
-    const synth = window.speechSynthesis;
-    const cleanText = String(text || "").replace(/\([^)]*\)/g, '').trim();
-    if (!cleanText) return;
+  const cleanText = cleanJapaneseForSpeech(text);
+  if (!cleanText) return;
 
-    const voices = ensureJaVoiceCached(retryCount > 0);
-    if (!voicesCached && voices.length === 0 && retryCount < 2) {
-      clearTimeout(speechRetryTimer);
-      speechRetryTimer = setTimeout(() => {
-        speakJapanese(cleanText, isManual, retryCount + 1);
-      }, retryCount === 0 ? 160 : 420);
-      return;
-    }
-
-    const requestId = ++speechRequestId;
-    // Hủy các giọng đọc đang dang dở để tránh xếp hàng quá lâu
-    synth.cancel();
-    synth.resume?.();
-    
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = 'ja-JP';
-    utterance.rate = 0.85; // giọng đọc hơi chậm một chút để nghe rõ hơn
-    
-    // Sử dụng giọng đã cache để phản hồi nhanh hơn. Sau reload Chrome đôi khi trả voice rỗng,
-    // nên nếu chưa có voice Nhật thì vẫn đọc bằng lang ja-JP và retry nhẹ khi engine báo lỗi.
-    if (cachedJaVoice) {
-      utterance.voice = cachedJaVoice;
-    }
-
-    utterance.onerror = (event) => {
-      const errorCode = String(event.error || "");
-      const shouldRetry = retryCount < 2 && (
-        errorCode === "not-allowed"
-        || errorCode === "synthesis-failed"
-        || errorCode === "audio-busy"
-        || errorCode === "language-unavailable"
-        || errorCode === "voice-unavailable"
-      );
-
-      if (shouldRetry) {
-        setTimeout(() => speakJapanese(cleanText, isManual, retryCount + 1), 280);
-      }
-    };
-    
-    setTimeout(() => {
-      if (requestId !== speechRequestId) return;
-      synth.resume?.();
-      synth.speak(utterance);
-      setTimeout(() => synth.resume?.(), 80);
-    }, retryCount > 0 ? 80 : 20);
+  // Dừng âm thanh đang phát trước đó
+  if (currentTtsAudio) {
+    try {
+      currentTtsAudio.pause();
+      currentTtsAudio.currentTime = 0;
+    } catch {}
   }
+  if (typeof window !== "undefined" && 'speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+  }
+
+  // 1. Ưu tiên Google Translate TTS studio voice (phát âm cực chuẩn, rõ trường âm ー, không bị phụ thuộc gói ngôn ngữ OS)
+  if (typeof Audio !== "undefined") {
+    try {
+      const encoded = encodeURIComponent(cleanText);
+      const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=tw-ob&q=${encoded}`;
+      const audio = new Audio(audioUrl);
+      currentTtsAudio = audio;
+      audio.playbackRate = 0.92;
+
+      let fallbackTriggered = false;
+      const triggerFallback = () => {
+        if (!fallbackTriggered) {
+          fallbackTriggered = true;
+          speakJapaneseViaSpeechSynthesis(cleanText, isManual, retryCount);
+        }
+      };
+
+      audio.onerror = () => triggerFallback();
+
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => triggerFallback());
+      }
+      return;
+    } catch {
+      // Rơi xuống SpeechSynthesis nếu trình duyệt chặn khởi tạo Audio
+    }
+  }
+
+  // 2. Fallback offline: Dùng SpeechSynthesis của hệ điều hành
+  speakJapaneseViaSpeechSynthesis(cleanText, isManual, retryCount);
 }
 
 function getReviewBadgeHtml(vocab) {

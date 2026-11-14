@@ -339,3 +339,24 @@ test("Ordering Stability: Từ đã học không bị tụt xuống cuối khi �
     "initializeStorage phải tự sửa lại thứ tự Từ vựng bài 2 đã bị tụt xuống cuối"
   );
 });
+
+test("Phát âm TTS tiếng Nhật: cleanJapaneseForSpeech loại bỏ ngoặc, tilde và đọc chuẩn Katakana/Romaji", async () => {
+  const { cleanJapaneseForSpeech, speakJapanese } = await import("../src/ui.js");
+
+  assert.equal(cleanJapaneseForSpeech("[カセット] テープ"), "カセット テープ", "Loại bỏ ngoặc vuông nhưng giữ chữ để đọc tự nhiên");
+  assert.equal(cleanJapaneseForSpeech("テープレコーダー"), "テープレコーダー", "Giữ nguyên trường âm Katakana cho máy ghi âm");
+  assert.equal(cleanJapaneseForSpeech("この～"), "この", "Bỏ dấu tilde nối từ");
+  assert.equal(cleanJapaneseForSpeech("あの～"), "あの", "Bỏ dấu tilde");
+  assert.equal(cleanJapaneseForSpeech("～ご"), "ご", "Bỏ dấu tilde đầu từ");
+  assert.equal(cleanJapaneseForSpeech("[どうも] ありがとうございます"), "どうも ありがとうございます");
+  assert.equal(cleanJapaneseForSpeech("いち (一)"), "いち");
+  assert.equal(cleanJapaneseForSpeech("書く (かく)"), "かく");
+  assert.equal(cleanJapaneseForSpeech("kasetto teepu"), "かせっと てえぷ", "Romaji được tự động chuyển sang Kana để TTS phát âm đúng giọng Nhật");
+
+  // Đảm bảo hàm speakJapanese gọi an toàn trong môi trường Node / Test
+  assert.doesNotThrow(() => {
+    speakJapanese("[カセット] テープ", true);
+    speakJapanese("テープレコーダー", true);
+  });
+});
+

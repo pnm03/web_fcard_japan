@@ -8,11 +8,52 @@ const promptBox = document.getElementById("prompt-box");
 let currentSoundText = "";
 let cachedJaVoice = null;
 
-function speakJapanese(text) {
-  if (!("speechSynthesis" in window) || !text) return;
-  window.speechSynthesis.cancel();
+let currentWidgetAudio = null;
 
-  const clean = text.replace(/\([^)]*\)/g, "").replace(/（[^）]*）/g, "").trim();
+function cleanJapaneseForSpeech(japaneseText) {
+  if (!japaneseText) return "";
+  let text = String(japaneseText).trim();
+  text = text.replace(/\([^)]+\)/g, "").replace(/（[^）]+）/g, "").trim();
+  text = text.replace(/[\[\]［］]/g, " ").trim();
+  text = text.replace(/[~～〜]/g, " ").trim();
+  text = text.replace(/([\u3040-\u30FF])-([\u3040-\u30FF])/g, "$1ー$2");
+  text = text.replace(/([\u3040-\u30FF])-(?=\s|$)/g, "$1ー");
+  return text.replace(/\s+/g, " ").trim();
+}
+
+function speakJapanese(text) {
+  const clean = cleanJapaneseForSpeech(text);
+  if (!clean) return;
+
+  if (currentWidgetAudio) {
+    try {
+      currentWidgetAudio.pause();
+      currentWidgetAudio.currentTime = 0;
+    } catch {}
+  }
+  if (typeof window !== "undefined" && "speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
+
+  if (typeof Audio !== "undefined") {
+    try {
+      const audioUrl = "https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=tw-ob&q=" + encodeURIComponent(clean);
+      const audio = new Audio(audioUrl);
+      currentWidgetAudio = audio;
+      audio.playbackRate = 0.92;
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => speakJapaneseViaSpeechSynthesis(clean));
+      }
+      return;
+    } catch {}
+  }
+
+  speakJapaneseViaSpeechSynthesis(clean);
+}
+
+function speakJapaneseViaSpeechSynthesis(clean) {
+  if (typeof window === "undefined" || !("speechSynthesis" in window) || !clean) return;
   const utterance = new SpeechSynthesisUtterance(clean);
   utterance.lang = "ja-JP";
   utterance.rate = 0.92;
