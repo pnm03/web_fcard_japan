@@ -140,6 +140,32 @@ test("Quiz Matching: Xử lý thông minh từ vựng bài 2 có phần đóng m
 
   const tapeMeanings = getAcceptedMeaningAnswers("Băng (cat-xet)");
   assert.ok(tapeMeanings.some(m => m.toLowerCase().includes("băng")), "Chấp nhận 'Băng'");
+
+  // Kiểm tra đáp án Tiếng Việt cho từ Băng (cat-xet)
+  const tapeVocab = lesson2.vocab.find(v => v.id === "v2-23");
+  const testTapeAnswers = [
+    "băng cat-xet",
+    "bang cat-xet",
+    "băng cat xet",
+    "bang cat xet",
+    "băng cát-xét",
+    "băng cát xét",
+    "băng cassette",
+    "băng",
+    "bang",
+    "cat-xet",
+    "cát-xét"
+  ];
+
+  testTapeAnswers.forEach(ans => {
+    const sessionTape = new QuizSession({
+      quizMode: "romaji_to_meaning",
+      vocabIds: [tapeVocab.id],
+      questionCount: 1
+    });
+    const resTape = sessionTape.submitAnswer(ans);
+    assert.equal(resTape.status, "correct", `Đáp án "${ans}" cho "Băng (cat-xet)" phải được chấp nhận`);
+  });
 });
 
 test("Quiz Matching: Tự động bỏ qua dấu ~ khi nhập đáp án nhưng trả về fullAnswerNote đầy đủ", () => {

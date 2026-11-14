@@ -72,6 +72,40 @@ export function getAcceptedMeaningAnswers(meaning) {
   return [...new Map(answers.map(answer => [removeVietnameseTones(normalizeString(answer)), answer])).values()];
 }
 
+export function getMeaningAnswerCandidates(meaning) {
+  const rawMeaning = String(meaning || "").trim();
+  if (!rawMeaning) return [];
+
+  const unbracketed = rawMeaning
+    .replace(/[[\]［］]/g, "")
+    .replace(/\([^()]*\)/g, " ")
+    .replace(/（[^（）]*）/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const unparenthesized = rawMeaning
+    .replace(/[()[\]{}（）［］]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const parenMatches = [...rawMeaning.matchAll(/\(([^()]+)\)|（([^（）]+)）/g)];
+  const parenAliases = parenMatches
+    .map(m => (m[1] || m[2] || "").trim())
+    .filter(text => text && !/^(?:vật ở|dùng để|dùng khi|đáp lại|biểu thị|hậu tố|ví dụ|nghĩa là|chỉ người|ở gần|ở xa)/i.test(text) && text.length <= 25);
+
+  const accepted = getAcceptedMeaningAnswers(rawMeaning);
+
+  const candidates = [
+    rawMeaning,
+    unbracketed,
+    unparenthesized,
+    ...parenAliases,
+    ...accepted
+  ].filter(Boolean);
+
+  return [...new Set(candidates)];
+}
+
 const VIETNAMESE_NUMBER_FILLERS = new Set(["so", "con", "la", "bang", "gia", "tri"]);
 const VIETNAMESE_DIGIT_WORDS = new Map([
   ["khong", 0],
@@ -241,6 +275,22 @@ export function isSmartVietnameseMatch(userAnswer, correctAnswer) {
     return true;
   }
 
+  const normalizePunctuationAndLoanwords = (str) =>
+    String(str || "")
+      .replace(/[()[\]{}（）［］"“”'‘’.,:;!?]/g, " ")
+      .replace(/[-–—_]/g, " ")
+      .replace(/\bcassette\b/gi, "cat xet")
+      .replace(/\bcasset\b/gi, "cat xet")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const cleanUserTone = normalizePunctuationAndLoanwords(normUserNoTilde || normUserNoTone);
+  const cleanCorrectTone = normalizePunctuationAndLoanwords(normCorrectNoTilde || normCorrectNoTone);
+
+  if (cleanUserTone && cleanCorrectTone && cleanUserTone === cleanCorrectTone) {
+    return true;
+  }
+
   const userNumber = parseVietnameseNumberAnswer(normUser);
   const correctNumber = parseVietnameseNumberAnswer(normCorrect);
   if (userNumber !== null && correctNumber !== null && userNumber === correctNumber) {
@@ -280,8 +330,8 @@ export function isSmartVietnameseMatch(userAnswer, correctAnswer) {
     return result;
   };
 
-  const userTokens = (normUserNoTilde || normUserNoTone).split(/\s+/).filter(Boolean);
-  const correctTokens = (normCorrectNoTilde || normCorrectNoTone).split(/\s+/).filter(Boolean);
+  const userTokens = cleanUserTone.split(/\s+/).filter(Boolean);
+  const correctTokens = cleanCorrectTone.split(/\s+/).filter(Boolean);
 
   if (userTokens.length === 0 || correctTokens.length === 0) return false;
 
@@ -383,7 +433,8 @@ function normalizeJapaneseAnswer(str) {
     .normalize("NFKC")
     .trim()
     .replace(/\s+/g, "")
-    .replace(/[~～〜、。，．・]/g, "");
+    .replace(/[~～〜、。，．・]/g, "")
+    .replace(/[[\]［］()（）]/g, "");
 }
 
 function expandLongVowelDashes(hira, useOuVariant = false) {
@@ -872,9 +923,8 @@ export class QuizSession {
     if (!question) return false;
 
     if (isMeaningAnswerMode(question.mode)) {
-      const fullMeaning = question.vocab.meaning;
-      return isSmartVietnameseMatch(userAnswer, fullMeaning)
-        || getAcceptedMeaningAnswers(fullMeaning).some(answer => isSmartVietnameseMatch(userAnswer, answer));
+      const candidates = getMeaningAnswerCandidates(question.vocab.meaning);
+      return candidates.some(answer => isSmartVietnameseMatch(userAnswer, answer));
     }
     if (question.mode === "meaning_to_japanese") {
       return isJapaneseAnswerMatch(userAnswer, question.vocab);
@@ -886,7 +936,8 @@ export class QuizSession {
     const other = this.vocabPool.find(candidate => {
       if (!candidate?.id || candidate.id === question.vocab.id) return false;
       if (isMeaningAnswerMode(question.mode)) {
-        return getAcceptedMeaningAnswers(candidate.meaning).some(answer => isSmartVietnameseMatch(userAnswer, answer));
+        const candidates = getMeaningAnswerCandidates(candidate.meaning);
+        return candidates.some(answer => isSmartVietnameseMatch(userAnswer, answer));
       }
       if (question.mode === "meaning_to_japanese") return isJapaneseAnswerMatch(userAnswer, candidate);
       return getRomajiAnswerMatch(userAnswer, candidate.romaji) !== "wrong";
@@ -955,14 +1006,17 @@ export class QuizSession {
       : null;
     const candidateIndexes = lockedIndex === null ? pendingIndexes : [lockedIndex];
 
-    const matchedIndex = candidateIndexes.find(index => (
-      getVietnameseAnswerMatch(userAnswer, requiredAnswers[index]) === "correct"
-    ));
+    const matchedIndex = candidateIndexes.find(index => {
+      const candidates = getMeaningAnswerCandidates(requiredAnswers[index]);
+      return candidates.some(cand => getVietnameseAnswerMatch(userAnswer, cand) === "correct");
+    });
 
     if (matchedIndex === undefined) {
-      const duplicateIndex = requiredAnswers.findIndex((answer, index) => (
-        completedSet.has(index) && isSmartVietnameseMatch(userAnswer, answer)
-      ));
+      const duplicateIndex = requiredAnswers.findIndex((answer, index) => {
+        if (!completedSet.has(index)) return false;
+        const candidates = getMeaningAnswerCandidates(answer);
+        return candidates.some(cand => isSmartVietnameseMatch(userAnswer, cand));
+      });
 
       if (duplicateIndex !== -1) {
         return {
@@ -974,9 +1028,10 @@ export class QuizSession {
         };
       }
 
-      const nearIndex = candidateIndexes.find(index => (
-        getVietnameseAnswerMatch(userAnswer, requiredAnswers[index]) === "near"
-      ));
+      const nearIndex = candidateIndexes.find(index => {
+        const candidates = getMeaningAnswerCandidates(requiredAnswers[index]);
+        return candidates.some(cand => getVietnameseAnswerMatch(userAnswer, cand) === "near");
+      });
       if (nearIndex !== undefined) {
         question.activeMeaningAnswerIndex = nearIndex;
         question.typoCount += 1;
@@ -1128,17 +1183,7 @@ export class QuizSession {
 
     correctAnswer = this.getCorrectAnswerForQuestion(question);
     if (isMeaningAnswerMode(question.mode)) {
-      const unbracketedMeaning = String(question.vocab.meaning || "")
-        .replace(/[[\]［］]/g, "")
-        .replace(/\([^()]*\)/g, " ")
-        .replace(/（[^（）]*）/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-      const meaningCandidates = [
-        question.vocab.meaning,
-        unbracketedMeaning,
-        ...getAcceptedMeaningAnswers(question.vocab.meaning)
-      ].filter(Boolean);
+      const meaningCandidates = getMeaningAnswerCandidates(question.vocab.meaning);
       const meaningMatches = meaningCandidates.map(candidate => (
         getVietnameseAnswerMatch(userAnswer, candidate)
       ));
