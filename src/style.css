@@ -5956,6 +5956,32 @@ html[data-desktop-app="true"] .desktop-only {
   color: var(--accent);
 }
 
+.quiz-bottom-sheet-user-answer {
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  margin-top: 0.6rem;
+  background: rgba(0, 0, 0, 0.04);
+  display: inline-block;
+  padding: 5px 14px;
+  border-radius: var(--radius-sm, 6px);
+  border: 1px dashed var(--line-strong, #ccc);
+  max-width: 90%;
+  word-break: break-word;
+}
+
+.quiz-bottom-sheet-user-answer .user-answer-label {
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+.quiz-bottom-sheet-user-answer .user-answer-val {
+  color: var(--error);
+  font-weight: 700;
+  text-decoration: line-through;
+  margin-left: 4px;
+}
+
 /* Progress track (Minimalist) */
 .quiz-progress-bar-wrapper {
   width: 100%;
