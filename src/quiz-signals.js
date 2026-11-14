@@ -45,10 +45,14 @@ export function getRomajiAnswerMatch(userAnswer, correctAnswer) {
   if (!user) return "wrong";
 
   const rawCorrect = String(correctAnswer || "");
+  const bracketMatches = [...rawCorrect.matchAll(/\[([^\]]+)\]|［([^］]+)］/g)];
+  const bracketAliases = bracketMatches.map(m => (m[1] || m[2] || "").trim()).filter(Boolean);
+
   const candidates = [
     rawCorrect,
     rawCorrect.replace(/\[[^\]]*\]/g, "").replace(/［[^］]*］/g, ""),
-    rawCorrect.replace(/[[\]［］]/g, "")
+    rawCorrect.replace(/[[\]［］]/g, ""),
+    ...bracketAliases
   ].map(normalizeRomajiAnswer).filter(Boolean);
 
   for (const candidate of candidates) {

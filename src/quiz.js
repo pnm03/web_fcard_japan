@@ -450,9 +450,26 @@ function expandLongVowelDashes(hira, useOuVariant = false) {
 function getJapaneseAnswerMatch(userAnswer, vocab) {
   const normalizedUser = normalizeJapaneseAnswer(userAnswer);
   if (!normalizedUser) return "wrong";
+
+  const cleanUserRomaji = String(userAnswer || "").replace(/[-_]/g, " ");
+  const fromRomajiHira = normalizeJapaneseAnswer(romajiToHiragana(userAnswer));
+  const fromRomajiKata = normalizeJapaneseAnswer(romajiToKatakana(userAnswer));
+  const fromRomajiCleanHira = normalizeJapaneseAnswer(romajiToHiragana(cleanUserRomaji));
+  const fromRomajiCleanKata = normalizeJapaneseAnswer(romajiToKatakana(cleanUserRomaji));
+
   const userHira = normalizeJapaneseAnswer(katakanaToHiragana(userAnswer));
   const userExpanded = normalizeJapaneseAnswer(expandLongVowelDashes(katakanaToHiragana(userAnswer), false));
-  const userVariants = [...new Set([normalizedUser, userHira, userExpanded].filter(Boolean))];
+  const userVariants = [...new Set([
+    normalizedUser,
+    userHira,
+    userExpanded,
+    fromRomajiHira,
+    fromRomajiKata,
+    fromRomajiCleanHira,
+    fromRomajiCleanKata,
+    normalizeJapaneseAnswer(expandLongVowelDashes(fromRomajiHira, false)),
+    normalizeJapaneseAnswer(expandLongVowelDashes(fromRomajiCleanHira, false))
+  ].filter(Boolean))];
   const candidates = getJapaneseAnswerCandidates(vocab).map(normalizeJapaneseAnswer).filter(Boolean);
   if (userVariants.some(variant => candidates.includes(variant))) return "correct";
   const closest = candidates.reduce((best, candidate) => Math.min(
@@ -475,11 +492,30 @@ function getJapaneseAnswerCandidates(vocab) {
   const annotationMatch = raw.match(/\(([^)]+)\)/) || raw.match(/（([^）]+)）/);
   const annotation = annotationMatch ? annotationMatch[1].trim() : "";
 
+  // Lấy các phần bên trong ngoặc vuông [ ]
+  const bracketMatches = [...raw.matchAll(/\[([^\]]+)\]|［([^］]+)］/g)];
+  const bracketAliases = bracketMatches.map(m => (m[1] || m[2] || "").trim()).filter(Boolean);
+
   const rawRomaji = vocab?.romaji || "";
   const cleanRomaji = rawRomaji.replace(/\[[^\]]*\]/g, "").replace(/［[^］]*］/g, "").trim();
   const unbracketedRomaji = rawRomaji.replace(/[[\]［］]/g, "").trim();
-  const kanaFromRomaji = [rawRomaji, cleanRomaji, unbracketedRomaji]
-    .filter(Boolean)
+  const bracketRomajiMatches = [...rawRomaji.matchAll(/\[([^\]]+)\]|［([^］]+)］/g)];
+  const bracketRomajiAliases = bracketRomajiMatches.map(m => (m[1] || m[2] || "").trim()).filter(Boolean);
+
+  const allRomajiVariants = [
+    rawRomaji,
+    cleanRomaji,
+    unbracketedRomaji,
+    ...bracketRomajiAliases
+  ].filter(Boolean);
+
+  const hyphenExpandedRomaji = allRomajiVariants.flatMap(r => [
+    r,
+    r.replace(/ee/g, "e-").replace(/oo/g, "o-").replace(/aa/g, "a-").replace(/ii/g, "i-").replace(/uu/g, "u-"),
+    r.replace(/e-/g, "ee").replace(/o-/g, "oo").replace(/a-/g, "aa").replace(/i-/g, "ii").replace(/u-/g, "uu")
+  ]);
+
+  const kanaFromRomaji = hyphenExpandedRomaji
     .flatMap(r => [romajiToHiragana(r), romajiToKatakana(r)]);
 
   const baseCandidates = [
@@ -487,11 +523,10 @@ function getJapaneseAnswerCandidates(vocab) {
     withoutAnnotation,
     unbracketed,
     annotation,
+    ...bracketAliases,
     raw,
     ...kanaFromRomaji,
-    rawRomaji,
-    cleanRomaji,
-    unbracketedRomaji
+    ...hyphenExpandedRomaji
   ].filter(Boolean);
 
   const expandedCandidates = [];

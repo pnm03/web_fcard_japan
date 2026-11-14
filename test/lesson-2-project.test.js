@@ -117,17 +117,43 @@ test("initializeStorage: Tự động seed dự án Từ vựng bài 2 vào kho 
 
 test("Quiz Matching: Xử lý thông minh từ vựng bài 2 có phần đóng mở ngoặc [ ]", () => {
   assert.equal(getRomajiAnswerMatch("teepu", "[kasetto] teepu"), "correct", "Chấp nhận 'teepu'");
+  assert.equal(getRomajiAnswerMatch("kasetto", "[kasetto] teepu"), "correct", "Chấp nhận 'kasetto' (từ trong ngoặc)");
   assert.equal(getRomajiAnswerMatch("kasetto teepu", "[kasetto] teepu"), "correct", "Chấp nhận 'kasetto teepu'");
+  assert.equal(getRomajiAnswerMatch("doumo", "[doumo] arigatou gozaimasu"), "correct", "Chấp nhận 'doumo' (từ trong ngoặc)");
   assert.equal(getRomajiAnswerMatch("arigatou gozaimasu", "[doumo] arigatou gozaimasu"), "correct", "Chấp nhận 'arigatou gozaimasu'");
   assert.equal(getRomajiAnswerMatch("doumo arigatou gozaimasu", "[doumo] arigatou gozaimasu"), "correct", "Chấp nhận 'doumo arigatou gozaimasu'");
+
+  // Kiểm tra QuizSession cho [カセット] テープ trong các mode không có ngoặc
+  setupMockLocalStorage();
+  const projects = getProjects();
+  const lesson2 = projects.find(p => p.id === "proj-lesson-2");
+  const tapeVocab = lesson2.vocab.find(v => v.id === "v2-23");
+
+  const japaneseAnswers = [
+    "カセットテープ",
+    "カセット テープ",
+    "カセット",
+    "テープ",
+    "kasetto teepu",
+    "kasetto",
+    "teepu",
+    "te-pu"
+  ];
+
+  japaneseAnswers.forEach(ans => {
+    const sessionJp = new QuizSession({
+      quizMode: "meaning_to_japanese",
+      vocabIds: [tapeVocab.id],
+      questionCount: 1
+    });
+    const res = sessionJp.submitAnswer(ans);
+    assert.equal(res.status, "correct", `Gõ "${ans}" không cần ngoặc phải được chấp nhận ở meaning_to_japanese`);
+  });
 
   const thanksMeanings = getAcceptedMeaningAnswers("[Xin] [chân thành] cảm ơn");
   assert.equal(thanksMeanings.length, 1, "Không tách sai nghĩa có ngoặc vuông thành 2 nghĩa bắt buộc");
   assert.equal(thanksMeanings[0].toLowerCase(), "cảm ơn");
 
-  setupMockLocalStorage();
-  const projects = getProjects();
-  const lesson2 = projects.find(p => p.id === "proj-lesson-2");
   const thanksVocab = lesson2.vocab.find(v => v.id === "v2-45");
 
   const sessionFull = new QuizSession({
@@ -142,7 +168,6 @@ test("Quiz Matching: Xử lý thông minh từ vựng bài 2 có phần đóng m
   assert.ok(tapeMeanings.some(m => m.toLowerCase().includes("băng")), "Chấp nhận 'Băng'");
 
   // Kiểm tra đáp án Tiếng Việt cho từ Băng (cat-xet)
-  const tapeVocab = lesson2.vocab.find(v => v.id === "v2-23");
   const testTapeAnswers = [
     "băng cat-xet",
     "bang cat-xet",
